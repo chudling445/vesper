@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "Vesper — Moonlit Atelier",
+  "short_name": "Vesper",
+  "description": "A private, local AI companion with a 3D avatar and voice.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#130c18",
+  "theme_color": "#130c18",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

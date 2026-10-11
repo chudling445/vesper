@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0d12" />
+    <meta name="description" content="A friendly quick-start guide for Vesper, the private 3D chat companion." />
+    <title>Getting started with Vesper</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-theme="mica" class="guide-page">
+    <div class="grain" aria-hidden="true"></div>
+    <main class="guide-shell">
+      <nav class="guide-nav" aria-label="Main navigation">
+        <a class="brand" href="/" aria-label="Vesper home">
+          <span class="brand-emblem" aria-hidden="true"><i></i><b>✦</b></span>
+          <span class="brand-name">VESPER<span> / </span>ATELIER</span>
+        </a>
+        <a class="download-trigger" data-app-download href="/Vesper-Setup.exe" download="Vesper-Setup.exe" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11m0 0 4-4m-4 4-4-4M4.5 16.5v3h15v-3" /></svg>
+          <span>DOWNLOAD WINDOWS APP</span>
+        </a>
+      </nav>
+
+      <header class="guide-hero">
+        <p class="guide-eyebrow"><span></span> A FRIENDLY QUICK START</p>
+        <h1>Your first hello<br /><em>is three small steps away.</em></h1>
+        <p>Vesper is a 3D chat companion that runs on your computer. Choose a chat model, start a conversation, and make the character feel like yours.</p>
+        <div class="guide-hero-actions">
+          <a class="guide-primary" href="/">OPEN VESPER <span aria-hidden="true">↗</span></a>
+          <a class="guide-secondary" data-app-download href="/Vesper-Setup.exe" download="Vesper-Setup.exe" hidden>GET THE WINDOWS APP</a>
+        </div>
+      </header>
+
+      <section class="guide-section" aria-labelledby="setup-title">
+        <div class="guide-section-title"><span>01</span><div><p>GET READY</p><h2 id="setup-title">Choose how Vesper thinks.</h2></div></div>
+        <div class="guide-choice-grid">
+          <article class="guide-card">
+            <div class="guide-card-icon local-icon" aria-hidden="true">⌂</div>
+            <p class="guide-card-kicker">LOCAL · PRIVATE</p>
+            <h3>Use a model on your PC</h3>
+            <ol>
+              <li><span>1</span><p><a href="https://ollama.com/download/windows" target="_blank" rel="noopener noreferrer">Install Ollama for Windows</a>, then open Ollama.</p></li>
+              <li><span>2</span><p>Open Ollama and download a chat model that fits your computer.</p></li>
+              <li><span>3</span><p>Return to Vesper, open <b>LLM Settings</b>, choose <b>Ollama · local</b>, tap an installed model name, then choose <b>Save Model</b>.</p></li>
+            </ol>
+            <p class="guide-card-note">Your chat stays on this computer when you use Ollama.</p>
+          </article>
+          <article class="guide-card">
+            <div class="guide-card-icon online-icon" aria-hidden="true">✦</div>
+            <p class="guide-card-kicker">ONLINE · HOSTED MODEL</p>
+            <h3>Connect an online provider</h3>
+            <ol>
+              <li><span>1</span><p>Open <b>LLM Settings</b> and choose a provider.</p></li>
+              <li><span>2</span><p>Add the provider’s API key to the private <code>.env</code> file beside Vesper, then restart.</p></li>
+              <li><span>3</span><p>Select a model, choose <b>Save Model</b>, and start chatting. Your messages go to that provider.</p></li>
+            </ol>
+            <p class="guide-card-note">Never paste API keys into the chat. Keep <code>.env</code> private, and review your provider’s privacy and billing terms.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="guide-section" aria-labelledby="personalize-title">
+        <div class="guide-section-title"><span>02</span><div><p>MAKE IT YOURS</p><h2 id="personalize-title">The character is the best part.</h2></div></div>
+        <div class="guide-feature-grid">
+          <article class="guide-feature"><span>01 / VIEW</span><h3>Move the model</h3><p>Drag to rotate, scroll to zoom, or use Orbit and Reset View in the studio.</p></article>
+          <article class="guide-feature"><span>02 / EXPRESSION</span><h3>Choose a look</h3><p>Pick one of ten face blends. Playful, Tender, and Thoughtful also change Vesper’s speaking gestures.</p></article>
+          <article class="guide-feature"><span>03 / VOICE</span><h3>Let Vesper speak</h3><p>Choose a system voice and turn on Auto Speak for voice, facial reactions, and lip sync.</p></article>
+          <article class="guide-feature"><span>04 / AVATAR</span><h3>Bring your own VRM</h3><p>Save an avatar as <code>models\character.vrm</code>, or use Open Model Folder in the studio to find the right place.</p></article>
+          <article class="guide-feature"><span>05 / PLAY</span><h3>Challenge Vesper to chess</h3><p>Open Chess in the conversation header. Choose your side, pick a style, and play privately without a model connection.</p></article>
+        </div>
+      </section>
+
+      <section class="guide-download" data-app-download-section aria-labelledby="download-title" hidden>
+        <div><p class="guide-eyebrow"><span></span> FOR WINDOWS 10 / 11</p><h2 id="download-title">Take Vesper to your desktop.</h2><p>The setup creates a desktop shortcut and can import your VRM. Chat models and avatar files are downloaded separately, so choose only what you need. This personal setup is unsigned, so Windows may show its standard unknown-publisher notice.</p></div>
+        <a class="guide-primary" href="/Vesper-Setup.exe" download="Vesper-Setup.exe">DOWNLOAD SETUP <span aria-hidden="true">↓</span></a>
+      </section>
+
+      <footer class="guide-footer"><a href="/">← Back to Vesper</a><span>VESPER IS AN AI CHARACTER · YOUR CONVERSATION IS YOURS</span></footer>
+    </main>
+    <script src="/guide.js" defer></script>
+  </body>
+</html>

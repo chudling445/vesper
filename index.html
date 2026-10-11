@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="A private, local AI companion with a 3D avatar, voice, and thoughtful conversation." />
+    <meta name="theme-color" content="#130c18" />
+    <meta name="application-name" content="Vesper" />
+    <title>Vesper — Moonlit Atelier</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/vendor/three/build/three.module.js",
+          "three/addons/": "/vendor/three/examples/jsm/",
+          "@pixiv/three-vrm": "/vendor/three-vrm/lib/three-vrm.module.min.js"
+        }
+      }
+    </script>
+    <script type="module" src="/avatar.js"></script>
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body data-theme="sakura">
+    <a class="skip-link" href="#message-input">Skip to conversation</a>
+    <div class="grain" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Vesper home">
+          <span class="brand-emblem" aria-hidden="true"><i></i><b>✦</b></span>
+          <span class="brand-name">VESPER<span> / </span>ATELIER</span>
+        </a>
+        <div class="topbar-right">
+          <span class="edition">PERSONAL BUILD <b>NO. 01</b></span>
+          <div class="theme-dock" id="theme-dock">
+            <button class="theme-toggle" id="theme-toggle" type="button" aria-expanded="false" aria-controls="theme-menu" title="Change the site palette · press T">
+              <span class="theme-swatch" id="theme-swatch" aria-hidden="true"></span>
+              <span>THEME <i>/</i> <b id="theme-name">SAKURA SENPAI</b></span>
+              <kbd>T</kbd><span class="theme-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="theme-menu" id="theme-menu" role="group" aria-label="Choose a color theme" hidden>
+              <div class="theme-menu-heading">CHOOSE YOUR ATMOSPHERE</div>
+              <button class="theme-option" type="button" data-theme-option="sakura" aria-pressed="true"><span class="palette-dot sakura-dot"></span><span class="theme-option-copy"><b>Sakura Senpai</b><small>Anime petals · snarky pink night</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="mica" aria-pressed="false"><span class="palette-dot mica-dot"></span><span class="theme-option-copy"><b>Mica Night</b><small>Fluent glass · studio black</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="velvet" aria-pressed="false"><span class="palette-dot velvet-dot"></span><span class="theme-option-copy"><b>Velvet</b><small>Violet hour</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="petal" aria-pressed="false"><span class="palette-dot petal-dot"></span><span class="theme-option-copy"><b>Petal</b><small>Soft rebellion</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="moonstone" aria-pressed="false"><span class="palette-dot moonstone-dot"></span><span class="theme-option-copy"><b>Moonstone</b><small>Quiet clarity</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="jade" aria-pressed="false"><span class="palette-dot jade-dot"></span><span class="theme-option-copy"><b>Jade</b><small>Midnight garden</small></span><span class="theme-check">✦</span></button>
+              <div class="theme-menu-foot">PRESS <kbd>T</kbd> TO CYCLE PALETTES</div>
+            </div>
+          </div>
+          <button class="settings-trigger" id="settings-open" type="button" title="Choose your language model">
+            <span aria-hidden="true">⚙</span> <span>LLM SETTINGS</span>
+          </button>
+          <a class="download-trigger" id="download-app" data-app-download href="/Vesper-Setup.exe" download="Vesper-Setup.exe" title="Download the Windows setup · chat model and avatar are separate">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11m0 0 4-4m-4 4-4-4M4.5 16.5v3h15v-3" /></svg>
+            <span>GET THE APP</span>
+          </a>
+          <button class="lock-trigger" id="lock-app" type="button" title="Lock Vesper" hidden>LOCK</button>
+          <div class="local-status"><span class="status-dot"></span> <span id="host-status">LOCAL / PRIVATE</span></div>
+        </div>
+      </header>
+
+      <section class="workspace" aria-label="Chat with Vesper">
+        <aside class="character-panel">
+          <div class="stage-heading">
+            <div><span class="section-index">01</span><span class="section-title">THE CHARACTER</span></div>
+            <span class="stage-state"><span class="live-pip"></span> <span id="stage-status">LOADING AVATAR</span></span>
+          </div>
+          <div class="scene" id="scene">
+            <div class="scene-grid" aria-hidden="true"></div>
+            <canvas id="avatar-canvas" tabindex="0" aria-label="3D character viewer. Drag to rotate and scroll to zoom."></canvas>
+            <div class="scene-vignette" aria-hidden="true"></div>
+            <div class="model-placeholder" id="model-placeholder">
+              <div class="orbit-mark" aria-hidden="true"><span class="orbit-ring ring-one"></span><span class="orbit-ring ring-two"></span><span class="orbit-star">✦</span></div>
+              <p class="placeholder-kicker">MOONLIT ATELIER</p>
+              <p class="placeholder-title">Loading Vesper…</p>
+              <p class="placeholder-copy">The 3D avatar is loading from this computer.</p>
+            </div>
+            <div class="scene-meta scene-meta-top"><span>FIG. 01</span><span>BLENDER STUDIO · VRM</span></div>
+            <button class="stage-folder" id="open-model-folder" type="button" title="Open the folder for your VRM model">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5h6l2 2h9v9h-17zM3.5 7.5v-2h7l2 2" /></svg>
+              <span>OPEN MODEL FOLDER</span>
+            </button>
+            <div class="stage-toolbar" aria-label="Avatar view controls">
+              <button class="stage-tool" id="auto-orbit" type="button" aria-pressed="false" title="Slowly rotate the avatar">ORBIT <b>OFF</b></button>
+              <button class="stage-tool" id="reset-view" type="button" title="Reset avatar rotation and zoom">RESET VIEW</button>
+              <label class="zoom-control" for="stage-zoom"><span>ZOOM</span><input id="stage-zoom" type="range" min="1.8" max="3.6" step="0.1" value="2.15" aria-label="Avatar zoom" /></label>
+            </div>
+            <div class="scene-controls"><span>DRAG</span> ROTATE <i>·</i> <span>SCROLL</span> ZOOM</div>
+            <div class="stage-base" aria-hidden="true"><span></span></div>
+          </div>
+
+          <div class="expression-bar" aria-label="Avatar expressions">
+            <span class="expression-label">EXPRESSIONS</span>
+            <div class="expression-options" role="group" aria-label="Choose a facial expression">
+              <button type="button" class="expression-button" data-expression="neutral" aria-pressed="true">Neutral</button>
+              <button type="button" class="expression-button" data-expression="smirk" aria-pressed="false">Smirk</button>
+              <button type="button" class="expression-button" data-expression="grin" aria-pressed="false">Grin</button>
+              <button type="button" class="expression-button" data-expression="pout" aria-pressed="false">Pout</button>
+              <button type="button" class="expression-button" data-expression="shy" aria-pressed="false">Shy</button>
+              <button type="button" class="expression-button" data-expression="fond" aria-pressed="false">Fond</button>
+              <button type="button" class="expression-button" data-expression="curious" aria-pressed="false">Curious</button>
+              <button type="button" class="expression-button" data-expression="thinking" aria-pressed="false">Thinking</button>
+              <button type="button" class="expression-button" data-expression="soft" aria-pressed="false">Soft</button>
+              <button type="button" class="expression-button" data-expression="surprised" aria-pressed="false">Surprised</button>
+            </div>
+          </div>
+
+          <div class="profile-card">
+            <div class="profile-main">
+              <div class="profile-sigil" aria-hidden="true">V<span>✦</span></div>
+              <div class="profile-copy">
+                <div class="profile-name">Vesper <span class="adult-mark">ADULT</span></div>
+                <div class="profile-subtitle">your bratty, thoughtful romantic partner</div>
+              </div>
+              <div class="mood-mark" title="Vesper is here">☾<span>HERE</span></div>
+            </div>
+            <div class="trait-row"><span>BRATTY</span><b>✦</b><span>ROMANTIC</span><b>✦</b><span>PHILOSOPHICAL</span></div>
+            <div class="character-quote"><span class="quote-rule"></span><p>“Tch… if nothing matters, senpai, why are you trying so hard?”</p></div>
+          </div>
+          <section class="personality-dock" aria-label="Conversational style">
+            <div class="personality-heading"><span>VESPER'S MOMENT</span><span id="personality-description">Playful · quick-witted warmth</span></div>
+            <div class="personality-options" role="group" aria-label="Choose Vesper's conversational style">
+              <button type="button" class="personality-button" data-personality-mode="playful" aria-pressed="true">Playful</button>
+              <button type="button" class="personality-button" data-personality-mode="tender" aria-pressed="false">Tender</button>
+              <button type="button" class="personality-button" data-personality-mode="thoughtful" aria-pressed="false">Thoughtful</button>
+            </div>
+          </section>
+          <section class="voice-dock" aria-label="Voice and lip-sync controls">
+            <div class="voice-heading">
+              <div><span class="section-index">02</span><span class="section-title">VOICE / PERFORMANCE</span></div>
+              <label class="auto-voice"><input id="auto-speak" type="checkbox" /> <span>AUTO SPEAK</span></label>
+            </div>
+            <div class="voice-controls">
+              <label class="voice-field voice-choice" for="voice-select"><span>VOICE</span><select id="voice-select"><option value="">SYSTEM DEFAULT</option></select></label>
+              <label class="voice-field" for="speech-rate"><span>PACE <output id="speech-rate-value">0.96×</output></span><input id="speech-rate" type="range" min="0.7" max="1.3" step="0.05" value="0.95" /></label>
+              <label class="voice-field" for="speech-pitch"><span>PITCH <output id="speech-pitch-value">1.04×</output></span><input id="speech-pitch" type="range" min="0.7" max="1.4" step="0.05" value="1.05" /></label>
+              <button class="voice-stop" id="stop-speaking" type="button" title="Stop voice playback">STOP</button>
+            </div>
+            <div class="voice-status" id="voice-status" aria-live="polite">SYSTEM VOICE · WORD-TIMED LIP SYNC</div>
+          </section>
+          <div class="local-note"><span class="local-icon">⌂</span> <span id="host-note">RUNNING ON THIS COMPUTER · MODEL STAYS IN YOUR FOLDER</span></div>
+        </aside>
+
+        <section class="chat-panel" aria-label="Conversation">
+          <div class="chat-heading">
+            <div class="chat-title-wrap">
+              <div class="eyebrow"><span class="eyebrow-dash"></span> AFTER HOURS / OPEN CONVERSATION</div>
+              <h1>A mind to<br class="mobile-break" /> <em>challenge yours.</em></h1>
+          <p class="chat-subtitle">Hmph. I am only talking to you because I want to, senpai.</p>
+            </div>
+            <div class="heading-actions">
+              <div class="connection-chip"><span class="connection-star">✦</span> <span id="provider-badge">LOCAL MODEL</span></div>
+              <button class="chess-trigger" id="chess-open" type="button" aria-haspopup="dialog" aria-controls="chess-dialog" title="Play a private game of chess with Vesper"><span aria-hidden="true">♟</span> CHESS</button>
+              <button class="icon-button" id="clear-chat" type="button" title="Clear conversation" aria-label="Clear conversation">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="messages" id="messages" aria-live="polite" aria-label="Messages">
+            <div class="welcome-card" id="welcome-card">
+              <div class="welcome-ornament" aria-hidden="true"><span></span>✦<span></span></div>
+              <p class="welcome-title">Welcome to the atelier, senpai~</p>
+              <p class="welcome-copy">Choose how Vesper thinks, then tap a starter question. Her expressions, voice, and style are ready to explore.</p>
+              <section class="quickstart-card" aria-label="Quick setup">
+                <div class="quickstart-heading">
+                  <div><span class="quickstart-kicker">YOUR FIRST STEP</span><strong>Set up your chat model</strong></div>
+                  <span class="quickstart-status" id="quickstart-status" aria-live="polite">CHECKING…</span>
+                </div>
+                <p class="quickstart-message" id="quickstart-message">Checking the selected model…</p>
+                <div class="quickstart-actions">
+                  <button type="button" id="quickstart-settings">CHOOSE A MODEL</button>
+                  <a id="quickstart-get-ollama" href="https://ollama.com/download/windows" target="_blank" rel="noopener noreferrer" hidden>GET OLLAMA</a>
+                </div>
+              </section>
+              <div class="quickstart-links"><a href="/getting-started">OPEN THE SIMPLE GUIDE</a><span data-download-separator hidden>·</span><a data-app-download href="/Vesper-Setup.exe" download="Vesper-Setup.exe" hidden>DOWNLOAD WINDOWS APP</a></div>
+              <div class="suggestions-label">OR TRY A STARTER QUESTION</div>
+              <div class="suggestions">
+                <button class="suggestion" type="button"><span>01</span> What makes a life meaningful?</button>
+                <button class="suggestion" type="button"><span>02</span> Give me a gentle reality check</button>
+                <button class="suggestion" type="button"><span>03</span> Tell me a thought you can’t prove</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="composer-wrap">
+            <form class="composer" id="chat-form">
+              <span class="composer-sigil" aria-hidden="true">✦</span>
+              <textarea id="message-input" rows="1" maxlength="4000" placeholder="Say something worth my attention, senpai…" aria-label="Your message"></textarea>
+              <button class="send-button" id="send-button" type="submit" aria-label="Send message">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12h14M12.5 5.5l6.5 6.5-6.5 6.5" /></svg>
+              </button>
+            </form>
+            <div class="composer-foot"><span>ENTER TO SEND <i>·</i> SHIFT + ENTER FOR A NEW LINE</span><span id="connection-label">YOUR TURN</span></div>
+          </div>
+          <div class="fine-print"><span>✦</span> VESPER IS AN AI CHARACTER. THE CONVERSATION IS YOURS.</div>
+        </section>
+      </section>
+
+      <dialog class="chess-dialog" id="chess-dialog" aria-labelledby="chess-title">
+        <div class="chess-dialog-head">
+          <div><span class="chess-eyebrow">VESPER / THE QUIET MATCH</span><h2 id="chess-title">A little <em>strategy.</em></h2></div>
+          <button class="dialog-close" id="chess-close" type="button" aria-label="Close chess">×</button>
+        </div>
+        <div class="chess-layout">
+          <section class="chess-board-card" aria-label="Chess board">
+            <div class="chess-board-topline"><span>YOU <b id="chess-you-color">WHITE</b></span><span id="chess-turn-label" aria-live="polite">YOUR MOVE</span></div>
+            <div class="chess-board" id="chess-board" role="grid" aria-label="Chess board. Use arrow keys to move between squares and Enter to choose a square."></div>
+            <div class="chess-board-foot"><span>♔ <span id="chess-captured-by-you">—</span></span><span>VESPER TAKES <span id="chess-captured-by-vesper">—</span> ♚</span></div>
+          </section>
+          <aside class="chess-side-panel">
+            <div class="chess-presence"><span class="chess-avatar-sigil">V<span>✦</span></span><div><b>VESPER</b><small>PLAYFUL · THOUGHTFUL · NEVER MERCIFUL</small></div></div>
+            <p class="chess-quip" id="chess-quip" aria-live="polite">White moves first. Try not to look so confident, darling.</p>
+            <div class="chess-options">
+              <label for="chess-player-color"><span>YOUR SIDE</span><select id="chess-player-color"><option value="w">White · move first</option><option value="b">Black · let Vesper begin</option></select></label>
+              <label for="chess-strength"><span>VESPER'S STYLE</span><select id="chess-strength"><option value="1">Gentle</option><option value="2" selected>Thoughtful</option><option value="3">Scheming</option></select></label>
+            </div>
+            <div class="chess-status" id="chess-status" role="status" aria-live="polite">Your move.</div>
+            <div class="chess-promotion" id="chess-promotion" role="group" aria-label="Choose a promotion piece" hidden><span>CHOOSE PROMOTION</span><div><button type="button" data-promotion="q">QUEEN</button><button type="button" data-promotion="r">ROOK</button><button type="button" data-promotion="b">BISHOP</button><button type="button" data-promotion="n">KNIGHT</button></div></div>
+            <div class="chess-move-box"><div class="chess-move-heading"><span>THE RECORD</span><span id="chess-move-count">0 PLIES</span></div><ol class="chess-move-list" id="chess-move-list" aria-label="Move history"></ol></div>
+            <div class="chess-actions"><button class="quiet-button" id="chess-undo" type="button">UNDO TURN</button><button class="primary-button" id="chess-new" type="button">NEW GAME</button></div>
+            <p class="chess-local-note">THE MATCH RUNS LOCALLY · NO MODEL API OR INTERNET REQUIRED</p>
+          </aside>
+        </div>
+      </dialog>
+
+      <dialog class="settings-dialog" id="llm-dialog" aria-labelledby="settings-title">
+        <div class="dialog-topline"><span>VESPER / CONFIGURATION</span><button class="dialog-close" id="settings-close" type="button" aria-label="Close settings">×</button></div>
+        <div class="dialog-heading">
+          <span class="eyebrow"><span class="eyebrow-dash"></span> YOUR MODEL, YOUR RULES</span>
+          <h2 id="settings-title">Choose a <em>mind.</em></h2>
+          <p id="settings-copy">Select a local model or connect a provider. Credentials stay in this folder on your computer.</p>
+        </div>
+        <label class="setting-field" for="provider-select"><span>PROVIDER</span>
+          <select id="provider-select">
+            <option value="ollama">Ollama · local</option>
+            <option value="openai">OpenAI API</option>
+            <option value="compatible">OpenAI-compatible API</option>
+          </select>
+        </label>
+        <label class="setting-field" for="model-input"><span>MODEL NAME</span>
+          <input id="model-input" type="text" maxlength="120" placeholder="e.g. llama3.2" autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="provider-hint" id="provider-hint" aria-live="polite"></div>
+        <div class="installed-models" id="installed-models" hidden></div>
+        <div class="provider-status" id="provider-status"><span class="status-dot"></span><span>Loading provider settings…</span></div>
+        <div class="credentials-note" id="credentials-note"><b>Need credentials?</b> Edit <code>.env</code> next to <code>Start Vesper.bat</code>, then restart the app. Never paste API keys into chat.</div>
+        <div class="dialog-actions"><button id="settings-cancel" class="quiet-button" type="button">CANCEL</button><button id="settings-save" class="primary-button" type="button">SAVE MODEL</button></div>
+      </dialog>
+      <dialog class="access-dialog" id="access-dialog" aria-labelledby="access-title">
+        <div class="access-emblem" aria-hidden="true">✦</div>
+        <div class="eyebrow"><span class="eyebrow-dash"></span> VESPER / PRIVATE ACCESS</div>
+        <h2 id="access-title">Welcome <em>back.</em></h2>
+        <p>This Vesper space is password protected.</p>
+        <form id="access-form">
+          <label class="access-label" for="access-password">PASSWORD</label>
+          <input id="access-password" type="password" autocomplete="current-password" required maxlength="256" />
+          <div class="access-status" id="access-status" aria-live="polite"></div>
+          <button class="primary-button" type="submit">UNLOCK VESPER</button>
+        </form>
+      </dialog>
+      <footer class="footer"><span>VESPER <i>—</i> A SMALL, PRIVATE UNIVERSE</span><span>3D AVATAR <i>·</i> CHOOSE A LOCAL OR ONLINE MODEL</span></footer>
+    </main>
+    <script src="/chess.js" defer></script>
+  </body>
+</html>

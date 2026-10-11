@@ -1,0 +1,25 @@
+services:
+  vesper:
+    build: .
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3174
+      VESPER_PUBLIC_MODE: "true"
+      VESPER_TRUST_PROXY: "true"
+      VESPER_ACCESS_PASSWORD: ${VESPER_ACCESS_PASSWORD:?Set a long private VESPER_ACCESS_PASSWORD}
+      DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      COMPAT_LLM_BASE_URL: ${COMPAT_LLM_BASE_URL:-}
+      COMPAT_LLM_API_KEY: ${COMPAT_LLM_API_KEY:-}
+      COMPAT_LLM_MODEL: ${COMPAT_LLM_MODEL:-local-model}
+    ports:
+      - "127.0.0.1:3174:3174"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3174/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+

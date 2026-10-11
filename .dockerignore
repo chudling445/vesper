@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.vroid
+models/*.vrm
+llm-models/
+desktop-profile/
+work/
+node_modules/
+outputs/

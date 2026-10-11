@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: vesper-private
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: VESPER_PUBLIC_MODE
+        value: "true"
+      - key: VESPER_TRUST_PROXY
+        value: "true"
+      - key: VESPER_ACCESS_PASSWORD
+        sync: false
+      - key: DEFAULT_LLM_PROVIDER
+        value: openai
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini

@@ -1,0 +1,8 @@
+.env
+*.log
+/llm-models/
+/desktop-profile/
+/backup-before-riko-style/
+/Vesper-Setup.exe
+/models/character.vrm
+/model.vroid
