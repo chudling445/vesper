@@ -1,4 +1,11 @@
 import { loadVoicePrefs, speakWaifu } from './voice-utils.js';
+import { appStore } from './persistence.js';
+import { createArcadeFramework } from './arcade-framework.js';
+import { initializeArcadeExtras } from './arcade-extra-games.js';
+import { initializeArcadeToys } from './arcade-toys.js';
+import { initializeArcadeUtilityPack } from './arcade-utility-pack.js';
+
+await appStore.ready;
 
 const $ = (selector) => document.querySelector(selector);
 const pick = (items) => items[Math.floor(Math.random() * items.length)];
@@ -13,7 +20,12 @@ function loadStats() {
   return base;
 }
 const stats = loadStats();
-const saveStats = () => { try { localStorage.setItem(STORE, JSON.stringify(stats)); } catch { /* Scores stay for this page only. */ } };
+const saveStats = () => {
+  try { localStorage.setItem(STORE, JSON.stringify(stats)); } catch { /* The IndexedDB copy remains available. */ }
+  const arcadeState = appStore.get('workspace.arcade', {});
+  appStore.set('workspace.arcade', { ...arcadeState, classic: JSON.parse(JSON.stringify(stats)) });
+  window.dispatchEvent(new CustomEvent('vesper:arcade-score'));
+};
 
 // Every line is [English, 日本語]. The Japanese line is used when Vesper's reply language is Japanese.
 const Q = {
@@ -48,6 +60,17 @@ function say(pair) {
   says.textContent = line;
   if (speakToggle?.checked) speakWaifu(line, { forceLang: wantsJapanese() ? 'ja' : 'en' });
 }
+window.addEventListener('vesper:arcade-reaction', (event) => {
+  const reactions = {
+    happy: ['That was a lovely round. I am a little impressed.', 'いい勝負だったね。ちょっと感心しちゃった。'],
+    joy: ['You did it! I knew you had that in you, senpai.', 'やったね！できるって思ってたよ、センパイ。'],
+    sad: ['Aw, that one got away. Shall we try again?', 'あらら、今回は残念。もう一回やってみる？'],
+    surprised: ['Oh! That was unexpected. Nicely played.', 'わあ、予想外だった！お見事。'],
+    neutral: ['A thoughtful round. Ready for another?', '落ち着いた一局だったね。もう一回する？'],
+  };
+  say(reactions[event.detail?.emotion] || reactions.happy);
+  window.setExpression?.(event.detail?.emotion || 'happy', 0.8, 0.45);
+});
 
 function renderScore(game) {
   const rows = {
@@ -72,16 +95,38 @@ function renderScore(game) {
 // ---- Tabs -------------------------------------------------------------
 const tabs = [...document.querySelectorAll('[role="tab"]')];
 const panels = [...document.querySelectorAll('.game-panel')];
-let currentGame = 'jkp';
-function show(game, announce = true) {
+let currentGame = null;
+const EXTRA_INTROS = {
+  '2048': ['Match the tiles. I believe you can make it to 2048, senpai.', 'タイルを合わせてね。2048までいけるかな、センパイ。'],
+  mines: ['Careful now. Your first tile is always safe.', '慎重にね。最初のマスは必ず安全だよ。'],
+  snake: ['Collect the moon fruit. Try not to run into yourself.', '月の実を集めてね。自分にぶつからないように。'],
+  dvd: ['Let the little star drift. Corner hits are lucky.', '星を漂わせてみて。角に当たったらラッキー。'],
+  cow: ['Listen carefully. The bell will tell you when you are close.', '耳を澄ませて。近づくとベルが教えてくれるよ。'],
+  cookie: ['A cookie garden? Finally, a game I can support.', 'クッキー農園？やっと私にも応援できるゲームだね。'],
+  hacker: ['Type dramatically. The terminal is very impressed.', 'かっこよくタイプして。端末も感心してるよ。'],
+  thoughts: ['Take your time. You can let one small thought float away.', 'ゆっくりでいいよ。小さな悩みをひとつ、流してみよう。'],
+  silk: ['Make something soft and luminous. I will watch.', 'やさしく光るものを描いてみて。見てるね。'],
+  doodle: ['Draw a little something. I will take my best guess.', '何か描いてみて。私が当ててみるね。'],
+  pointer: ['Every tiny pal is looking for you.', 'ちいさなお友達がみんなセンパイを見てるよ。'],
+  'text-toy': ['Give me a phrase and I will add a little spell.', '言葉をひとつちょうだい。魔法をかけてあげる。'],
+  ambience: ['Let us make a quiet little room together.', '静かな音のお部屋を作ろう。'],
+};
+const arcade = createArcadeFramework({ onActivate(game, _previous, { announce }) {
   currentGame = game;
-  tabs.forEach((tab) => tab.setAttribute('aria-selected', String(tab.dataset.game === game)));
-  panels.forEach((panel) => { panel.hidden = panel.dataset.panel !== game; });
-  renderScore(game);
-  if (announce) say(Q.intro[game]);
-  try { history.replaceState(null, '', `#${game}`); } catch { /* The address bar is optional. */ }
+  if (game) {
+    renderScore(game);
+    const intro = Q.intro[game] || EXTRA_INTROS[game];
+    if (announce && intro) say(intro);
+    try { history.replaceState(null, '', `#${game}`); } catch { /* The address bar is optional. */ }
+  } else {
+    try { history.replaceState(null, '', location.pathname); } catch { /* The address bar is optional. */ }
+  }
+} });
+for (const tab of tabs) {
+  const panel = panels.find((item) => item.dataset.panel === tab.dataset.game);
+  if (panel) arcade.register({ id: tab.dataset.game, tab, panel });
 }
-tabs.forEach((tab) => tab.addEventListener('click', () => show(tab.dataset.game)));
+function show(game, announce = true) { arcade.activate(game, { announce }); }
 
 // ---- Jan-Ken-Pon ------------------------------------------------------
 const HANDS = [{ id: 'rock', icon: '✊' }, { id: 'scissors', icon: '✌️' }, { id: 'paper', icon: '✋' }];
@@ -288,4 +333,7 @@ newTtt();
 newMemory();
 renderReflexBest(); starBest.textContent = stats.starcatch.best || '—'; highlowBest.textContent = stats.highlow.best || '—'; starTarget.disabled = true;
 const start = location.hash.replace('#', '');
-show(['jkp', 'ttt', 'memory', 'omikuji', 'reflex', 'starcatch', 'highlow'].includes(start) ? start : 'jkp');
+initializeArcadeExtras(arcade);
+initializeArcadeToys(arcade);
+initializeArcadeUtilityPack(arcade);
+show(arcade.list().some((game) => game.id === start) ? start : 'jkp');

@@ -2,7 +2,7 @@ const STORAGE_KEY = 'vesper-state-v2';
 const DB_NAME = 'vesper-local';
 const DB_VERSION = 1;
 const OBJECT_STORE = 'state';
-export const STATE_SCHEMA_VERSION = 2;
+export const STATE_SCHEMA_VERSION = 3;
 
 const safeParse = (value, fallback) => { try { return value ? JSON.parse(value) : fallback; } catch { return fallback; } };
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -11,13 +11,13 @@ export function createFallbackState() {
   return {
     schemaVersion: STATE_SCHEMA_VERSION,
     updatedAt: 0,
-    session: { messages: [], draft: '' },
+    session: { messages: [], draft: '', summary: '' },
     settings: {
       llm: { provider: '', model: '' },
       voice: { auto: false, voiceURI: '', language: 'en', rate: 0.99, pitch: 1.16 },
-      theme: 'sakura', colorMode: 'system', background: 'atelier', personality: 'playful',
+      theme: 'omarchy-quattro', colorMode: 'system', background: 'atelier', personality: 'playful',
       stage: { zoom: 2.15, orbit: false },
-      security: { pinSalt: '', pinHash: '', autoLockMinutes: 15, biometricId: '', protectInbox: false },
+      security: { pinSalt: '', pinHash: '', pinHashAlgorithm: '', pinIterations: 0, autoLockMinutes: 15, biometricId: '', biometricPublicKey: '', biometricAlgorithm: 0, biometricOrigin: '', biometricRpId: '', protectInbox: false },
       cloudSync: { endpoint: '', token: '', enabled: false },
     },
     workspace: {
@@ -30,6 +30,10 @@ export function createFallbackState() {
       ],
       customization: { preset: 'sunset', accent: '#e7a8dd', font: 'sans', background: '' },
       habits: { days: {}, badges: [] },
+      arcade: { theme: 'sakura', classic: {}, scores: {}, cookie: { count: 0, upgrades: {}, lastAt: 0 } },
+      pcBuilder: { savedBuilds: [], customParts: [] },
+      finance: { quoteEndpoint: '', quotes: {}, assets: [], accounts: [], ledger: [], budgets: [] },
+      health: null,
     },
     ui: { lastRoute: '/', reducedMotion: false },
   };
@@ -70,7 +74,18 @@ export function migrateState(input) {
       cloudSync: { ...fallback.settings.cloudSync, ...(source.settings?.cloudSync || {}) },
     },
     ui: { ...fallback.ui, ...(source.ui || {}) },
-    workspace: { ...fallback.workspace, ...(source.workspace || {}), items: Array.isArray(source.workspace?.items) ? source.workspace.items : fallback.workspace.items, widgets: Array.isArray(source.workspace?.widgets) ? source.workspace.widgets : fallback.workspace.widgets, customization: { ...fallback.workspace.customization, ...(source.workspace?.customization || {}) }, habits: { ...fallback.workspace.habits, ...(source.workspace?.habits || {}), days: source.workspace?.habits?.days && typeof source.workspace.habits.days === 'object' ? source.workspace.habits.days : {} } },
+    workspace: {
+      ...fallback.workspace,
+      ...(source.workspace || {}),
+      items: Array.isArray(source.workspace?.items) ? source.workspace.items : fallback.workspace.items,
+      widgets: Array.isArray(source.workspace?.widgets) ? source.workspace.widgets : fallback.workspace.widgets,
+      customization: { ...fallback.workspace.customization, ...(source.workspace?.customization || {}) },
+      habits: { ...fallback.workspace.habits, ...(source.workspace?.habits || {}), days: source.workspace?.habits?.days && typeof source.workspace.habits.days === 'object' ? source.workspace.habits.days : {} },
+      arcade: { ...fallback.workspace.arcade, ...(source.workspace?.arcade || {}), classic: source.workspace?.arcade?.classic || {}, scores: source.workspace?.arcade?.scores || {}, cookie: { ...fallback.workspace.arcade.cookie, ...(source.workspace?.arcade?.cookie || {}) } },
+      pcBuilder: { ...fallback.workspace.pcBuilder, ...(source.workspace?.pcBuilder || {}), savedBuilds: Array.isArray(source.workspace?.pcBuilder?.savedBuilds) ? source.workspace.pcBuilder.savedBuilds : [], customParts: Array.isArray(source.workspace?.pcBuilder?.customParts) ? source.workspace.pcBuilder.customParts : [] },
+      finance: { ...fallback.workspace.finance, ...(source.workspace?.finance || {}), quotes: source.workspace?.finance?.quotes && typeof source.workspace.finance.quotes === 'object' ? source.workspace.finance.quotes : {}, assets: Array.isArray(source.workspace?.finance?.assets) ? source.workspace.finance.assets : [], accounts: Array.isArray(source.workspace?.finance?.accounts) ? source.workspace.finance.accounts : [], ledger: Array.isArray(source.workspace?.finance?.ledger) ? source.workspace.finance.ledger : [], budgets: Array.isArray(source.workspace?.finance?.budgets) ? source.workspace.finance.budgets : [] },
+      health: source.workspace?.health && typeof source.workspace.health === 'object' ? source.workspace.health : null,
+    },
     schemaVersion: STATE_SCHEMA_VERSION,
     updatedAt: Number(source.updatedAt) || 0,
   };

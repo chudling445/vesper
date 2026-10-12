@@ -1,9 +1,11 @@
-const THEME_KEY = 'vesper-theme-v3';
+import { initThemeProvider } from './theme-provider.js';
+import './arcade-launcher.js';
+
+initThemeProvider();
+
 const BACKGROUND_KEY = 'vesper-background-v1';
 const backgrounds = ['atelier', 'sakura', 'midnight', 'aurora', 'sunset'];
-const themes = ['sakura', 'mica', 'velvet', 'petal', 'moonstone', 'jade', 'riko', 'portrait'];
 const WINDOW_KEY = 'vesper-model-window-v1';
-try { const saved = localStorage.getItem(THEME_KEY); if (themes.includes(saved)) document.body.dataset.theme = saved; } catch { /* keep Riko Atelier */ }
 function applyBackground(name) {
   const selected = backgrounds.includes(name) ? name : 'atelier';
   document.querySelector('#scene').dataset.background = selected;

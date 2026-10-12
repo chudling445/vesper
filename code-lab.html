@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0d12" />
+  <meta name="description" content="A private, offline-ready code and Markdown lab for Vesper." />
+  <title>Code Lab · Vesper</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="code-lab-page" data-theme="riko">
+  <a class="skip-link" href="#lab-editor">Skip to the editor</a>
+  <main class="app-shell page-shell lab-shell">
+    <header class="site-header">
+      <a class="brand-lockup" href="/" aria-label="Vesper home"><span class="brand-emblem">V</span><span><b>VESPER</b><small>CODE LAB</small></span></a>
+      <nav class="site-nav" aria-label="Workspace navigation"><a href="/">Chat</a><a href="/workspace">Workspace</a><a href="/lab" aria-current="page">Code Lab</a><a href="/quick-capture">Quick Capture</a><a href="/about">Studio guide</a></nav>
+      <a class="quiet-button" href="/">BACK TO CHAT</a>
+    </header>
+
+    <section class="lab-hero">
+      <div><span class="eyebrow"><span class="eyebrow-dash"></span> PRIVATE / LOCAL / OFFLINE READY</span><h1>A small place to <em>try things.</em></h1><p>Preview HTML and CSS, run plain JavaScript in a disposable worker, or shape a Markdown note. Your drafts stay on this device.</p></div>
+      <div class="lab-actions"><button class="primary-button" id="lab-run" type="button">RUN PREVIEW</button><button class="quiet-button" id="lab-copy" type="button">COPY SOURCE</button><button class="quiet-button" id="lab-export" type="button">EXPORT HTML</button></div>
+    </section>
+
+    <div class="lab-workspace">
+      <section class="lab-panel lab-editor-panel" aria-labelledby="lab-editor-heading">
+        <div class="lab-panel-heading"><div><span class="eyebrow">DRAFT / SAVED ON THIS DEVICE</span><h2 id="lab-editor-heading">The editor</h2></div><span class="lab-save-state" id="lab-save-state" aria-live="polite">READY</span></div>
+        <div class="lab-tabs" role="tablist" aria-label="Editor type">
+          <button type="button" role="tab" id="tab-html" aria-selected="true" aria-controls="panel-html" data-lab-tab="html">HTML</button>
+          <button type="button" role="tab" id="tab-css" aria-selected="false" aria-controls="panel-css" data-lab-tab="css">CSS</button>
+          <button type="button" role="tab" id="tab-js" aria-selected="false" aria-controls="panel-js" data-lab-tab="js">JAVASCRIPT</button>
+          <button type="button" role="tab" id="tab-markdown" aria-selected="false" aria-controls="panel-markdown" data-lab-tab="markdown">MARKDOWN</button>
+        </div>
+        <div class="lab-editor-wrap" id="lab-editor">
+          <label class="lab-source-panel" id="panel-html" role="tabpanel" aria-labelledby="tab-html"><span>HTML FRAGMENT</span><textarea id="lab-html" maxlength="30000" spellcheck="false" aria-label="HTML source" autocapitalize="off" autocomplete="off"></textarea></label>
+          <label class="lab-source-panel" id="panel-css" role="tabpanel" aria-labelledby="tab-css" hidden><span>CSS</span><textarea id="lab-css" maxlength="20000" spellcheck="false" aria-label="CSS source" autocapitalize="off" autocomplete="off"></textarea></label>
+          <label class="lab-source-panel" id="panel-js" role="tabpanel" aria-labelledby="tab-js" hidden><span>JAVASCRIPT · NO DOM OR NETWORK</span><textarea id="lab-js" maxlength="20000" spellcheck="false" aria-label="JavaScript source" autocapitalize="off" autocomplete="off"></textarea></label>
+          <label class="lab-source-panel" id="panel-markdown" role="tabpanel" aria-labelledby="tab-markdown" hidden><span>MARKDOWN</span><textarea id="lab-markdown" maxlength="30000" spellcheck="false" aria-label="Markdown source"></textarea></label>
+        </div>
+        <div class="lab-editor-foot"><span>Drafts save automatically · <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> to run</span><button class="quiet-button" id="lab-reset" type="button">RESET EXAMPLE</button></div>
+      </section>
+
+      <section class="lab-panel lab-output-panel" aria-labelledby="lab-output-heading">
+        <div class="lab-panel-heading"><div><span class="eyebrow">OUTPUT / SANDBOXED PREVIEW</span><h2 id="lab-output-heading">The preview</h2></div><span class="lab-runtime-state" id="lab-runtime-state" aria-live="polite">IDLE</span></div>
+        <div class="lab-preview-wrap" id="lab-preview-wrap"><iframe id="lab-preview" title="Isolated local HTML preview" sandbox="" referrerpolicy="no-referrer"></iframe><div class="lab-markdown-preview" id="lab-markdown-preview" hidden></div></div>
+        <div class="lab-console" aria-label="JavaScript output"><div class="lab-console-head"><span>LOCAL CONSOLE</span><button type="button" id="lab-clear-console">CLEAR</button></div><div id="lab-console-lines" role="log" aria-live="polite"><p class="lab-console-empty">Run a preview to see output.</p></div></div>
+      </section>
+    </div>
+
+    <p class="lab-safety-note"><b>Sandbox boundary:</b> the preview has no access to Vesper’s storage or parent page. JavaScript runs in a disposable worker with network connections blocked and a short execution limit. Only run code you trust.</p>
+    <footer class="footer"><span>VESPER <i>—</i> YOUR PRIVATE WORKSPACE</span><span>MAKE A DRAFT · TRY A THOUGHT · KEEP WHAT HELPS</span></footer>
+  </main>
+  <script type="module" src="/code-lab.js"></script>
+</body>
+</html>

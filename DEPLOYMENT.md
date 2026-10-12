@@ -32,6 +32,8 @@ For OpenAI, set:
 - `OPENAI_API_KEY` as a private secret
 - `OPENAI_MODEL` to a model available to your account
 
+For Anthropic Claude, set `DEFAULT_LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`, and optionally `ANTHROPIC_MODEL`. For xAI Grok, set `DEFAULT_LLM_PROVIDER=xai`, `XAI_API_KEY`, and optionally `XAI_MODEL`. Keep these credentials in private host settings or the local `.env` file. The chat remains local when Ollama is selected; choosing a hosted provider sends the recent conversation and persona prompt to that provider.
+
 You can use an OpenAI-compatible endpoint instead by setting `DEFAULT_LLM_PROVIDER=compatible` and configuring `COMPAT_LLM_BASE_URL`, `COMPAT_LLM_MODEL`, and optionally `COMPAT_LLM_API_KEY`. Do not expose the model endpoint directly to the browser.
 
 ## Local Docker preview

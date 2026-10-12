@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#12151c" />
+  <title>Vesper · Builds & Money</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="planner-page" data-theme="omarchy-quattro">
+  <main class="app-shell page-shell planner-shell">
+    <header class="site-header">
+      <a class="brand-lockup" href="/"><span class="brand-emblem">V</span><span><b>VESPER</b><small>TOOLS / LOCAL</small></span></a>
+      <nav class="site-nav" aria-label="Workspace navigation"><a href="/">Chat</a><a href="/workspace">Workspace</a><a href="/lab">Code Lab</a><a href="/games">Arcade</a></nav>
+      <a class="quiet-button" href="/workspace">BACK TO WORKSPACE</a>
+    </header>
+
+    <section class="planner-hero">
+      <div><span class="eyebrow">VESPER / PERSONAL WORKBENCH</span><h1>Build wisely.<br /><em>Keep the numbers yours.</em></h1><p>Offline PC planning, portfolio notes, health estimates, and money tracking. Your entries stay on this device.</p></div>
+      <div class="planner-local-badge"><span class="status-dot"></span><span>LOCAL DATA</span><small id="planner-save-status">READY</small></div>
+    </section>
+
+    <nav class="planner-tabs" role="tablist" aria-label="Personal tools">
+      <button class="planner-tab is-active" type="button" role="tab" aria-selected="true" data-planner-tab="builder">PC BUILDER</button>
+      <button class="planner-tab" type="button" role="tab" aria-selected="false" data-planner-tab="portfolio">MARKETS</button>
+      <button class="planner-tab" type="button" role="tab" aria-selected="false" data-planner-tab="health">HEALTH ESTIMATES</button>
+      <button class="planner-tab" type="button" role="tab" aria-selected="false" data-planner-tab="ledger">MONEY</button>
+      <button class="planner-tab" type="button" role="tab" aria-selected="false" data-planner-tab="habits">HABITS</button>
+    </nav>
+
+    <section class="planner-view is-visible" id="planner-builder" data-planner-view="builder" role="tabpanel">
+      <div class="planner-section-heading"><div><span class="eyebrow">INDIA / CUSTOM PC BUILDER</span><h2>Plan a build that <em>fits.</em></h2></div><span class="planner-note">₹ INR · prices are entered by you</span></div>
+      <div class="planner-grid planner-grid-wide planner-builder-grid">
+        <section class="planner-card budget-card">
+          <div class="planner-card-heading"><div><span class="eyebrow">PRICE GUIDE</span><h3>Every budget gets a plan.</h3></div><span class="planner-icon">₹</span></div>
+          <label class="planner-field">TOTAL BUDGET <span class="currency-prefix">₹</span><input id="build-budget" type="number" min="15000" step="5000" value="100000" inputmode="numeric" /></label>
+          <label class="planner-field">BUILD GOAL<select id="build-goal"><option value="gaming">Gaming first</option><option value="creator">Gaming + streaming / creator</option><option value="ai">Local AI / workstation</option></select></label>
+          <div id="build-guide-current" class="build-guide-current" aria-live="polite"></div>
+          <div id="build-allocation" class="build-allocation"></div>
+          <div id="build-guide-list" class="build-guide-list"></div>
+        </section>
+        <section class="planner-card parts-card">
+          <div class="planner-card-heading"><div><span class="eyebrow">BUILD SHEET</span><h3 id="build-title-heading">Untitled build</h3><small id="build-budget-status" class="build-budget-status">No priced parts yet</small></div><span class="build-total" id="build-total">₹0</span></div>
+          <label class="planner-field">BUILD NAME<input id="build-name" maxlength="90" value="My first build" /></label>
+          <form id="template-part-form" class="template-part-form"><label class="planner-field">OFFLINE REFERENCE PROFILE<select id="part-template"></select></label><button class="planner-button planner-button-soft" type="submit">ADD PROFILE</button></form>
+          <div class="parts-list" id="build-parts-list"></div>
+          <div class="compatibility-panel" id="build-compatibility" aria-live="polite"></div>
+          <div class="planner-actions"><button class="planner-button" id="build-save" type="button">SAVE BUILD</button><button class="planner-button planner-button-soft" id="build-export" type="button">EXPORT MARKDOWN</button><button class="planner-button planner-button-soft" id="build-print" type="button">PRINT / PDF</button><button class="planner-button planner-button-quiet" id="build-clear" type="button">CLEAR</button></div>
+          <div class="saved-builds"><span class="eyebrow">SAVED BUILDS / THIS DEVICE</span><div id="saved-build-list"></div></div>
+        </section>
+      </div>
+      <section class="planner-card custom-part-card">
+        <div class="planner-card-heading"><div><span class="eyebrow">CUSTOM PART / ANY BRAND</span><h3>Add an exact local listing.</h3></div><span class="planner-note">Dimensions and prices vary by SKU.</span></div>
+        <form id="custom-part-form" class="custom-part-form">
+          <label class="planner-field">CATEGORY<select id="custom-type"></select></label>
+          <label class="planner-field">BRAND<input id="custom-brand" list="brand-options" maxlength="60" placeholder="AMD, ASUS, Ant Esports…" required /><datalist id="brand-options"></datalist></label>
+          <label class="planner-field">EXACT MODEL<input id="custom-name" maxlength="120" placeholder="Product / SKU" required /></label>
+          <label class="planner-field">PRICE ₹<input id="custom-price" type="number" min="0" step="1" placeholder="0 if unknown" /></label>
+          <label class="planner-field">PRICE SOURCE<select id="custom-retailer"></select></label>
+          <details class="part-spec-details"><summary>Compatibility and power details</summary><div class="part-spec-grid">
+            <label class="planner-field">CPU / BOARD SOCKET<input id="custom-socket" placeholder="AM5, LGA1700…" /></label>
+            <label class="planner-field">MEMORY TYPE<input id="custom-memory" placeholder="DDR4 or DDR5" /></label>
+            <label class="planner-field">BOARD FORM FACTOR<input id="custom-form-factor" placeholder="ATX, mATX, ITX" /></label>
+            <label class="planner-field">POWER / TDP W<input id="custom-power" type="number" min="0" step="1" /></label>
+            <label class="planner-field">GPU LENGTH mm<input id="custom-gpu-length" type="number" min="0" step="1" /></label>
+            <label class="planner-field">CASE GPU LIMIT mm<input id="custom-case-gpu" type="number" min="0" step="1" /></label>
+            <label class="planner-field">COOLER HEIGHT mm<input id="custom-cooler-height" type="number" min="0" step="1" /></label>
+            <label class="planner-field">CASE COOLER LIMIT mm<input id="custom-case-cooler" type="number" min="0" step="1" /></label>
+            <label class="planner-field">PSU CAPACITY W<input id="custom-psu" type="number" min="0" step="1" /></label>
+            <label class="planner-field">COOLER SOCKETS<input id="custom-cooler-sockets" placeholder="AM4, AM5, LGA1700" /></label>
+            <label class="planner-field">CASE BOARD SIZES<input id="custom-case-boards" placeholder="ATX, mATX, ITX" /></label>
+            <label class="planner-field">GPU POWER CONNECTORS<input id="custom-gpu-connectors" placeholder="2x8-pin, 12V-2x6" /></label>
+            <label class="planner-field">PSU CONNECTORS<input id="custom-psu-connectors" placeholder="2x8-pin, 12V-2x6" /></label>
+          </div></details>
+          <button class="planner-button" type="submit">ADD PART TO BUILD</button>
+        </form>
+        <p class="planner-footnote">Add one offer per retailer and Vesper compares the lowest price you recorded. Quotes are manual local snapshots; this offline build does not scrape stores or claim live prices. Check the exact seller, revision, warranty, board BIOS support, card dimensions, shipping, and return policy before ordering.</p>
+      </section>
+    </section>
+
+    <section class="planner-view" id="planner-portfolio" data-planner-view="portfolio" role="tabpanel" hidden>
+      <div class="planner-section-heading"><div><span class="eyebrow">INDIA / GLOBAL / MANUAL-FIRST</span><h2>Your portfolio, <em>on your terms.</em></h2></div><span class="planner-note">No market data is sent by default.</span></div>
+      <div class="portfolio-metrics" id="portfolio-metrics"></div>
+      <div class="planner-grid planner-grid-wide">
+        <section class="planner-card"><div class="planner-card-heading"><div><span class="eyebrow">LOCAL HOLDINGS</span><h3>Add a stock, fund, crypto, or cash position.</h3></div></div>
+          <form id="asset-form" class="asset-form">
+            <label class="planner-field">TYPE<select id="asset-kind"><option value="stock">Equity / ETF</option><option value="mutual">Mutual fund</option><option value="crypto">Crypto</option><option value="forex">Forex / cash</option><option value="other">Other</option></select></label>
+            <label class="planner-field">SYMBOL<input id="asset-symbol" maxlength="24" placeholder="NIFTYBEES, BTC…" /></label>
+            <label class="planner-field">NAME<input id="asset-name" maxlength="90" placeholder="Holding name" required /></label>
+            <label class="planner-field">UNITS<input id="asset-units" type="number" min="0.000001" step="any" required /></label>
+            <label class="planner-field">AVERAGE BUY PRICE<input id="asset-cost" type="number" min="0" step="any" required /></label>
+            <label class="planner-field">CURRENT PRICE / NAV<input id="asset-current" type="number" min="0" step="any" required /></label>
+            <label class="planner-field">CURRENCY<select id="asset-currency"><option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>JPY</option></select></label>
+            <label class="planner-field">₹ PER CURRENCY UNIT<input id="asset-fx" type="number" min="0.000001" step="any" value="1" required /></label>
+            <label class="planner-field">FIRST BUY DATE<input id="asset-date" type="date" required /></label>
+            <button class="planner-button" type="submit">ADD TO PORTFOLIO</button>
+          </form>
+          <div class="portfolio-table-wrap"><table class="planner-table"><thead><tr><th>Holding</th><th>Units</th><th>Buy avg.</th><th>Price / NAV</th><th>Value ₹</th><th>Gain / loss</th><th>XIRR*</th><th></th></tr></thead><tbody id="asset-rows"></tbody></table></div>
+          <p class="planner-footnote">*XIRR is a simplified single-purchase estimate from the first-buy date. Add separate transactions in a later version for cash-flow-accurate SIP / partial sale returns.</p>
+        </section>
+        <section class="planner-card"><div class="planner-card-heading"><div><span class="eyebrow">QUOTE ADAPTER</span><h3>Refresh through your own local service.</h3></div><span class="planner-icon">↻</span></div>
+          <p class="dialog-intro">Offline snapshots are used by default. Optional live refresh accepts a same-origin <code>/api/</code> endpoint you control; no cloud data provider or API key is built in.</p>
+          <form id="quote-form" class="quote-form"><label class="planner-field">LOCAL QUOTE URL<input id="quote-endpoint" type="url" placeholder="/api/markets/quotes" autocomplete="off" /></label><label class="planner-field">SYMBOLS<input id="quote-symbols" placeholder="RELIANCE, NIFTY, BTC-USD" /></label><button class="planner-button" type="submit">REFRESH QUOTES</button></form>
+          <div id="quote-status" class="compatibility-panel" role="status">Local snapshots only. Add holdings and a local endpoint to refresh.</div><div class="quote-list" id="quote-list"></div>
+          <div class="distribution-card"><span class="eyebrow">VALUE BY ASSET TYPE</span><div class="portfolio-distribution"><span id="distribution-wheel"></span><div id="distribution-legend"></div></div></div>
+          <p class="planner-footnote">Quotes and holdings are not investment advice. Market endpoints are user-configured; Vesper does not guarantee exchange timing or quote accuracy.</p>
+        </section>
+      </div>
+    </section>
+
+    <section class="planner-view" id="planner-health" data-planner-view="health" role="tabpanel" hidden>
+      <div class="planner-section-heading"><div><span class="eyebrow">PERSONAL / ENERGY ESTIMATE</span><h2>Health math, <em>without pretending it’s a diagnosis.</em></h2></div><span class="planner-note">Stored locally · optional</span></div>
+      <div class="planner-grid planner-grid-wide">
+        <section class="planner-card"><form id="health-form" class="health-form">
+          <label class="planner-field">FORMULA<select id="health-method"><option value="mifflin">Mifflin–St Jeor</option><option value="katch">Katch–McArdle (body fat required)</option></select></label>
+          <label class="planner-field">EQUATION PROFILE<select id="health-sex"><option value="female">Female coefficient</option><option value="male">Male coefficient</option></select></label>
+          <label class="planner-field">AGE<input id="health-age" type="number" min="13" max="100" required /></label>
+          <label class="planner-field">WEIGHT kg<input id="health-weight" type="number" min="25" max="350" step="0.1" required /></label>
+          <label class="planner-field">HEIGHT cm<input id="health-height" type="number" min="100" max="250" step="0.1" required /></label>
+          <label class="planner-field">BODY FAT % <small>optional</small><input id="health-bodyfat" type="number" min="1" max="75" step="0.1" /></label>
+          <label class="planner-field">ACTIVITY<select id="health-activity"><option value="1.2">Mostly seated · 1.20</option><option value="1.375">Light movement · 1.375</option><option value="1.55">Moderate exercise · 1.55</option><option value="1.725">High activity · 1.725</option><option value="1.9">Very high activity · 1.90</option></select></label>
+          <label class="planner-field">PLANNED DEFICIT kcal/day<input id="health-deficit" type="number" min="0" max="1000" step="50" value="300" /></label>
+          <label class="planner-field">TARGET WEIGHT kg <small>optional</small><input id="health-target" type="number" min="25" max="350" step="0.1" /></label>
+          <button class="planner-button" type="submit">CALCULATE ESTIMATE</button>
+        </form></section>
+        <section class="planner-card health-results" id="health-results" aria-live="polite"><span class="eyebrow">YOUR ESTIMATE</span><p>Enter values to calculate a resting-energy and daily-energy estimate.</p></section>
+      </div>
+    </section>
+
+    <section class="planner-view" id="planner-ledger" data-planner-view="ledger" role="tabpanel" hidden>
+      <div class="planner-section-heading"><div><span class="eyebrow">PERSONAL FINANCE / LOCAL LEDGER</span><h2>Give your money <em>a clear place to go.</em></h2></div><span class="planner-note">₹ INR base currency</span></div>
+      <div class="finance-metrics" id="finance-metrics"></div>
+      <div class="planner-grid planner-grid-wide">
+        <section class="planner-card"><div class="planner-card-heading"><div><span class="eyebrow">ACCOUNTS / NET WORTH</span><h3>On-device balances.</h3></div></div>
+          <form id="account-form" class="account-form"><label class="planner-field">ACCOUNT<input id="account-name" maxlength="50" placeholder="Savings, cash, broker…" required /></label><label class="planner-field">CURRENT BALANCE ₹<input id="account-balance" type="number" step="0.01" required /></label><button class="planner-button" type="submit">ADD ACCOUNT</button></form>
+          <div id="account-list" class="account-list"></div><div class="networth-chart-card"><span class="eyebrow">NET-WORTH HISTORY FROM YOUR LEDGER</span><svg id="networth-chart" viewBox="0 0 600 170" role="img" aria-label="Local net worth trend chart"></svg></div>
+        </section>
+        <section class="planner-card"><div class="planner-card-heading"><div><span class="eyebrow">ZERO-BASED ENVELOPES</span><h3>Plan each category.</h3></div></div>
+          <form id="budget-form" class="budget-form"><label class="planner-field">ENVELOPE<input id="budget-name" maxlength="50" placeholder="Food, rent, fun…" required /></label><label class="planner-field">MONTHLY LIMIT ₹<input id="budget-limit" type="number" min="0" step="0.01" required /></label><button class="planner-button" type="submit">SET ENVELOPE</button></form><div id="budget-list" class="budget-list"></div>
+        </section>
+      </div>
+      <section class="planner-card ledger-card"><div class="planner-card-heading"><div><span class="eyebrow">TRANSACTIONS</span><h3>Record income and spending.</h3></div></div>
+        <form id="ledger-form" class="ledger-form"><label class="planner-field">TYPE<select id="ledger-kind"><option value="expense">Expense</option><option value="income">Income</option></select></label><label class="planner-field">DESCRIPTION<input id="ledger-description" maxlength="100" required /></label><label class="planner-field">CATEGORY<input id="ledger-category" maxlength="50" list="budget-category-options" required /><datalist id="budget-category-options"></datalist></label><label class="planner-field">ACCOUNT<select id="ledger-account"></select></label><label class="planner-field">AMOUNT ₹<input id="ledger-amount" type="number" min="0.01" step="0.01" required /></label><label class="planner-field">DATE<input id="ledger-date" type="date" required /></label><button class="planner-button" type="submit">SAVE TRANSACTION</button></form>
+        <div class="portfolio-table-wrap"><table class="planner-table"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Category</th><th>Account</th><th>Amount</th><th></th></tr></thead><tbody id="ledger-rows"></tbody></table></div>
+      </section>
+    </section>
+
+    <section class="planner-view" id="planner-habits" data-planner-view="habits" role="tabpanel" hidden>
+      <div class="planner-section-heading"><div><span class="eyebrow">GENTLE QUESTS / SHARED WITH WORKSPACE</span><h2>Small steps add up <em>to XP.</em></h2></div><span class="planner-note">Same local habit records as Workspace and Arcade</span></div>
+      <div class="planner-grid planner-grid-wide">
+        <section class="planner-card"><div class="planner-card-heading"><div><span class="eyebrow">TODAY’S CHECKLIST</span><h3>Pick one kind thing for yourself.</h3></div><span class="planner-icon">✦</span></div><div id="planner-habit-list" class="planner-habit-list"></div><p id="planner-habit-status" class="compatibility-panel" aria-live="polite"></p></section>
+        <section class="planner-card habit-progress-card"><span class="eyebrow">LOCAL PROGRESSION</span><div class="habit-xp-number"><b id="planner-habit-xp">0</b><small>XP</small></div><div class="habit-progress-track"><span id="planner-habit-progress"></span></div><p>Each completed daily habit earns 10 XP. Vesper keeps your streak and level here and in the Workspace.</p><div id="planner-habit-unlocks" class="habit-unlocks"></div><p class="planner-footnote">Outfit rewards are recorded as local unlock milestones. Applying clothing requires corresponding wardrobe meshes in the loaded VRM, which Vesper cannot invent.</p></section>
+      </div>
+    </section>
+
+    <footer class="footer"><span>VESPER · PRIVATE BY DEFAULT</span><span>PLANS, QUOTES, AND NOTES STAY ON THIS DEVICE</span></footer>
+  </main>
+  <script type="module" src="/planner.js"></script>
+  <script type="module" src="/page.js"></script>
+</body>
+</html>

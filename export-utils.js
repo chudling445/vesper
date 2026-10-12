@@ -5,6 +5,10 @@ export function workspaceSnapshot({ messages = [], settings = {}, route = locati
 export function toMarkdown(snapshot) {
   const lines = [`# Vesper workspace export`, ``, `- Exported: ${snapshot.exportedAt}`, `- Route: ${snapshot.route}`, ``];
   for (const message of snapshot.messages) lines.push(`## ${message.role === 'assistant' ? 'Vesper' : 'You'}${message.pinned ? ' · pinned' : ''}`, ``, message.content, ``);
+  for (const [index, branch] of (snapshot.branches || []).entries()) {
+    lines.push(`---`, ``, `# Conversation branch ${index + 1}: ${branch.label || 'Saved branch'}`, ``, `- Saved: ${new Date(branch.createdAt).toISOString()}`, ``);
+    for (const message of branch.messages || []) lines.push(`## ${message.role === 'assistant' ? 'Vesper' : 'You'}${message.pinned ? ' · pinned' : ''}`, ``, message.content, ``);
+  }
   return lines.join('\n');
 }
 

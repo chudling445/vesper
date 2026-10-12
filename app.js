@@ -1,10 +1,15 @@
 import { appStore } from './persistence.js';
 import { initGlobalFeedback, safeFetch, showToast } from './feedback.js';
-import { initThemeProvider } from './theme-provider.js';
+import { applyPaletteTheme, initThemeProvider, PALETTES } from './theme-provider.js';
 import { copyText, downloadText, shareSummary, toCsv, toMarkdown, workspaceSnapshot } from './export-utils.js';
 import { initDialogAccessibility } from './a11y.js';
 import { initOfflineSync } from './offline-sync.js';
 import { initSecurityLock } from './security-lock.js';
+import { waifuVoice } from './waifuVoice.js';
+import { relationshipMemory } from './relationship-memory.js';
+import { characterCardPrompt, downloadCharacterPng, exportCharacterJson, readCharacterCard } from './character-cards.js';
+import { renderMarkdown } from './markdown-renderer.js';
+import './arcade-launcher.js';
 
 initGlobalFeedback();
 initThemeProvider();
@@ -39,6 +44,11 @@ const providerSelect = document.querySelector('#provider-select');
 const modelInput = document.querySelector('#model-input');
 const providerHint = document.querySelector('#provider-hint');
 const providerStatus = document.querySelector('#provider-status');
+const systemPromptInput = document.querySelector('#system-prompt');
+const avatarTintInput = document.querySelector('#avatar-tint');
+const avatarParticlesInput = document.querySelector('#avatar-particles');
+const wardrobeLayersElement = document.querySelector('#wardrobe-layers');
+const wardrobeStatus = document.querySelector('#wardrobe-status');
 const installedModels = document.querySelector('#installed-models');
 const providerBadge = document.querySelector('#provider-badge');
 const quickstartStatus = document.querySelector('#quickstart-status');
@@ -54,6 +64,8 @@ const speechPitchValue = document.querySelector('#speech-pitch-value');
 const voiceStatus = document.querySelector('#voice-status');
 const chatSearch = document.querySelector('#chat-search');
 const chatSearchStatus = document.querySelector('#chat-search-status');
+const localContextStatus = document.querySelector('#local-context-status');
+const conversationBranchesSelect = document.querySelector('#conversation-branches');
 const exportChat = document.querySelector('#export-chat');
 const commandOpen = document.querySelector('#command-open');
 const commandDialog = document.querySelector('#command-dialog');
@@ -62,8 +74,20 @@ const commandSearch = document.querySelector('#command-search');
 const commandList = document.querySelector('#command-list');
 const commandStatus = document.querySelector('#command-status');
 const quickCaptureOpen = document.querySelector('#quick-capture-open');
+const screenCaptureButton = document.querySelector('#screen-capture');
+const visionPreview = document.querySelector('#vision-preview');
+const visionPreviewImage = document.querySelector('#vision-preview-image');
+const visionClearButton = document.querySelector('#vision-clear');
+const characterCardFile = document.querySelector('#character-card-file');
+const characterCardStatus = document.querySelector('#character-card-status');
+const memorySummaryElement = document.querySelector('#memory-summary');
+const memoryFactsElement = document.querySelector('#memory-facts');
+const memoryForm = document.querySelector('#memory-form');
+const memoryFormStatus = document.querySelector('#memory-form-status');
+let editingMemoryId = null;
+const avatarStreamToggle = document.querySelector('#avatar-stream-toggle');
 const STORAGE_KEY = 'vesper-chat-v1';
-const THEME_KEY = 'vesper-theme-v3';
+const THEME_KEY = 'vesper_active_theme';
 const PERSONALITY_KEY = 'vesper-personality-v1';
 const LLM_KEY = 'vesper-llm-v1';
 const VOICE_KEY = 'vesper-voice-v1';
@@ -82,16 +106,8 @@ document.addEventListener('keydown', (event) => {
   if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'Space') { event.preventDefault(); openQuickCapture(); }
 });
 const MAX_HISTORY = 24;
-const VOICE_PROFILE = { rate: 0.99, pitch: 1.16, label: 'BRIGHT ANIME DUB' };
-const THEMES = [
-  { id: 'sakura', name: 'Sakura Senpai' }, { id: 'mica', name: 'Mica Night' },
-  { id: 'velvet', name: 'Velvet' },
-  { id: 'petal', name: 'Petal' },
-  { id: 'moonstone', name: 'Moonstone' },
-  { id: 'jade', name: 'Jade' },
-  { id: 'riko', name: 'Riko Atelier' },
-  { id: 'portrait', name: 'Portrait Stage' },
-];
+const VOICE_PROFILE = { rate: 1.1, pitch: 1.4, label: 'BRIGHT ANIME DUB' };
+const THEMES = PALETTES;
 const PERSONALITY_MODES = {
   playful: { description: 'Playful · quick-witted warmth' },
   tender: { description: 'Tender · gentle affection' },
@@ -99,23 +115,38 @@ const PERSONALITY_MODES = {
 };
 const PERSONALITY_EXPRESSIONS = { playful: 'smirk', tender: 'fond', thoughtful: 'thinking' };
 const PROVIDER_COPY = {
-  ollama: 'Runs on this computer through Ollama. Install Ollama and a model first; chat messages stay local.',
-  openai: 'Uses the OpenAI API. Your recent chat messages are sent to OpenAI with the key stored in .env.',
-  compatible: 'Uses a compatible chat-completions endpoint. Configure its base URL and optional key in .env.',
+  ollama: 'Runs on this computer through Ollama. Attached screen frames require an installed vision model.',
+  openai: 'Uses OpenAI. Attached screen frames, relevant memories, matched notes, and recent messages are sent to OpenAI; the key stays in .env.',
+  anthropic: 'Uses Anthropic Claude. Attached screen frames and the context you enable are sent to Anthropic.',
+  xai: 'Uses xAI Grok. Attached screen frames and the context you enable are sent to xAI.',
+  compatible: 'Uses your compatible endpoint. Attached screen frames require image support; enabled context is sent to that service.',
 };
 
 let messages = loadMessages();
+let conversationBranches = loadConversationBranches();
+let conversationSummary = String(appStore.get('session.summary', '') || '').slice(0, 2600);
+let pendingVisionFrame = null;
+let avatarStream = null;
 let isSending = false;
 let llm = loadLlmChoice();
 let serverSettings = null;
 let activeUtterance = null;
 let activeSpeakButton = null;
-let activeSpeechFallbackTimer = null;
 let voiceSettings = loadVoiceSettings();
 let stageSettings = loadStageSettings();
 let personalityMode = loadPersonalityMode();
 let preferredWaifuVoice = null;
+let unavailableVisemes = [];
 let chatFilter = '';
+let avatarCustomization = (() => {
+  const saved = appStore.get('settings.avatar', {});
+  return {
+    tint: typeof saved.tint === 'string' && /^#[0-9a-f]{6}$/i.test(saved.tint) ? saved.tint : '#ffffff',
+    particles: saved.particles !== false,
+    layers: saved.layers && typeof saved.layers === 'object' ? saved.layers : {},
+  };
+})();
+let availableWardrobeLayers = [];
 const backgroundPresets = ['atelier', 'sakura', 'midnight', 'aurora', 'sunset'];
 function applyBackground(name) {
   const selected = backgroundPresets.includes(name) ? name : 'atelier';
@@ -127,6 +158,52 @@ function applyBackground(name) {
 let savedBackground = backgroundPresets.includes(appStore.get('settings.background', 'atelier')) ? appStore.get('settings.background') : 'atelier';
 applyBackground(savedBackground);
 const moodLabel = document.querySelector('.mood-mark span');
+
+function saveAvatarCustomization() {
+  appStore.set('settings.avatar', avatarCustomization);
+}
+
+avatarTintInput.value = avatarCustomization.tint;
+avatarParticlesInput.checked = avatarCustomization.particles;
+avatarTintInput.addEventListener('input', () => {
+  avatarCustomization.tint = avatarTintInput.value;
+  window.setAvatarTint?.(avatarCustomization.tint);
+  saveAvatarCustomization();
+});
+avatarParticlesInput.addEventListener('change', () => {
+  avatarCustomization.particles = avatarParticlesInput.checked;
+  window.setAvatarParticles?.(avatarCustomization.particles);
+  saveAvatarCustomization();
+});
+
+function renderWardrobeLayers(layers = []) {
+  wardrobeLayersElement.replaceChildren();
+  const available = layers.filter((layer) => layer && typeof layer.id === 'string' && typeof layer.name === 'string');
+  if (!available.length) {
+    wardrobeStatus.textContent = 'NO SEPARATE LAYERS';
+    const note = document.createElement('small');
+    note.textContent = 'This model has no separately named clothing or accessory meshes.';
+    wardrobeLayersElement.append(note);
+    return;
+  }
+  wardrobeStatus.textContent = `${available.length} MODEL LAYER${available.length === 1 ? '' : 'S'}`;
+  for (const layer of available) {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = Object.hasOwn(avatarCustomization.layers, layer.id) ? avatarCustomization.layers[layer.id] !== false : layer.visible;
+    input.addEventListener('change', () => {
+      avatarCustomization.layers[layer.id] = input.checked;
+      window.setAvatarLayerVisibility?.(layer.id, input.checked);
+      saveAvatarCustomization();
+    });
+    const name = document.createElement('span');
+    name.textContent = layer.name;
+    label.append(input, name);
+    wardrobeLayersElement.append(label);
+    if (input.checked !== layer.visible) window.setAvatarLayerVisibility?.(layer.id, input.checked);
+  }
+}
 
 function setPresence(state) {
   const labels = { idle: 'HERE', thinking: 'THINKING', speaking: 'SPEAKING' };
@@ -183,7 +260,7 @@ function refreshVoiceList() {
   voiceSelect.disabled = false;
   autoSpeak.disabled = !hasVoices;
   voiceStatus.textContent = matching.length
-    ? `${voiceSettings.language === 'ja' ? 'JAPANESE' : 'ENGLISH'} ANIME DUB · WORD-TIMED LIP SYNC READY`
+    ? `${voiceSettings.language === 'ja' ? 'JAPANESE' : 'ENGLISH'} ANIME DUB · ${unavailableVisemes.length ? `MODEL MISSING ${unavailableVisemes.join('/').toUpperCase()}` : 'VISEME SYNC READY'}`
     : hasVoices
       ? `NO ${voiceSettings.language === 'ja' ? 'JAPANESE' : 'ENGLISH'} SYSTEM VOICE · INSTALL ONE FOR THIS PROFILE`
     : 'NO SYSTEM VOICE FOUND · ADD A WINDOWS SPEECH VOICE';
@@ -199,7 +276,7 @@ function loadMessages() {
 function loadLlmChoice() {
   try {
     const saved = appStore.get('settings.llm', {});
-    return { provider: ['ollama', 'openai', 'compatible'].includes(saved.provider) ? saved.provider : '', model: typeof saved.model === 'string' ? saved.model : '' };
+    return { provider: ['ollama', 'openai', 'anthropic', 'xai', 'compatible'].includes(saved.provider) ? saved.provider : '', model: typeof saved.model === 'string' ? saved.model : '' };
   } catch { return { provider: '', model: '' }; }
 }
 
@@ -209,6 +286,41 @@ function saveLlmChoice() {
 
 function saveMessages() {
   appStore.set('session.messages', messages.slice(-MAX_HISTORY));
+  appStore.set('session.branches', conversationBranches);
+  refreshConversationBranches();
+}
+
+function loadConversationBranches() {
+  const saved = appStore.get('session.branches', []);
+  return Array.isArray(saved) ? saved.filter((branch) => branch && typeof branch.id === 'string' && Array.isArray(branch.messages))
+    .slice(-8).map((branch) => ({
+      id: branch.id,
+      label: String(branch.label || 'Conversation branch').slice(0, 80),
+      createdAt: Number(branch.createdAt) || Date.now(),
+      summary: typeof branch.summary === 'string' ? branch.summary.slice(0, 2600) : '',
+      messages: branch.messages.filter((message) => ['user', 'assistant'].includes(message?.role) && typeof message.content === 'string')
+        .slice(-MAX_HISTORY).map((message) => ({ role: message.role, content: message.content.slice(0, 4000), pinned: message.pinned === true })),
+    })) : [];
+}
+
+function refreshConversationBranches() {
+  if (!conversationBranchesSelect) return;
+  const branches = [...conversationBranches].reverse();
+  conversationBranchesSelect.replaceChildren(new Option('SAVED BRANCHES', ''));
+  branches.forEach((branch) => {
+    const date = new Date(branch.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    conversationBranchesSelect.add(new Option(`${branch.label} · ${date}`, branch.id));
+  });
+  conversationBranchesSelect.hidden = branches.length === 0;
+}
+
+function saveConversationBranch(label, branchMessages = messages) {
+  const snapshot = branchMessages.slice(-MAX_HISTORY).map((message) => ({ role: message.role, content: String(message.content || '').slice(0, 4000), pinned: message.pinned === true }));
+  if (!snapshot.length) return;
+  conversationBranches.push({ id: window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`, label, createdAt: Date.now(), summary: conversationSummary, messages: snapshot });
+  conversationBranches = conversationBranches.slice(-8);
+  appStore.set('session.branches', conversationBranches);
+  refreshConversationBranches();
 }
 
 function loadPersonalityMode() {
@@ -216,6 +328,204 @@ function loadPersonalityMode() {
     const saved = appStore.get('settings.personality', 'playful');
     return Object.hasOwn(PERSONALITY_MODES, saved) ? saved : 'playful';
   } catch { return 'playful'; }
+}
+
+function loadSystemPrompt() {
+  const value = appStore.get('settings.persona.systemPrompt', '');
+  return typeof value === 'string' ? value.slice(0, 4000) : '';
+}
+
+function loadPersonaInstructions(query = '') {
+  return [loadSystemPrompt(), characterCardPrompt(appStore.get('settings.persona.card', null), query)].filter(Boolean).join('\n\n').slice(0, 9000);
+}
+
+function compactConversationIfNeeded() {
+  if (messages.length < MAX_HISTORY - 1) return;
+  const archived = messages.splice(0, Math.max(4, Math.floor(MAX_HISTORY / 3)));
+  const excerpts = archived.map((message) => (message.role === 'user' ? 'User: ' : 'Vesper: ') + message.content.replace(/\s+/g, ' ').slice(0, 210));
+  conversationSummary = [conversationSummary, ...excerpts].filter(Boolean).join('\n').slice(-2600);
+  appStore.set('session.summary', conversationSummary);
+}
+
+function renderMemorySummary(snapshot = relationshipMemory.snapshot()) {
+  if (!memorySummaryElement) return;
+  memorySummaryElement.textContent = snapshot.facts.length + ' remembered details · ' + snapshot.tier + ' · ' + snapshot.exchanges + ' conversations';
+  if (memoryFactsElement) {
+    memoryFactsElement.replaceChildren();
+    snapshot.facts.forEach((fact) => {
+      const item = document.createElement('li');
+      const detail = document.createElement('span');
+      detail.className = 'memory-fact-detail';
+      detail.textContent = `${fact.pinned ? 'PINNED · ' : ''}${fact.category.toUpperCase()} · ${fact.value}`;
+      const actions = document.createElement('span');
+      actions.className = 'memory-fact-actions';
+      const pin = document.createElement('button');
+      pin.type = 'button'; pin.dataset.memoryAction = 'pin'; pin.dataset.memoryId = fact.id;
+      pin.textContent = fact.pinned ? 'UNPIN' : 'PIN'; pin.setAttribute('aria-label', `${fact.pinned ? 'Unpin' : 'Pin'} memory: ${fact.value}`);
+      const edit = document.createElement('button');
+      edit.type = 'button'; edit.dataset.memoryAction = 'edit'; edit.dataset.memoryId = fact.id;
+      edit.textContent = 'EDIT'; edit.setAttribute('aria-label', `Edit memory: ${fact.value}`);
+      const remove = document.createElement('button');
+      remove.type = 'button'; remove.dataset.memoryAction = 'delete'; remove.dataset.memoryId = fact.id;
+      remove.textContent = 'REMOVE'; remove.setAttribute('aria-label', `Remove memory: ${fact.value}`);
+      actions.append(pin, edit, remove);
+      item.append(detail, actions);
+      memoryFactsElement.append(item);
+    });
+  }
+}
+
+function showMemoryForm(fact = null) {
+  if (!memoryForm) return;
+  editingMemoryId = fact?.id || null;
+  document.querySelector('#memory-category').value = fact?.category || 'note';
+  document.querySelector('#memory-value').value = fact?.value || '';
+  document.querySelector('#memory-pinned').checked = Boolean(fact?.pinned);
+  memoryFormStatus.textContent = fact ? 'Update this saved detail.' : 'Saved on this device only.';
+  memoryForm.hidden = false;
+  document.querySelector('#memory-value').focus();
+}
+
+document.querySelector('#memory-add')?.addEventListener('click', () => showMemoryForm());
+document.querySelector('#memory-cancel')?.addEventListener('click', () => { memoryForm.hidden = true; editingMemoryId = null; memoryForm.reset(); });
+memoryForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const fact = { category: document.querySelector('#memory-category').value, value: document.querySelector('#memory-value').value, pinned: document.querySelector('#memory-pinned').checked };
+  try {
+    if (editingMemoryId) await relationshipMemory.updateFact(editingMemoryId, fact);
+    else await relationshipMemory.addFact(fact);
+    memoryForm.hidden = true; editingMemoryId = null; memoryForm.reset();
+    showToast('Memory saved on this device.', 'success');
+  } catch (error) { memoryFormStatus.textContent = error.message || 'Could not save this memory.'; }
+});
+memoryFactsElement?.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-memory-action]');
+  if (!button) return;
+  const fact = relationshipMemory.snapshot().facts.find((item) => item.id === button.dataset.memoryId);
+  if (!fact) return;
+  try {
+    if (button.dataset.memoryAction === 'edit') showMemoryForm(fact);
+    else if (button.dataset.memoryAction === 'pin') await relationshipMemory.setPinned(fact.id, !fact.pinned);
+    else if (button.dataset.memoryAction === 'delete' && window.confirm('Remove this saved memory from this device?')) await relationshipMemory.deleteFact(fact.id);
+  } catch (error) { showToast(error.message || 'Could not update this memory.', 'warning'); }
+});
+
+function clearVisionFrame() {
+  if (!pendingVisionFrame) return;
+  if (pendingVisionFrame.previewUrl) URL.revokeObjectURL(pendingVisionFrame.previewUrl);
+  pendingVisionFrame = null;
+  visionPreview.hidden = true;
+  visionPreviewImage.removeAttribute('src');
+}
+
+async function captureScreenFrame() {
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    showToast('Screen capture is unavailable in this browser. Try the local Vesper window in a current Chromium browser.', 'warning');
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 1 }, audio: false });
+    const video = document.createElement('video');
+    video.muted = true; video.playsInline = true; video.srcObject = stream;
+    await video.play();
+    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) await new Promise((resolve) => video.addEventListener('loadeddata', resolve, { once: true }));
+    if (!video.videoWidth || !video.videoHeight) throw new Error('The selected display did not provide a frame.');
+    const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+    canvas.getContext('2d', { alpha: false }).drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.72));
+    if (!blob || blob.size > 2_500_000) throw new Error('The captured image could not be compressed.');
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+    clearVisionFrame();
+    pendingVisionFrame = { mediaType: 'image/jpeg', data: btoa(binary), previewUrl: URL.createObjectURL(blob) };
+    visionPreviewImage.src = pendingVisionFrame.previewUrl;
+    visionPreview.hidden = false;
+    showToast('Screen frame ready. It will be sent with your next message.', 'success');
+  } catch (error) {
+    if (error.name !== 'NotAllowedError') showToast(error.message || 'Could not capture the selected screen.', 'error');
+  } finally {
+    stream?.getTracks().forEach((track) => track.stop());
+  }
+}
+
+screenCaptureButton?.addEventListener('click', captureScreenFrame);
+visionClearButton?.addEventListener('click', clearVisionFrame);
+avatarStreamToggle?.addEventListener('click', () => {
+  if (avatarStream) {
+    avatarStream.getTracks().forEach((track) => track.stop());
+    avatarStream = null;
+    window.vesperAvatarStream = null;
+    avatarStreamToggle.textContent = 'STREAM OFF';
+    avatarStreamToggle.setAttribute('aria-pressed', 'false');
+    window.dispatchEvent(new CustomEvent('vesper-avatar-stream', { detail: { stream: null } }));
+    return;
+  }
+  avatarStream = window.getVesperAvatarStream?.() || null;
+  if (!avatarStream) { showToast('Canvas streaming is unavailable in this browser.', 'warning'); return; }
+  window.vesperAvatarStream = avatarStream;
+  avatarStreamToggle.textContent = 'STREAM ON';
+  avatarStreamToggle.setAttribute('aria-pressed', 'true');
+  window.dispatchEvent(new CustomEvent('vesper-avatar-stream', { detail: { stream: avatarStream } }));
+  showToast('A 30 FPS avatar MediaStream is available to local integrations.', 'success');
+});
+window.addEventListener('pagehide', () => avatarStream?.getTracks().forEach((track) => track.stop()), { once: true });
+relationshipMemory.ready.then(renderMemorySummary);
+window.addEventListener('vesper-memory-change', (event) => renderMemorySummary(event.detail));
+document.querySelector('#forget-memory')?.addEventListener('click', async () => {
+  if (!window.confirm('Forget all saved Vesper memories on this device?')) return;
+  await relationshipMemory.forgetAll();
+  showToast('Saved memories were removed from this device.', 'success');
+});
+
+characterCardFile?.addEventListener('change', async () => {
+  const file = characterCardFile.files?.[0];
+  if (!file) return;
+  try {
+    const card = await readCharacterCard(file);
+    appStore.set('settings.persona.card', card);
+    characterCardStatus.textContent = 'Loaded ' + card.name + (card.character_book ? ' · lorebook ready' : '');
+    showToast('Character card imported and saved locally.', 'success');
+  } catch (error) {
+    showToast(error.message || 'Could not import this character card.', 'error');
+  } finally { characterCardFile.value = ''; }
+});
+document.querySelector('#character-card-export-json')?.addEventListener('click', () => {
+  const card = appStore.get('settings.persona.card', null);
+  if (!card) { showToast('Import a character card first.', 'info'); return; }
+  downloadText((card.name || 'character').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-card.json', JSON.stringify(exportCharacterJson(card), null, 2), 'application/json;charset=utf-8');
+});
+document.querySelector('#character-card-export-png')?.addEventListener('click', async () => {
+  const card = appStore.get('settings.persona.card', null);
+  if (!card) { showToast('Import a character card first.', 'info'); return; }
+  try { await downloadCharacterPng(card); } catch (error) { showToast(error.message || 'Could not export the PNG character card.', 'error'); }
+});
+const storedCharacterCard = appStore.get('settings.persona.card', null);
+if (storedCharacterCard && characterCardStatus) characterCardStatus.textContent = 'Loaded ' + storedCharacterCard.name + (storedCharacterCard.character_book ? ' · lorebook ready' : '');
+
+function findLocalWorkspaceContext(query) {
+  const requiresUnlock = Boolean(appStore.get('settings.security.protectInbox', false) || appStore.get('settings.security.pinHash', '') || appStore.get('settings.security.biometricId', ''));
+  if (requiresUnlock && sessionStorage.getItem('vesper-unlocked-v1') !== '1') return { text: '', count: 0 };
+  const stopWords = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'have', 'what', 'when', 'where', 'how', 'you', 'your', 'about']);
+  const terms = [...new Set((String(query).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []).filter((term) => !stopWords.has(term)))];
+  if (!terms.length) return { text: '', count: 0 };
+  const items = appStore.get('workspace.items', []);
+  if (!Array.isArray(items)) return { text: '', count: 0 };
+  const matches = items.map((item) => {
+    const title = String(item?.title || '');
+    const body = String(item?.body || '');
+    const haystack = `${title} ${body}`.toLowerCase();
+    const score = terms.reduce((total, term) => total + (haystack.includes(term) ? 1 : 0) + (title.toLowerCase().includes(term) ? 1 : 0), 0);
+    return { item, title, body, score };
+  }).filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score).slice(0, 3);
+  return {
+    count: matches.length,
+    text: matches.map(({ item, title, body }, index) => `[Local note ${index + 1} · ${title || 'Untitled'} · ${item.category || 'Note'}${item.project ? ` · Project: ${item.project}` : ''}]\n${body.slice(0, 1200)}`).join('\n\n').slice(0, 4000),
+  };
 }
 
 function applyPersonalityMode(mode, persist = true) {
@@ -235,21 +545,32 @@ function applyPersonalityMode(mode, persist = true) {
 
 function applyTheme(themeId) {
   const selected = THEMES.find((theme) => theme.id === themeId) || THEMES[0];
-  document.body.dataset.theme = selected.id;
+  applyPaletteTheme(selected.id);
   themeName.textContent = selected.name.toUpperCase();
   themeSwatch.className = `theme-swatch ${selected.id}-dot`;
+  themeSwatch.style.background = `linear-gradient(135deg, ${selected.colors[1]} 0 48%, ${selected.colors[0]} 52%)`;
+  themeSwatch.style.boxShadow = `0 0 8px ${selected.vars.accentGlow}`;
   document.querySelectorAll('[data-theme-option]').forEach((button) => {
     button.setAttribute('aria-pressed', String(button.dataset.themeOption === selected.id));
   });
-  appStore.set('settings.theme', selected.id);
 }
+
+document.addEventListener('vesper-palette-change', (event) => {
+  const selected = THEMES.find((theme) => theme.id === event.detail?.theme) || THEMES[0];
+  themeName.textContent = selected.name.toUpperCase();
+  themeSwatch.className = `theme-swatch ${selected.id}-dot`;
+  themeSwatch.style.background = `linear-gradient(135deg, ${selected.colors[1]} 0 48%, ${selected.colors[0]} 52%)`;
+  themeSwatch.style.boxShadow = `0 0 8px ${selected.vars.accentGlow}`;
+});
 
 function closeThemeMenu() {
   themeMenu.hidden = true;
   themeToggle.setAttribute('aria-expanded', 'false');
 }
 
-applyTheme(appStore.get('settings.theme', 'sakura'));
+let savedPalette = '';
+try { savedPalette = localStorage.getItem(THEME_KEY) || ''; } catch { /* appStore remains the fallback. */ }
+applyTheme(savedPalette || appStore.get('settings.theme', 'omarchy-quattro'));
 
 themeToggle.addEventListener('click', () => {
   const willOpen = themeMenu.hidden;
@@ -278,13 +599,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 function stopSpeech() {
-  if ('speechSynthesis' in window && activeUtterance) {
-    activeUtterance.onend = null;
-    activeUtterance.onerror = null;
-    window.speechSynthesis.cancel();
-  }
-  if (activeSpeechFallbackTimer) window.clearInterval(activeSpeechFallbackTimer);
-  activeSpeechFallbackTimer = null;
+  waifuVoice.cancel();
   activeUtterance = null;
   if (activeSpeakButton) {
     activeSpeakButton.textContent = '▶';
@@ -292,53 +607,51 @@ function stopSpeech() {
     activeSpeakButton.setAttribute('aria-label', 'Read this reply aloud');
   }
   activeSpeakButton = null;
-  window.setAvatarSpeaking?.(false);
   if (voiceStatus) voiceStatus.textContent = voiceSelect.disabled
     ? 'SYSTEM SPEECH IS NOT AVAILABLE IN THIS BROWSER'
     : preferredWaifuVoice
-      ? 'VOICE READY · WORD-TIMED LIP SYNC'
+      ? 'VOICE READY · VISEME SYNC'
       : 'NO SYSTEM VOICE FOUND · ADD A WINDOWS SPEECH VOICE';
   setPresence(isSending ? 'thinking' : 'idle');
 }
 
 function speakReply(text, button) {
-  if (!('speechSynthesis' in window)) return;
+  if (!waifuVoice.supported) return;
   if (activeSpeakButton === button) { stopSpeech(); return; }
   stopSpeech();
-  const utterance = new SpeechSynthesisUtterance(text);
-  const punctuation = text.trim().at(-1);
-  utterance.lang = preferredWaifuVoice?.lang || (voiceSettings.language === 'ja' ? 'ja-JP' : 'en-US');
-  utterance.rate = Number(speechRate.value) * (punctuation === '!' ? 1.03 : 1);
-  utterance.pitch = Number(speechPitch.value) + (punctuation === '!' ? 0.04 : punctuation === '?' ? 0.02 : 0);
-  if (preferredWaifuVoice) utterance.voice = preferredWaifuVoice;
-  activeUtterance = utterance;
   activeSpeakButton = button;
-  let boundarySeen = false;
-  let fallbackIndex = 0;
-  const fallbackWords = text.match(/\S+/g) || [text];
+  const punctuation = text.trim().at(-1);
+  const utterance = waifuVoice.speak(text, {
+    voice: preferredWaifuVoice,
+    language: voiceSettings.language === 'ja' ? 'ja-JP' : 'en-US',
+    rate: Number(speechRate.value) * (punctuation === '!' ? 1.03 : 1),
+    pitch: Math.min(1.4, Number(speechPitch.value) + (punctuation === '!' ? 0.04 : punctuation === '?' ? 0.02 : 0)),
+    onStart: () => {
+      if (activeSpeakButton !== button) return;
+      voiceStatus.textContent = 'VESPER IS SPEAKING · VISEME TIMING ACTIVE';
+      setPresence('speaking');
+    },
+    onEnd: () => {
+      if (activeSpeakButton !== button) return;
+      activeUtterance = null;
+      if (activeSpeakButton) {
+        activeSpeakButton.textContent = '▶';
+        activeSpeakButton.title = 'Read this reply aloud';
+        activeSpeakButton.setAttribute('aria-label', 'Read this reply aloud');
+      }
+      activeSpeakButton = null;
+      voiceStatus.textContent = preferredWaifuVoice ? 'VOICE READY · VISEME SYNC' : 'NO SYSTEM VOICE FOUND · ADD A WINDOWS SPEECH VOICE';
+      setPresence(isSending ? 'thinking' : 'idle');
+    },
+    onError: (error) => {
+      if (error?.error !== 'canceled' && error?.error !== 'interrupted') showToast('Speech playback could not finish.', 'error');
+    },
+  });
+  if (!utterance) { activeSpeakButton = null; return; }
+  activeUtterance = utterance;
   button.textContent = '■';
   button.title = 'Stop reading';
   button.setAttribute('aria-label', 'Stop reading');
-  utterance.onstart = () => {
-    if (activeUtterance !== utterance) return;
-    window.setAvatarSpeaking?.(true);
-    window.setAvatarSpeechWord?.(fallbackWords[0], '');
-    activeSpeechFallbackTimer = window.setInterval(() => { if (!boundarySeen) { const word = fallbackWords[Math.min(++fallbackIndex, fallbackWords.length - 1)]; window.setAvatarSpeechWord?.(word, /[!?]$/.test(word) ? word.slice(-1) : ''); } }, Math.max(180, 60000 / (150 * Number(utterance.rate || 1))));
-    voiceStatus.textContent = 'VESPER IS SPEAKING · LIP SYNC ACTIVE';
-    setPresence('speaking');
-  };
-  utterance.onboundary = (event) => {
-    boundarySeen = true;
-    if (activeSpeechFallbackTimer) { window.clearInterval(activeSpeechFallbackTimer); activeSpeechFallbackTimer = null; }
-    const start = event.charIndex || 0;
-    const end = start + Math.max(event.charLength || 1, 1);
-    const word = text.slice(start, end) || text.slice(start).split(/\s+/)[0];
-    window.setAvatarSpeechWord?.(word, text.slice(end, end + 4));
-  };
-  const finish = () => { if (activeSpeechFallbackTimer) window.clearInterval(activeSpeechFallbackTimer); activeSpeechFallbackTimer = null; if (activeUtterance === utterance) stopSpeech(); };
-  utterance.onend = finish;
-  utterance.onerror = finish;
-  window.speechSynthesis.speak(utterance);
 }
 
 autoSpeak.checked = voiceSettings.auto;
@@ -397,12 +710,39 @@ function makeMessage(role, content, extraClass = '', pinned = false, messageInde
   messageContent.className = 'message-content';
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
-  bubble.textContent = content;
+  bubble.innerHTML = renderMarkdown(content);
+  bubble.querySelectorAll('[data-copy-code]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const code = bubble.querySelector(`[data-code-index="${button.dataset.copyCode}"]`)?.textContent || '';
+      try {
+        await copyText(code);
+        button.textContent = 'COPIED';
+        window.setTimeout(() => { button.textContent = 'COPY CODE'; }, 1200);
+      } catch { button.textContent = 'COPY FAILED'; }
+    });
+  });
   messageContent.append(bubble);
   row.append(avatar, messageContent);
   if (!extraClass) {
     const actions = document.createElement('div');
     actions.className = 'message-actions';
+    if (role === 'user' && messageIndex >= 0) {
+      const edit = document.createElement('button');
+      edit.type = 'button'; edit.className = 'copy-button'; edit.textContent = 'EDIT / BRANCH';
+      edit.setAttribute('aria-label', 'Edit this message and create a conversation branch');
+      edit.addEventListener('click', () => {
+        if (isSending || !messages[messageIndex]) return;
+        const revised = window.prompt('Edit your message. The existing conversation will be saved as a branch.', messages[messageIndex].content);
+        if (typeof revised !== 'string' || !revised.trim()) return;
+        saveConversationBranch('Before edit', messages);
+        messages = messages.slice(0, messageIndex);
+        saveMessages();
+        render();
+        input.value = revised.trim();
+        form.requestSubmit();
+      });
+      actions.append(edit);
+    }
     if (role === 'assistant' && 'speechSynthesis' in window) {
       const speak = document.createElement('button');
       speak.type = 'button';
@@ -412,6 +752,20 @@ function makeMessage(role, content, extraClass = '', pinned = false, messageInde
       speak.setAttribute('aria-label', 'Read this reply aloud');
       speak.addEventListener('click', () => speakReply(content, speak));
       actions.append(speak);
+    }
+    if (role === 'assistant' && messageIndex > 0 && messages[messageIndex - 1]?.role === 'user') {
+      const regenerate = document.createElement('button');
+      regenerate.type = 'button'; regenerate.className = 'copy-button'; regenerate.textContent = 'REGENERATE';
+      regenerate.setAttribute('aria-label', 'Regenerate this reply and save the current conversation as a branch');
+      regenerate.addEventListener('click', () => {
+        if (isSending || messages[messageIndex]?.role !== 'assistant') return;
+        saveConversationBranch('Before regenerate', messages);
+        messages = messages.slice(0, messageIndex);
+        saveMessages();
+        render();
+        void sendMessage('', { appendUser: false });
+      });
+      actions.append(regenerate);
     }
     const copy = document.createElement('button');
     copy.type = 'button';
@@ -456,9 +810,26 @@ function render() {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
+refreshConversationBranches();
+
+conversationBranchesSelect?.addEventListener('change', () => {
+  const branch = conversationBranches.find((entry) => entry.id === conversationBranchesSelect.value);
+  if (!branch || isSending) { conversationBranchesSelect.value = ''; return; }
+  if (messages.length) saveConversationBranch('Before restore', messages);
+  messages = branch.messages.map((message) => ({ ...message }));
+  conversationSummary = branch.summary || '';
+  appStore.set('session.summary', conversationSummary);
+  conversationBranchesSelect.value = '';
+  saveMessages();
+  render();
+  showToast('Saved conversation branch restored.', 'success');
+});
+
 function setSending(sending) {
   isSending = sending;
   sendButton.disabled = sending;
+  if (screenCaptureButton) screenCaptureButton.disabled = sending;
+  if (visionClearButton) visionClearButton.disabled = sending;
   input.disabled = sending;
   document.querySelector('#clear-chat').disabled = sending;
   if (sending) {
@@ -474,7 +845,7 @@ function setSending(sending) {
 }
 
 function updateProviderBadge() {
-  const names = { ollama: 'LOCAL', openai: 'OPENAI', compatible: 'CUSTOM API' };
+  const names = { ollama: 'LOCAL', openai: 'OPENAI', anthropic: 'CLAUDE', xai: 'GROK', compatible: 'CUSTOM API' };
   const model = llm.model || providerModel(llm.provider);
   providerBadge.textContent = llm.provider ? `${names[llm.provider]} · ${model}` : 'CHOOSE A MODEL';
   providerBadge.title = llm.provider ? `Selected model: ${model}` : 'Open LLM settings to choose a model';
@@ -482,7 +853,7 @@ function updateProviderBadge() {
 
 function providerInfo(provider) { return serverSettings?.providers?.[provider] || null; }
 
-function providerModel(provider) { return providerInfo(provider)?.model || ({ ollama: 'llama3.2', openai: 'gpt-4.1-mini', compatible: 'local-model' }[provider]); }
+function providerModel(provider) { return providerInfo(provider)?.model || ({ ollama: 'llama3.2', openai: 'gpt-4.1-mini', anthropic: 'claude-sonnet-4-6', xai: 'grok-4.7', compatible: 'local-model' }[provider]); }
 
 function updateQuickstart() {
   if (!quickstartStatus || !quickstartMessage) return;
@@ -534,9 +905,9 @@ function updateProviderDetail() {
   const isReady = Boolean(info?.ready);
   const stateText = provider === 'ollama'
     ? (info?.models?.length ? `${info.models.length} local model${info.models.length === 1 ? '' : 's'} detected` : 'Ollama not detected yet · you can still enter a model')
-    : provider === 'openai'
-      ? (isReady ? 'API key is configured in .env' : 'API key is missing from .env')
-      : (isReady ? 'API endpoint is configured in .env' : 'API base URL is missing from .env');
+    : provider === 'compatible'
+      ? (isReady ? 'API endpoint is configured in .env' : 'API base URL is missing from .env')
+      : (isReady ? 'API key is configured in .env' : 'API key is missing from .env');
   providerStatus.classList.toggle('needs-config', provider !== 'ollama' && !isReady);
   providerStatus.innerHTML = `<span class="status-dot"></span><span></span>`;
   providerStatus.lastElementChild.textContent = stateText;
@@ -561,6 +932,7 @@ function openSettings() {
   closeThemeMenu();
   providerSelect.value = llm.provider || serverSettings?.defaultProvider || 'ollama';
   modelInput.value = llm.model || providerModel(providerSelect.value);
+  if (systemPromptInput) systemPromptInput.value = loadSystemPrompt();
   updateProviderDetail();
   if (typeof dialog.showModal === 'function') dialog.showModal();
   else dialog.setAttribute('open', '');
@@ -657,6 +1029,7 @@ document.querySelector('#settings-save').addEventListener('click', () => {
   modelInput.setCustomValidity('');
   llm = { provider: providerSelect.value, model };
   saveLlmChoice();
+  if (systemPromptInput) appStore.set('settings.persona.systemPrompt', systemPromptInput.value.trim().slice(0, 4000));
   updateProviderBadge();
   updateQuickstart();
   connectionLabel.classList.remove('error-note');
@@ -670,8 +1043,8 @@ providerSelect.addEventListener('change', () => {
 modelInput.addEventListener('input', () => modelInput.setCustomValidity(''));
 dialog.addEventListener('click', (event) => { if (event.target === dialog) closeSettings(); });
 
-async function sendMessage(text) {
-  const content = text.trim();
+async function sendMessage(text, { appendUser = true } = {}) {
+  const content = appendUser ? String(text || '').trim() : String(messages.at(-1)?.content || '').trim();
   if (!content || isSending) return;
   stopSpeech();
   if (!llm.provider) {
@@ -679,25 +1052,32 @@ async function sendMessage(text) {
     connectionLabel.textContent = 'CHOOSE A MODEL TO BEGIN';
     return;
   }
-  messages.push({ role: 'user', content });
-  messages = messages.slice(-MAX_HISTORY);
-  saveMessages();
-  render();
-  input.value = '';
-  input.style.height = 'auto';
   setSending(true);
+  if (appendUser) {
+    compactConversationIfNeeded();
+    messages.push({ role: 'user', content });
+    messages = messages.slice(-MAX_HISTORY);
+    saveMessages();
+    render();
+    input.value = '';
+    input.style.height = 'auto';
+  }
+  const localContext = findLocalWorkspaceContext(content);
+  if (localContextStatus) localContextStatus.textContent = localContext.count ? `LOCAL NOTES · ${localContext.count}` : 'NO LOCAL NOTE MATCH';
+  const localCredentialEnabled = Boolean(appStore.get('settings.security.pinHash', '') || appStore.get('settings.security.biometricId', ''));
+  const protectedMemory = (localCredentialEnabled || appStore.get('settings.security.protectInbox', false)) && sessionStorage.getItem('vesper-unlocked-v1') !== '1';
+  const memoryContext = protectedMemory ? '' : relationshipMemory.relevantContext(content);
 
   const typing = makeMessage('assistant', '···', 'typing');
   messagesEl.append(typing);
   messagesEl.scrollTop = messagesEl.scrollHeight;
-  window.setAvatarSpeaking?.(false);
   let replyToRead = null;
 
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: messages.slice(-MAX_HISTORY), provider: llm.provider, model: llm.model, personality: personalityMode }),
+      body: JSON.stringify({ messages: messages.slice(-MAX_HISTORY), provider: llm.provider, model: llm.model, personality: personalityMode, systemPrompt: loadPersonaInstructions(content), localContext: localContext.text, memoryContext, conversationSummary, visionFrame: pendingVisionFrame ? { mediaType: pendingVisionFrame.mediaType, data: pendingVisionFrame.data } : null }),
     });
     const data = await response.json().catch(() => ({}));
     if (response.status === 401) {
@@ -711,6 +1091,9 @@ async function sendMessage(text) {
     messages.push({ role: 'assistant', content: data.reply.trim() });
     messages = messages.slice(-MAX_HISTORY);
     saveMessages();
+    reactToAssistantReply(data.reply.trim(), content);
+    clearVisionFrame();
+    if (appendUser && !protectedMemory) void relationshipMemory.rememberExchange(content).catch(() => {});
     replyToRead = data.reply.trim();
   } catch (error) {
     if (!error.requiresLogin) {
@@ -732,6 +1115,29 @@ async function sendMessage(text) {
     input.focus();
   }
 }
+
+function reactToAssistantReply(reply, userText = '') {
+  const text = `${userText} ${reply}`.toLowerCase();
+  let mood = 'neutral';
+  let expression = 'neutral';
+  let gesture = '';
+  if (/\b(hello|hi there|hey there|welcome back)\b/.test(text)) gesture = 'wave';
+  else if (/\b(thank you|thanks|appreciate|congratulations|congrats|proud of you)\b/.test(text)) { mood = 'joy'; expression = 'joy'; gesture = 'bow'; }
+  else if (/\b(let's dance|dance with me|celebrate|we did it)\b/.test(text)) { mood = 'joy'; expression = 'fun'; gesture = 'dance'; }
+  else if (/\b(i agree|exactly|you're right|yes, that is right)\b/.test(text)) gesture = 'nod';
+  else if (/\b(i don't know|maybe|not sure|it depends)\b/.test(text)) gesture = 'shrug';
+  else if (/\b(i care about you|i'm here for you|you matter|that sounds painful|i'm sorry)\b/.test(text)) { mood = 'tender'; expression = 'soft'; }
+  else if (/\b(let me think|thinking through|on reflection|considering this)\b/.test(text)) { mood = 'thinking'; expression = 'thinking'; gesture = 'thinking'; }
+  else if (/\b(that's difficult|that sounds hard|grief|i understand this hurts)\b/.test(text)) { mood = 'sad'; expression = 'soft'; }
+  window.setAvatarMood?.(mood);
+  window.setAvatarExpression?.(expression);
+  if (gesture) window.playAvatarGesture?.(gesture, 1800);
+}
+
+window.addEventListener('avatar-touch', (event) => {
+  const { emoji = '✨', line = 'Vesper noticed your touch.' } = event.detail || {};
+  showToast(`${emoji} ${line}`, 'success', { timeout: 2200 });
+});
 
 form.addEventListener('submit', (event) => { event.preventDefault(); sendMessage(input.value); });
 input.addEventListener('input', () => {
@@ -760,12 +1166,19 @@ document.querySelector('#clear-chat').addEventListener('click', () => {
   if (isSending) return;
   stopSpeech();
   messages = [];
+  conversationSummary = '';
+  appStore.set('session.summary', '');
   saveMessages();
   render();
   input.focus();
 });
 
-function currentWorkspaceSnapshot() { return workspaceSnapshot({ messages, settings: { llm, voice: voiceSettings, personality: personalityMode, stage: stageSettings, theme: appStore.get('settings.theme', 'sakura') }, route: location.pathname }); }
+function currentWorkspaceSnapshot() {
+  const snapshot = workspaceSnapshot({ messages, settings: { llm, voice: voiceSettings, personality: personalityMode, persona: { systemPrompt: loadSystemPrompt(), card: appStore.get('settings.persona.card', null) }, stage: stageSettings, theme: appStore.get('settings.theme', 'omarchy-quattro') }, route: location.pathname });
+  snapshot.conversationSummary = conversationSummary;
+  snapshot.branches = conversationBranches.map((branch) => ({ ...branch, messages: branch.messages.map((message) => ({ ...message })) }));
+  return snapshot;
+}
 function exportWorkspace(format = 'md') {
   const snapshot = currentWorkspaceSnapshot(); const stamp = new Date().toISOString().slice(0, 10);
   if (format === 'json') downloadText(`vesper-workspace-${stamp}.json`, JSON.stringify(snapshot, null, 2), 'application/json;charset=utf-8');
@@ -844,7 +1257,7 @@ document.querySelectorAll('[data-performance]').forEach((button) => {
 });
 document.querySelectorAll('[data-pose]').forEach((button) => button.addEventListener('click', () => {
   document.querySelectorAll('[data-pose]').forEach((option) => option.classList.toggle('is-active', option === button));
-  window.setAvatarPose?.(button.dataset.pose, 0.45);
+  window.playAvatarGesture?.(button.dataset.pose, 2400);
   performanceStatus.textContent = `${button.dataset.pose.toUpperCase()} / NATURAL POSE`;
   window.setTimeout(() => { button.classList.remove('is-active'); performanceStatus.textContent = 'IDLE / READY'; }, 2200);
 }));
@@ -853,7 +1266,13 @@ window.addEventListener('avatar-ready', (event) => {
   window.setAvatarZoom?.(stageSettings.zoom);
   window.setAvatarAutoRotate?.(stageSettings.orbit);
   window.setAvatarPersonality?.(personalityMode);
+  availableWardrobeLayers = event.detail?.wardrobeLayers || [];
+  window.setAvatarTint?.(avatarCustomization.tint);
+  window.setAvatarParticles?.(avatarCustomization.particles);
+  renderWardrobeLayers(availableWardrobeLayers);
   const supported = new Set(event.detail?.expressions || []);
+  unavailableVisemes = event.detail?.missingVisemes || [];
+  refreshVoiceList();
   document.querySelectorAll('[data-expression]').forEach((button) => {
     if (supported.has(button.dataset.expression)) return;
     button.disabled = true;
@@ -907,11 +1326,27 @@ render();
 initializeAccess();
 appStore.ready.then(() => {
   messages = loadMessages();
+  conversationBranches = loadConversationBranches();
+  conversationSummary = String(appStore.get('session.summary', '') || '').slice(0, 2600);
+  const card = appStore.get('settings.persona.card', null);
+  if (card && characterCardStatus) characterCardStatus.textContent = 'Loaded ' + card.name + (card.character_book ? ' · lorebook ready' : '');
+  refreshConversationBranches();
+  const savedAvatar = appStore.get('settings.avatar', {});
+  avatarCustomization = {
+    tint: typeof savedAvatar.tint === 'string' && /^#[0-9a-f]{6}$/i.test(savedAvatar.tint) ? savedAvatar.tint : '#ffffff',
+    particles: savedAvatar.particles !== false,
+    layers: savedAvatar.layers && typeof savedAvatar.layers === 'object' ? savedAvatar.layers : {},
+  };
+  avatarTintInput.value = avatarCustomization.tint;
+  avatarParticlesInput.checked = avatarCustomization.particles;
+  window.setAvatarTint?.(avatarCustomization.tint);
+  window.setAvatarParticles?.(avatarCustomization.particles);
+  if (availableWardrobeLayers.length) renderWardrobeLayers(availableWardrobeLayers);
   llm = loadLlmChoice();
   personalityMode = loadPersonalityMode();
   stageSettings = loadStageSettings();
   applyBackground(appStore.get('settings.background', 'atelier'));
-  applyTheme(appStore.get('settings.theme', 'sakura'));
+  applyTheme(appStore.get('settings.theme', 'omarchy-quattro'));
   render();
   showToast('Your saved Vesper session was restored.', 'success', { timeout: 2600 });
 }).catch(() => {});

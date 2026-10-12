@@ -1,9 +1,11 @@
 // Shared voice helpers for Vesper: used by the chat page, the Voices page and the Arcade.
+import { waifuVoice } from './waifuVoice.js';
+
 export const VOICE_KEY = 'vesper-voice-v1';
 
 export const WAIFU_PRESETS = {
-  en: { lang: 'en', pitch: 1.3, rate: 1.04, prefer: [/aria/i, /jenny/i, /\bana\b/i, /sonia/i, /michelle/i, /libby/i, /maisie/i, /zira/i, /hazel/i, /susan/i, /samantha/i, /karen/i, /female/i] },
-  ja: { lang: 'ja', pitch: 1.3, rate: 1.05, prefer: [/nanami/i, /haruka/i, /ayumi/i, /sayaka/i, /mayu/i, /shiori/i, /female/i] },
+  en: { lang: 'en', pitch: 1.4, rate: 1.1, prefer: [/aria/i, /jenny/i, /\bana\b/i, /sonia/i, /michelle/i, /libby/i, /maisie/i, /zira/i, /hazel/i, /susan/i, /samantha/i, /karen/i, /female/i] },
+  ja: { lang: 'ja', pitch: 1.4, rate: 1.1, prefer: [/nanami/i, /haruka/i, /ayumi/i, /sayaka/i, /mayu/i, /shiori/i, /female/i] },
 };
 
 const MALE = /\b(david|mark|guy|ryan|george|james|richard|brian|andrew|eric|steffan|roger|christopher|davis|keita|ichiro|ryo|daichi|naoki|takumi|male)\b/i;
@@ -21,10 +23,10 @@ export function loadVoicePrefs() {
       style: saved.style === 'custom' ? 'custom' : 'waifu',
       language,
       rate: hasStyle && Number.isFinite(saved.rate) ? clamp(saved.rate, 0.7, 1.3) : preset.rate,
-      pitch: hasStyle && Number.isFinite(saved.pitch) ? clamp(saved.pitch, 0.7, 1.6) : preset.pitch,
+      pitch: hasStyle && Number.isFinite(saved.pitch) ? clamp(saved.pitch, 0.7, 1.4) : preset.pitch,
     };
   } catch {
-    return { auto: false, voiceURI: '', style: 'waifu', language: 'en', rate: 1.04, pitch: 1.3 };
+    return { auto: false, voiceURI: '', style: 'waifu', language: 'en', rate: 1.1, pitch: 1.4 };
   }
 }
 
@@ -57,7 +59,7 @@ export function describeVoice(lang) {
   return voice ? `${voice.name} (${voice.lang})` : null;
 }
 
-export function supportsOfflineVoice() { return 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'; }
+export function supportsOfflineVoice() { return waifuVoice.supported; }
 
 export function speakOfflineFallback(text, { onEnd } = {}) {
   if (supportsOfflineVoice()) return speakWaifu(text, { onEnd });
@@ -96,33 +98,17 @@ export function toMouthWord(word) {
 
 // Speaks a short line with the saved waifu settings (used by the Arcade and the Voice Lab).
 export function speakWaifu(text, { onEnd, forceLang } = {}) {
-  if (!('speechSynthesis' in window)) return false;
+  if (!waifuVoice.supported) return false;
   const prefs = loadVoicePrefs();
   const lang = forceLang || (isMostlyJapanese(text) ? 'ja' : prefs.language === 'ja' ? 'ja' : 'en');
-  const utterance = new SpeechSynthesisUtterance(text);
   const voice = prefs.style === 'waifu'
     ? pickWaifuVoice(lang)
     : getVoices().find((item) => item.voiceURI === prefs.voiceURI) || pickWaifuVoice(lang);
-  if (voice) utterance.voice = voice;
-  utterance.lang = voice?.lang || (lang === 'ja' ? 'ja-JP' : 'en-US');
-  utterance.pitch = prefs.pitch;
-  utterance.rate = prefs.rate;
-  let boundarySeen = false;
-  let fallbackIndex = 0;
-  let fallbackTimer = null;
-  const fallbackWords = text.match(/\S+/g) || [text];
-  utterance.onstart = () => { window.setAvatarSpeaking?.(true); window.setAvatarSpeechWord?.(fallbackWords[0], ''); fallbackTimer = window.setInterval(() => { if (!boundarySeen) window.setAvatarSpeechWord?.(fallbackWords[Math.min(++fallbackIndex, fallbackWords.length - 1)], ''); }, Math.max(180, 60000 / (150 * Number(utterance.rate || 1)))); };
-  utterance.onboundary = (event) => {
-    boundarySeen = true;
-    if (fallbackTimer) { window.clearInterval(fallbackTimer); fallbackTimer = null; }
-    const start = event.charIndex || 0;
-    const end = start + Math.max(event.charLength || 1, 1);
-    window.setAvatarSpeechWord?.(text.slice(start, end), text.slice(end, end + 4));
-  };
-  const finish = () => { if (fallbackTimer) window.clearInterval(fallbackTimer); fallbackTimer = null; window.setAvatarSpeaking?.(false); onEnd?.(); };
-  utterance.onend = finish;
-  utterance.onerror = finish;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
-  return true;
+  return Boolean(waifuVoice.speak(text, {
+    voice,
+    language: voice?.lang || (lang === 'ja' ? 'ja-JP' : 'en-US'),
+    pitch: prefs.pitch,
+    rate: prefs.rate,
+    onEnd,
+  }));
 }

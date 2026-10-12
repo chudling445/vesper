@@ -19,7 +19,7 @@ The server listens on this computer only by default. The chat, 3D viewer, and br
 - Pick one of the ten expression blends under the stage. The face eases into the new look.
 - Choose **Playful**, **Tender**, or **Thoughtful** to shift Vesper’s response style, resting expression, head motion, and speaking gestures.
 - The arms hang down while Vesper is idle. Small style-specific gestures appear during spoken replies.
-- Choose a Windows voice and turn on **Auto Speak** for speech, facial reactions, and word-timed lip movement.
+- Choose a Windows voice and turn on **Auto Speak** for speech, facial reactions, and approximate vowel-timed mouth shapes. Streamed audio can use live amplitude and spectrum analysis.
 - Drag the model to turn it, scroll to zoom, and use **Orbit** or **Reset View** for framing.
 - Press **T** to cycle the color themes.
 

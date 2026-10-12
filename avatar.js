@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin } from '@pixiv/three-vrm';
+import { ExpressionManager, EXPRESSION_PRESETS } from './expressionManager.js';
+import { AvatarAnimationController } from './animationController.js';
+import { AvatarHitboxManager } from './hitboxManager.js';
 
 const canvas = document.querySelector('#avatar-canvas');
 const sceneElement = document.querySelector('#scene');
@@ -12,7 +15,6 @@ let vrm = null;
 let speaking = false;
 let thinking = false;
 let speakingTime = 0;
-let mouthPulse = 0;
 let speechWordEnergy = 0;
 let mouthShape = 'aa';
 let speechExpression = 'relaxed';
@@ -26,33 +28,14 @@ let armRig = [];
 let headRig = null;
 let neckRig = null;
 let chestRig = null;
+let expressionController = null;
+let animationController = null;
+let hitboxManager = null;
 let actingStyle = 'playful';
-let blinkTime = 0;
-let blinkDuration = 0.16;
-let nextBlink = 3 + Math.random() * 3;
 let lastTime = 0;
-const faceExpressions = ['happy', 'angry', 'relaxed', 'sad', 'surprised'];
-const expressionPresets = {
-  neutral: {},
-  smirk: { happy: 0.34, angry: 0.42 },
-  grin: { happy: 0.78 },
-  pout: { angry: 0.56, sad: 0.22 },
-  shy: { relaxed: 0.62, happy: 0.28, sad: 0.08 },
-  fond: { relaxed: 0.57, happy: 0.42 },
-  curious: { surprised: 0.36, relaxed: 0.2 },
-  thinking: { relaxed: 0.54, sad: 0.12 },
-  soft: { relaxed: 0.69, sad: 0.18 },
-  surprised: { surprised: 0.78, happy: 0.12 },
-  embarrassed: { relaxed: 0.48, happy: 0.2, sad: 0.16 },
-  excited: { happy: 0.58, surprised: 0.4 },
-  teasing: { happy: 0.48, angry: 0.22 },
-};
+const expressionPresets = EXPRESSION_PRESETS;
 const personalityExpressions = { playful: 'smirk', tender: 'fond', thoughtful: 'thinking' };
 let selectedExpression = 'neutral';
-let faceWeights = Object.fromEntries(faceExpressions.map((name) => [name, 0]));
-let faceFrom = { ...faceWeights };
-let faceTarget = { ...faceWeights };
-let faceBlend = 1;
 let autoRotate = false;
 let modelHeight = 1.8;
 let modelBaseY = 0.04;
@@ -60,13 +43,18 @@ let zoomFactor = 2.15;
 const mouthShapes = ['aa', 'ih', 'ou', 'ee', 'oh'];
 let visemeTargets = Object.fromEntries(mouthShapes.map((shape) => [shape, 0]));
 let visemeWeights = Object.fromEntries(mouthShapes.map((shape) => [shape, 0]));
+let audioBands = { low: 0, mid: 0, high: 0 };
 let visemeManager = null;
 let springBoneManager = null;
+const avatarMaterialColors = new WeakMap();
+const avatarTint = new THREE.Color('#ffffff');
+let wardrobeLayers = [];
 let poseRig = [];
 let activePose = 'idle';
 let poseBlend = 1;
 let poseFrom = new THREE.Quaternion();
 let poseTo = new THREE.Quaternion();
+const poseInverse = new THREE.Quaternion();
 let gazeX = 0;
 let gazeY = 0;
 let gazeCurrentX = 0;
@@ -78,6 +66,8 @@ const poseDefinitions = {
   nod: { head: { x: -0.14 }, neck: { x: -0.06 } }, tilt: { head: { z: 0.16 }, neck: { z: 0.07 } },
   shrug: { leftUpperArm: { z: -0.14, x: -0.16 }, rightUpperArm: { z: 0.14, x: -0.16 }, chest: { x: -0.03 } },
   thinking: { head: { x: -0.18, z: 0.04 }, neck: { x: -0.05 }, leftUpperArm: { x: -0.18, z: 0.12 } },
+  bow: { hips: { x: 0.17 }, spine: { x: 0.18 }, chest: { x: 0.1 }, neck: { x: -0.06 }, head: { x: -0.22 }, leftUpperArm: { x: 0.08 }, rightUpperArm: { x: 0.08 } },
+  dance: { hips: { z: 0.08 }, spine: { x: -0.08 }, chest: { x: -0.08 }, leftUpperArm: { x: -0.82, z: 0.3 }, rightUpperArm: { x: -0.25, z: -0.64 }, leftLowerArm: { z: 0.42 }, rightLowerArm: { z: -0.35 } },
 };
 
 const scene = new THREE.Scene();
@@ -86,6 +76,7 @@ const camera = new THREE.PerspectiveCamera(29, 1, 0.1, 100);
 camera.position.set(0, 1.35, 3.7);
 
 const renderer = new THREE.WebGLRenderer({ canvas, alpha: modelOnly, antialias: true, powerPreference: 'high-performance' });
+window.getVesperAvatarStream = () => typeof renderer.domElement.captureStream === 'function' ? renderer.domElement.captureStream(30) : null;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NoToneMapping; // VRM/MToon materials are authored for plain sRGB output
@@ -103,6 +94,74 @@ scene.add(fillLight);
 const rimLight = new THREE.DirectionalLight(0xd8d4e4, 1);
 rimLight.position.set(2, 3, -3);
 scene.add(rimLight);
+const moodLights = {
+  neutral: { key: '#fff8f3', fill: '#c8d5e8', rim: '#d8d4e4' },
+  joy: { key: '#ffe3ba', fill: '#ffacd5', rim: '#ffe8a5' },
+  tender: { key: '#ffe4ec', fill: '#c5d9f7', rim: '#ffc2df' },
+  sad: { key: '#c9d5ff', fill: '#8fb6d8', rim: '#9aa8e8' },
+  thinking: { key: '#d9d1ff', fill: '#a8c5dd', rim: '#c5aaf2' },
+};
+let moodLightTarget = moodLights.neutral;
+const moodColorTarget = { key: new THREE.Color(moodLightTarget.key), fill: new THREE.Color(moodLightTarget.fill), rim: new THREE.Color(moodLightTarget.rim) };
+const dustGeometry = new THREE.BufferGeometry();
+const dustPositions = new Float32Array(48 * 3);
+for (let index = 0; index < 48; index += 1) {
+  dustPositions[index * 3] = (Math.random() - 0.5) * 2.6;
+  dustPositions[index * 3 + 1] = Math.random() * 2.4;
+  dustPositions[index * 3 + 2] = (Math.random() - 0.5) * 1.2;
+}
+dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+const dustMaterial = new THREE.PointsMaterial({ color: '#f4d4ec', size: 0.018, transparent: true, opacity: 0.42, depthWrite: false, sizeAttenuation: true });
+const dustMotes = new THREE.Points(dustGeometry, dustMaterial);
+dustMotes.position.y = 0.12;
+scene.add(dustMotes);
+let particlesEnabled = true;
+window.setAvatarMood = (mood = 'neutral') => {
+  moodLightTarget = moodLights[mood] || moodLights.neutral;
+  moodColorTarget.key.set(moodLightTarget.key);
+  moodColorTarget.fill.set(moodLightTarget.fill);
+  moodColorTarget.rim.set(moodLightTarget.rim);
+};
+window.setAvatarParticles = (enabled) => { particlesEnabled = Boolean(enabled); dustMotes.visible = particlesEnabled; };
+
+function applyAvatarTint() {
+  if (!vrm) return;
+  vrm.scene.traverse((node) => {
+    if (!node.isMesh) return;
+    for (const material of [].concat(node.material || [])) {
+      if (!material?.color?.isColor) continue;
+      if (!avatarMaterialColors.has(material)) avatarMaterialColors.set(material, material.color.clone());
+      material.color.copy(avatarMaterialColors.get(material)).multiply(avatarTint);
+    }
+  });
+}
+
+window.setAvatarTint = (value) => {
+  if (!/^#[0-9a-f]{6}$/i.test(String(value))) return false;
+  avatarTint.set(value);
+  applyAvatarTint();
+  return true;
+};
+
+function collectWardrobeLayers() {
+  const candidates = new Map();
+  const pattern = /outfit|cloth|dress|shirt|skirt|accessor|ribbon|coat|suit|jacket|glove|shoe|hat|bow/i;
+  vrm.scene.traverse((node) => {
+    if (!node.isMesh || !node.name || !pattern.test(node.name)) return;
+    const group = candidates.get(node.name) || [];
+    group.push(node);
+    candidates.set(node.name, group);
+  });
+  wardrobeLayers = [...candidates].map(([name, nodes]) => ({ id: name, name, nodes }));
+  return wardrobeLayers.map(({ id, name, nodes }) => ({ id, name, visible: nodes.every((node) => node.visible) }));
+}
+
+window.setAvatarLayerVisibility = (id, visible) => {
+  const layer = wardrobeLayers.find((entry) => entry.id === id);
+  if (!layer) return false;
+  layer.nodes.forEach((node) => { node.visible = Boolean(visible); });
+  return true;
+};
 
 // Overall stage brightness. Press [ to darken and ] to brighten; the choice is remembered.
 const lightBase = [[hemiLight, 0.55], [keyLight, 1.5], [fillLight, 0.35], [rimLight, 0.6]];
@@ -215,35 +274,47 @@ function resize() {
 new ResizeObserver(resize).observe(sceneElement);
 resize();
 
-function setFaceExpression(name) {
-  const manager = vrm?.expressionManager;
-  const preset = expressionPresets[name];
-  if (!preset) return false;
-  if (!manager) { selectedExpression = name; return true; }
-  const hasSupportedWeight = Object.entries(preset).some(([expression, weight]) => weight > 0 && manager.getExpression(expression));
-  if (name !== 'neutral' && !hasSupportedWeight) return false;
-  selectedExpression = name;
-  faceFrom = { ...faceWeights };
-  faceTarget = Object.fromEntries(faceExpressions.map((expression) => [expression, preset[expression] || 0]));
-  faceBlend = 0;
+function setFaceExpression(name, intensity = 1, duration = 0.22) {
+  const key = String(name || 'neutral').toLowerCase().replace(/[\s_-]/g, '');
+  if (!Object.hasOwn(expressionPresets, key)) return false;
+  if (expressionController && !expressionController.setExpression(key, intensity, duration)) return false;
+  selectedExpression = key;
   return true;
 }
 
-const emotionMap = { joy: 'grin', happy: 'grin', angry: 'pout', sorrow: 'pout', sad: 'pout', surprised: 'surprised', neutral: 'neutral', idle: 'neutral' };
-let emotionTimer = 0;
+const emotionMap = { happy: 'happy', angry: 'angry', sorrow: 'sad', sad: 'sad', surprised: 'surprised', relaxed: 'relaxed', neutral: 'neutral', idle: 'neutral', joy: 'joy', fun: 'fun', lookup: 'lookup', lookdown: 'lookdown', lookleft: 'lookleft', lookright: 'lookright', blush: 'blush', wink: 'wink' };
 window.setExpression = (emotion = 'neutral', intensity = 1, duration = 0.35) => {
-  const name = emotionMap[String(emotion).toLowerCase()] || 'neutral'; const preset = expressionPresets[name] || {};
-  faceFrom = { ...faceWeights }; faceTarget = Object.fromEntries(faceExpressions.map((expression) => [expression, (preset[expression] || 0) * THREE.MathUtils.clamp(Number(intensity) || 1, 0, 1)])); faceBlend = 0; selectedExpression = name; emotionTimer = Math.max(0, Number(duration) || 0); if (name === 'joy' || name === 'happy') performanceMode = 'blush'; return true;
+  const name = emotionMap[String(emotion).toLowerCase()] || 'neutral';
+  if (!setFaceExpression(name, intensity, duration)) return false;
+  if (name === 'joy' || name === 'happy') performanceMode = 'blush';
+  return true;
 };
-function setViseme(shape, weight = 0) { const key = mouthShapes.includes(shape) ? shape : 'aa'; for (const name of mouthShapes) visemeTargets[name] = name === key ? THREE.MathUtils.clamp(Number(weight) || 0, 0, 1) : 0; }
+function setViseme(shape, weight = 0) { const key = mouthShapes.includes(shape) ? shape : 'aa'; const tension = THREE.MathUtils.clamp((Number(weight) || 0) * (0.88 + audioBands.mid * 0.12) + audioBands.high * 0.07, 0, 1); for (const name of mouthShapes) visemeTargets[name] = name === key ? tension : 0; }
 function createPoseRig() {
-  const names = ['head', 'neck', 'chest', 'spine', 'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm', 'leftHand', 'rightHand'];
+  const names = ['hips', 'head', 'neck', 'chest', 'spine', 'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm', 'leftHand', 'rightHand', 'leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg'];
   poseRig = names.map((name) => { const node = vrm.humanoid?.getNormalizedBoneNode(name); return { name, node, baseX: node?.rotation.x || 0, current: new THREE.Quaternion(), target: new THREE.Quaternion() }; }).filter((entry) => entry.node);
   poseRig.forEach((entry) => { entry.current.identity(); entry.target.identity(); });
   eyeRig = ['leftEye', 'rightEye'].map((name) => { const node = vrm.humanoid?.getNormalizedBoneNode(name); return { node, x: node?.rotation.x || 0, y: node?.rotation.y || 0 }; }).filter((entry) => entry.node);
 }
-window.setAvatarPose = (name = 'idle', duration = 0.45) => { activePose = Object.hasOwn(poseDefinitions, name) ? name : 'idle'; poseBlend = 0; poseFrom.identity(); poseTo.identity(); for (const entry of poseRig) { const offset = poseDefinitions[activePose][entry.name] || {}; entry.target.setFromEuler(new THREE.Euler(offset.x || 0, offset.y || 0, offset.z || 0)); entry.current.copy(poseFrom); } window.dispatchEvent(new CustomEvent('avatar-pose', { detail: { name: activePose, duration } })); };
+window.setAvatarPose = (name = 'idle', duration = 0.45) => { removePoseOverlay(); const poseName = String(name || 'idle').toLowerCase(); activePose = Object.hasOwn(poseDefinitions, poseName) ? poseName : 'idle'; poseBlend = 0; poseFrom.identity(); poseTo.identity(); for (const entry of poseRig) { const offset = poseDefinitions[activePose][entry.name] || {}; entry.target.setFromEuler(new THREE.Euler(offset.x || 0, offset.y || 0, offset.z || 0)); entry.current.copy(poseFrom); } window.dispatchEvent(new CustomEvent('avatar-pose', { detail: { name: activePose, duration } })); };
+let gestureTimer = 0;
+window.playAvatarGesture = (name = 'wave', holdMs = 1900) => {
+  window.clearTimeout(gestureTimer);
+  if (animationController?.play(name, holdMs)) {
+    window.setAvatarPose('idle', 0.2);
+    return true;
+  }
+  animationController?.stop(0.12);
+  window.setAvatarPose(name, 0.45);
+  gestureTimer = window.setTimeout(() => window.setAvatarPose('idle', 0.5), THREE.MathUtils.clamp(Number(holdMs) || 1900, 450, 6000));
+  return false;
+};
 window.setAvatarViseme = (shape, weight = 1) => setViseme(shape, weight);
+window.setAvatarAudioBands = (bands = {}) => {
+  audioBands.low = THREE.MathUtils.clamp(Number(bands.low) || 0, 0, 1);
+  audioBands.mid = THREE.MathUtils.clamp(Number(bands.mid) || 0, 0, 1);
+  audioBands.high = THREE.MathUtils.clamp(Number(bands.high) || 0, 0, 1);
+};
 
 window.setAvatarExpression = (name) => setFaceExpression(name);
 window.setAvatarPersonality = (mode) => {
@@ -271,7 +342,6 @@ window.setAvatarSpeaking = (value) => {
     setFaceExpression('neutral');
   }
   if (!speaking) {
-    mouthPulse = 0;
     speechWordEnergy = 0;
     speechExpressionTime = 0;
     visemeTargets = Object.fromEntries(mouthShapes.map((shape) => [shape, 0]));
@@ -285,7 +355,6 @@ window.setAvatarThinking = (value) => { thinking = Boolean(value); };
 window.setAvatarSpeechWord = (word, punctuation = '') => {
   const normalized = String(word || '').toLowerCase();
   mouthShape = /[a]/.test(normalized) ? 'aa' : /[o]/.test(normalized) ? 'oh' : /[u]/.test(normalized) ? 'ou' : /[e]/.test(normalized) ? 'ee' : /[i]/.test(normalized) ? 'ih' : 'aa';
-  mouthPulse = 0.24;
   speechWordEnergy = Math.min(1, 0.32 + normalized.replace(/[^\p{L}\p{N}]/gu, '').length * 0.035 + (/[!?]/.test(punctuation) ? 0.22 : 0));
   const mark = String(punctuation || '');
   const requested = mark.includes('?') ? 'surprised' : mark.includes('!') ? 'happy' : (actingStyle === 'thoughtful' ? 'relaxed' : actingStyle === 'tender' ? 'relaxed' : 'happy');
@@ -383,6 +452,16 @@ function loadAvatarModel() {
       placeholder.querySelector('.placeholder-copy').innerHTML = 'Export a VRM model and save it as<br /><code>models/character.vrm</code>';
       return;
     }
+    expressionController = new ExpressionManager(vrm.expressionManager);
+    animationController = new AvatarAnimationController(THREE, vrm, gltf.animations || []);
+    hitboxManager = new AvatarHitboxManager(THREE, {
+      canvas,
+      camera,
+      getRoot: () => vrm?.scene,
+      getHeight: () => modelHeight,
+      getHumanoid: () => vrm?.humanoid,
+      onHit: handleAvatarTouch,
+    });
     const bounds = new THREE.Box3().setFromObject(vrm.scene);
     const center = bounds.getCenter(new THREE.Vector3());
     const height = Math.max(bounds.max.y - bounds.min.y, 1.3);
@@ -392,6 +471,8 @@ function loadAvatarModel() {
     scene.add(vrm.scene);
     springBoneManager = vrm.springBoneManager || vrm.springBone?.manager || null;
     const visual = applyToonLook(vrm.scene);
+    applyAvatarTint();
+    const availableWardrobeLayers = collectWardrobeLayers();
     createPoseRig();
     autoFrameTarget.set(0, height * 0.52, 0);
     createRelaxedArmPose();
@@ -402,9 +483,9 @@ function loadAvatarModel() {
     camera.position.set(0, height * 0.64, height * zoomFactor);
     camera.lookAt(0, height * 0.52, 0);
     const expressions = vrm.expressionManager?.presetExpressionMap || {};
-    const availableExpressions = Object.entries(expressionPresets)
-      .filter(([name, preset]) => name === 'neutral' || Object.entries(preset).some(([expression, weight]) => weight > 0 && expressions[expression]))
-      .map(([name]) => name);
+    const availableExpressions = Object.keys(expressionPresets).filter((name) => expressionController.supports(name));
+    const availableVisemes = mouthShapes.filter((shape) => expressions[shape] || vrm.expressionManager?.getExpression(shape));
+    const missingVisemes = mouthShapes.filter((shape) => !availableVisemes.includes(shape));
     if (!availableExpressions.includes(selectedExpression)) selectedExpression = 'neutral';
     setFaceExpression(selectedExpression);
     let texturedMaterials = 0;
@@ -419,7 +500,7 @@ function loadAvatarModel() {
     console.info(`Vesper: ${texturedMaterials}/${totalMaterials} materials have textures`);
     stageStatus.textContent = texturedMaterials === 0 && totalMaterials > 0 ? 'MODEL LOADED · TEXTURES MISSING' : `MODEL LOADED · TOON ${visual.toonMaterials} · SPRINGS ${springBoneManager ? 'ON' : 'N/A'}`;
     placeholder.classList.add('hidden');
-    window.dispatchEvent(new CustomEvent('avatar-ready', { detail: { expressions: availableExpressions } }));
+    window.dispatchEvent(new CustomEvent('avatar-ready', { detail: { expressions: availableExpressions, visemes: availableVisemes, missingVisemes, wardrobeLayers: availableWardrobeLayers } }));
     window.setAvatarPersonality?.(actingStyle);
     },
     undefined,
@@ -439,20 +520,43 @@ fetch('/api/auth', { cache: 'no-store' })
   .catch(() => loadAvatarModel());
 
 let dragX = null;
+let pointerStart = null;
+let dragMoved = false;
+function reactToAvatarTouch(event) {
+  if (!vrm || !pointerStart || dragMoved) return;
+  hitboxManager?.hit(event.clientX, event.clientY);
+}
+
+function handleAvatarTouch({ target }) {
+  const reaction = {
+    head: { emoji: '✨', line: 'Eep—head pats? I noticed, senpai~', expression: 'surprised', gesture: 'nod' },
+    cheek: { emoji: '💗', line: 'W-was that a cheek poke? You are bold today.', expression: 'blush', gesture: 'thinking' },
+    shoulder: { emoji: '🌸', line: 'A little shoulder tap? I am listening.', expression: 'joy', gesture: 'shrug' },
+    hand: { emoji: '🤝', line: 'You found my hand. Hmph, fine—just this once.', expression: 'happy', gesture: 'wave' },
+  }[target] || { emoji: '✨', line: 'Vesper noticed your touch.', expression: 'happy', gesture: 'nod' };
+  window.setAvatarExpression?.(reaction.expression);
+  window.playAvatarGesture?.(reaction.gesture, 1500);
+  window.dispatchEvent(new CustomEvent('avatar-touch', { detail: { target, ...reaction } }));
+}
+
 canvas.addEventListener('pointerdown', (event) => {
   dragX = event.clientX;
+  pointerStart = { x: event.clientX, y: event.clientY };
+  dragMoved = false;
   canvas.setPointerCapture(event.pointerId);
 });
 canvas.addEventListener('pointermove', (event) => {
   const rect = canvas.getBoundingClientRect(); gazeX = THREE.MathUtils.clamp(((event.clientX - rect.left) / rect.width - 0.5) * 2, -1, 1); gazeY = THREE.MathUtils.clamp(((event.clientY - rect.top) / rect.height - 0.5) * 2, -1, 1);
-  if (dragX === null || !vrm) return;
+  if (dragX === null || !vrm || !pointerStart) return;
+  if (!dragMoved && Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) < 6) return;
+  dragMoved = true;
   const delta = event.clientX - dragX;
   dragX = event.clientX;
   vrm.scene.rotation.y += delta * 0.008;
 });
 canvas.addEventListener('pointerleave', () => { gazeX = 0; gazeY = 0; });
-canvas.addEventListener('pointerup', () => { dragX = null; });
-canvas.addEventListener('pointercancel', () => { dragX = null; });
+canvas.addEventListener('pointerup', (event) => { reactToAvatarTouch(event); dragX = null; pointerStart = null; });
+canvas.addEventListener('pointercancel', () => { dragX = null; pointerStart = null; });
 canvas.addEventListener('wheel', (event) => {
   event.preventDefault();
   zoomFactor = THREE.MathUtils.clamp(zoomFactor + event.deltaY * 0.003 / modelHeight, 1.8, 3.6);
@@ -466,36 +570,42 @@ function applyPoseOverlay(delta) {
   for (const eye of eyeRig) { eye.node.rotation.y = THREE.MathUtils.damp(eye.node.rotation.y, eye.y + gazeCurrentX * 0.12, 8, delta); eye.node.rotation.x = THREE.MathUtils.damp(eye.node.rotation.x, eye.x + gazeCurrentY * 0.08, 8, delta); }
 }
 
+function removePoseOverlay() {
+  for (const entry of poseRig) {
+    poseInverse.copy(entry.current).invert();
+    entry.node.quaternion.multiply(poseInverse);
+  }
+}
+
 function animate(now) {
   requestAnimationFrame(animate);
   const delta = Math.min((now - (lastTime || now)) / 1000, 0.05);
   lastTime = now;
   if (vrm) {
+    removePoseOverlay();
+    animationController?.update(delta);
     vrm.update(delta);
     if (autoRotate) vrm.scene.rotation.y += delta * 0.12;
     vrm.scene.position.y = modelBaseY + Math.sin(now * 0.0017) * 0.008;
-    faceBlend = Math.min(1, faceBlend + delta / 0.22);
-    for (const expression of faceExpressions) {
-      faceWeights[expression] = THREE.MathUtils.lerp(faceFrom[expression], faceTarget[expression], faceBlend);
-      const speechPulse = speaking ? 0.1 + Math.max(0, Math.sin(speakingTime * 2.2)) * 0.06 + speechWordEnergy * 0.08 : 0;
-      const speechBlend = speechExpressionTime > 0 ? Math.min(1, speechExpressionTime * 5) : 0;
-      const emphasized = speechBlend * speechExpressionWeight;
-      const reactiveWeight = expression === speechExpression ? Math.max(speechPulse, emphasized) : 0;
-      const thoughtWeight = (thinking || performanceMode === 'listen') && expression === 'relaxed' ? 0.2 + Math.max(0, Math.sin(now * 0.00075)) * 0.08 : 0;
-      const selectedWeight = faceWeights[expression] * (1 - speechBlend * 0.7);
-      vrm.expressionManager?.setValue(expression, Math.max(selectedWeight, reactiveWeight, thoughtWeight));
-    }
-    const blushTarget = performanceMode === 'blush' ? (speaking ? 0.82 : 0.68) : 0;
+    const speechBlend = speechExpressionTime > 0 ? Math.min(1, speechExpressionTime * 5) : 0;
+    const speechPulse = speaking ? 0.1 + Math.max(0, Math.sin(speakingTime * 2.2)) * 0.06 + speechWordEnergy * 0.08 : 0;
+    const overlays = {
+      [speechExpression]: Math.max(speechPulse, speechBlend * speechExpressionWeight),
+      relaxed: (thinking || performanceMode === 'listen') ? 0.2 + Math.max(0, Math.sin(now * 0.00075)) * 0.08 : 0,
+    };
+    const blushTarget = selectedExpression === 'blush' ? 0.68 : performanceMode === 'blush' ? (speaking ? 0.82 : 0.68) : 0;
     blushAmount = THREE.MathUtils.lerp(blushAmount, blushTarget, Math.min(1, delta * 8));
-    if (vrm.expressionManager?.getExpression('blush')) vrm.expressionManager.setValue('blush', blushAmount);
+    overlays.blush = blushAmount;
+    expressionController?.update(delta, overlays);
     speechExpressionTime = Math.max(0, speechExpressionTime - delta);
     speechWordEnergy = THREE.MathUtils.damp(speechWordEnergy, 0, 5, delta);
     performanceTime += delta;
-    const armMotion = performanceMode === 'wave'
+    const waving = performanceMode === 'wave' || activePose === 'wave';
+    const armMotion = animationController?.isPlaying ? 0 : waving
       ? 0.16 + Math.sin(performanceTime * 3.4) * 0.04
       : speaking ? (actingStyle === 'playful' ? 0.085 : actingStyle === 'tender' ? 0.048 : 0.058) : 0;
     for (const arm of armRig) {
-      const sway = performanceMode === 'wave' && arm.phase > 0
+      const sway = waving && arm.phase > 0
         ? Math.sin(performanceTime * 8) * 0.23
         : Math.sin(now * 0.0018 + arm.phase) * armMotion;
       arm.upper.rotation.z = THREE.MathUtils.damp(arm.upper.rotation.z, arm.upperBase + arm.lowerSign * sway, 12, delta);
@@ -503,10 +613,10 @@ function animate(now) {
       if (arm.hand) arm.hand.rotation.z = THREE.MathUtils.damp(arm.hand.rotation.z, arm.handBase + arm.lowerSign * sway * 0.2, 12, delta);
     }
     const breath = Math.sin(now * 0.00145);
-    const breathLift = breath * 0.009 + Math.sin(now * 0.00072) * 0.003;
+    const breathLift = breath * 0.009 + Math.sin(now * 0.00072) * 0.003 + audioBands.low * 0.003;
     if (chestRig) chestRig.node.rotation.x = THREE.MathUtils.damp(chestRig.node.rotation.x, chestRig.x + breathLift, 9, delta);
     const spineEntry = poseRig.find((entry) => entry.name === 'spine');
-    if (spineEntry) spineEntry.node.rotation.x = THREE.MathUtils.damp(spineEntry.node.rotation.x, spineEntry.baseX + breath * 0.0015, 7, delta);
+    if (spineEntry) spineEntry.node.rotation.x = THREE.MathUtils.damp(spineEntry.node.rotation.x, spineEntry.baseX + breath * 0.0015 + audioBands.low * 0.001, 7, delta);
     if (neckRig) {
       const neckX = neckRig.x + ((thinking || performanceMode === 'listen') ? 0.025 : Math.sin(now * 0.0008) * 0.009);
       const neckY = neckRig.y + Math.sin(now * 0.00055) * 0.012;
@@ -524,26 +634,15 @@ function animate(now) {
       headRig.node.rotation.z = THREE.MathUtils.damp(headRig.node.rotation.z, headZ, 7, delta);
     }
     speakingTime += delta;
-    mouthPulse = Math.max(0, mouthPulse - delta);
-    if (speaking) { const syllable = Math.max(0, Math.sin(speakingTime * 12)); const envelope = 0.07 + syllable * 0.2 + speechWordEnergy * 0.18 + (mouthPulse > 0 ? 0.24 : 0); visemeTargets[mouthShape] = Math.max(visemeTargets[mouthShape], Math.min(envelope, 0.72)); }
     for (const shape of mouthShapes) { visemeWeights[shape] = THREE.MathUtils.damp(visemeWeights[shape], visemeTargets[shape], 14, delta); vrm.expressionManager?.setValue(shape, visemeWeights[shape]); }
     applyPoseOverlay(delta);
-
-    if (blinkTime > 0) {
-      blinkTime -= delta;
-      const progress = 1 - Math.max(0, blinkTime) / blinkDuration;
-      const blink = Math.sin(Math.PI * progress);
-      vrm.expressionManager?.setValue('blink', blink);
-    } else {
-      vrm.expressionManager?.setValue('blink', 0);
-      nextBlink -= delta;
-      if (nextBlink <= 0) {
-        blinkDuration = 0.12 + Math.random() * 0.07;
-        blinkTime = blinkDuration;
-        nextBlink = 2.8 + Math.random() * 4.2;
-      }
-    }
   }
+  const colorBlend = Math.min(1, delta * 1.8);
+  keyLight.color.lerp(moodColorTarget.key, colorBlend);
+  fillLight.color.lerp(moodColorTarget.fill, colorBlend);
+  rimLight.color.lerp(moodColorTarget.rim, colorBlend);
+  dustMaterial.color.lerp(moodColorTarget.rim, colorBlend);
+  if (particlesEnabled) dustMotes.rotation.y += delta * 0.018;
   camera.lookAt(0, modelHeight * 0.52, 0);
   renderer.render(scene, camera);
 }

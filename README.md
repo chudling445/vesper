@@ -1,26 +1,37 @@
-# Project Vesper ✿
+# Vesper
 
-Project Vesper is an anime-focused LLM companion project. She chats in a snarky-but-sweet anime voice, calls you "senpai", and appears as a large 3D VRM avatar that emotes and lip-syncs while she talks. It runs on your own PC: local chat through Ollama by default, or OpenAI / any OpenAI-compatible API if you prefer. Inspired by [Project Riko](https://github.com/rayenfeng/riko_project).
+![Vesper project banner](assets/vesper-banner.png)
+
+Project Vesper is an anime-focused LLM companion project. She chats in a snarky-but-sweet anime voice, calls you "senpai", and appears as a large 3D VRM avatar that emotes and lip-syncs while she talks. It runs on your own PC: local chat through Ollama by default, or OpenAI, Anthropic Claude, xAI Grok, or an OpenAI-compatible API if you choose a hosted provider. Inspired by [Project Riko](https://github.com/rayenfeng/riko_project).
 
 **Runs on Windows with Node.js (the Windows setup installs Node.js for you if it is missing).**
 
-## ✨ Features
+## Features
 
-- 💬 **LLM-based dialogue** using Ollama (local), the OpenAI API, or any OpenAI-compatible API
-- 🧠 **Conversation memory** — recent messages are kept on this computer and sent with every request
-- 📁 **Clean YAML-based config** for personality: `character_config.yaml`
-- 🧍 **3D VRM avatar** with anime-style expressions, blush, smooth damped motion, orbit, zoom, and word-timed lip sync
-- 🔊 **Bright anime-dub voice profiles** in English and 日本語 using the best matching installed system voice, with playful energy, teasing cadence, pitch, and Auto React controls
-- 🎙️ **Push-to-talk** speech input when the browser exposes Speech Recognition
-- 🎮 **Offline Arcade** with seven games: Jan-Ken-Pon, Tic-Tac-Toe, Memory Match, Omikuji, Reflex Test, Star Catch, and High-Low
-- 🌌 **Selectable model backdrops** with Atelier, Sakura, Night, Aurora, and Sunset presets shared by the full studio and Model Only window
-- 🧭 **First-run welcome flow** with setup steps and a Model Gallery coming-soon preview
-- 🌸 **Anime themes** — Sakura Senpai (default), Mica Night, Velvet, Petal, Moonstone, Jade, Riko Atelier, and Portrait Stage. Press **T** to cycle.
-- 🔒 **Private by default** — the server only listens on `127.0.0.1`
+- **LLM-based dialogue** using Ollama (local), OpenAI, Anthropic Claude, xAI Grok, or any OpenAI-compatible API
+- **Persistent local memory** — explicit preferences, projects, and goals are indexed in local IndexedDB, with relationship milestones and a rolling extractive summary across long conversations. Add, edit, pin, and remove memories in LLM Settings; pinned facts are prioritized in prompt context
+- **Screen-frame vision** — attach a user-selected screen or app snapshot to a message when the selected model supports images; captures are temporary and are not added to chat history
+- **Character cards** — import/export SillyTavern v2/v3 PNG cards and JSON profiles, including keyword-matched lorebook entries
+- **Persona studio and branching chat** — save custom system instructions locally, edit an earlier prompt, regenerate a reply, and restore saved branches
+- **Safe chat Markdown** — renders headings, lists, links, emphasis, block quotes, and fenced code without allowing model-provided raw HTML; code blocks include one-click copy
+- **Offline Code Lab** — draft and preview HTML/CSS in a script-disabled isolated frame, render Markdown safely, and explicitly run JavaScript in a disposable worker with blocked network access and a five-second limit; drafts stay in local Vesper storage
+- **Offline note context** — relevant Inbox notes are ranked and added to model context on-device, with matched notes clearly shown in the chat toolbar
+- **Clean YAML-based config** for personality: `character_config.yaml`
+- **3D VRM avatar** with a cross-fading expression engine, randomized blinking, biomechanically limited gaze, touch hitboxes, optional authored gesture clips with procedural fallbacks, mood lighting, ambient dust, model tint/layer controls, orbit, and zoom
+- **Audio spectrum lip-sync** — Web Audio FFT bands drive breath resonance, jaw/viseme intensity, and consonant emphasis for audio streams and chunks; browser speech synthesis still uses approximate word-boundary cues
+- **Avatar canvas stream hook** — expose a 30 FPS MediaStream to integrations in the same page; this is not an OS virtual camera or VMC/OSC sender
+- **Bright anime-dub voice profiles** in English and 日本語 using installed system voices, 1.1× pace and 1.4× pitch defaults, speech-boundary visemes, and a timer fallback when browser boundary events are unavailable
+- **Push-to-talk** speech input when the browser exposes Speech Recognition
+- **Offline Arcade** with seven games: Jan-Ken-Pon, Tic-Tac-Toe, Memory Match, Omikuji, Reflex Test, Star Catch, and High-Low
+- **PC Builds & Money** — offline PC build sheets with per-retailer price snapshots, specification-based compatibility checks, Indian budget allocation guides from ₹15,000 upward, local exports, plus optional portfolio, ledger, and habit tools
+- **Selectable model backdrops** with Atelier, Sakura, Night, Aurora, and Sunset presets shared by the full studio and Model Only window
+- **First-run welcome flow** with setup steps and a Model Gallery coming-soon preview
+- **Twenty-three shared themes** — the original Vesper palettes plus Omarchy Quattro, Tokyo Night, Catppuccin Mocha, Lumon Industries, Fenrir Cyberpunk, Gruber Darker, Rosé Pine Dark, Miasma Forest, Solitude Slate, and Nord Frost. Press **T** on Chat or **Ctrl/Cmd+Shift+T** on any page to cycle.
+- **Private by default** — the server only listens on `127.0.0.1`
 
-## ⚙️ Configuration
+## Configuration
 
-Vesper's personality lives in `character_config.yaml`:
+Vesper's built-in personality lives in `character_config.yaml`. You can add a device-local persona prompt in **LLM Settings**; hosted providers receive that prompt and the recent conversation when selected:
 
 ```
 character_name: Vesper
@@ -41,7 +52,7 @@ Edit the prompts, save, and restart Vesper. If the file is missing, the same per
 
 Model and provider settings live in `.env` (copy `.env.example`), or pick them in **LLM Settings** inside the app. Keep `.env` private — it can contain API keys.
 
-## 🛠️ Setup
+## Setup
 
 ### Install on Windows
 
@@ -53,11 +64,13 @@ Build the Windows installer by running `installer\build-installer.ps1` in PowerS
 ollama pull llama3.2
 ```
 
-Install [Ollama](https://ollama.com/download/windows), download any chat model, then pick it in **LLM Settings** and press **Save Model**. Online providers (OpenAI or compatible) need credentials in `.env`, and they send your recent messages to that provider.
+Install [Ollama](https://ollama.com/download/windows), download any chat model, then pick it in **LLM Settings** and press **Save Model**. Hosted providers (OpenAI, Anthropic, xAI, or compatible) need credentials in `.env`; recent messages and custom persona instructions are sent to the selected provider.
 
-## 🧪 Usage
+## Usage
 
 - Double-click **Start Vesper.bat** to open the local site in your browser.
+- Open **Code Lab** from Chat or Workspace to draft locally, preview HTML/CSS, run a short JavaScript snippet, or export a standalone HTML preview.
+- Open **Builds & Money** from Workspace or visit `/planner` to plan a PC build, keep manual Indian retailer price snapshots, compare the lowest recorded offer, and save or export a shopping sheet.
 - The first launch opens the welcome page; choose **ENTER THE ATELIER** to continue to `/chat`. Returning launches go directly to the chat studio.
 - The desktop shortcut (**Start Vesper Desktop.bat**) opens an app-style window with Chrome or Edge when available.
 - Use **MODEL ONLY** in the header, or double-click **Start Vesper Model Only.bat**, for a separate floating avatar window with a transparent canvas and compact reaction controls.
@@ -72,12 +85,13 @@ The flow:
 4. **Auto Speak** reads it aloud with your chosen voice
 5. The avatar changes expression and her lips follow the spoken words
 
-## 🎭 Character, voice, and controls
+## Character, voice, and controls
 
 - Avatar files are not included in this repository because the current model's export permissions prohibit redistribution. Import a VRM you are permitted to use with the app.
 - Drag to turn the model, scroll or use the zoom slider to frame it, choose **Orbit** for a slow turn, and **Reset View** to start over.
 - Choose from anime-style expressions below the model, use **Auto React** for automatic movement and blush while she speaks, and set Vesper's moment (**Playful**, **Tender**, **Thoughtful**) to change how she answers.
-- The main app exposes English and Japanese bright anime-dub profiles. They use installed Windows/browser voices rather than cloning a named character or actor. Voice availability depends on installed voices; lip sync follows speech word timing with a fallback cue timer and expressive mouth shapes.
+- The main app exposes English and Japanese bright anime-dub profiles. They use installed Windows/browser voices rather than cloning a named character or actor. `waifuVoice.js` coordinates Web Speech boundaries and fallback timing with `audio-viseme-manager.js`; browser speech synthesis does not expose its rendered waveform, so TTS phonemes are estimated from text. Streamed audio can use `audioVisemeManager.connectAudioElement()`, `connectMediaStream()`, or `playAudioChunks()` for live Web Audio analysis. VRM mouth expressions depend on the selected model.
+- Avatar behavior is split across `expressionManager.js`, `animationController.js`, and `hitboxManager.js`. Models with named gesture clips use Three.js `AnimationMixer`; other VRMs use the existing procedural gestures. VRM spring bones update through the normal per-frame `vrm.update(delta)` call.
 - If Ollama is stopped, Vesper attempts to start `ollama serve` locally, waits for `/api/tags`, and then retries once. If the chosen model is missing, the error now names the model and points to LLM Settings.
 - Choose **Portrait Stage** from Theme for a full-model view with a small chat system anchored at the bottom.
 - The Model Only window hides chat and panels so Vesper can stay visible beside other work; drag the model to rotate it and use the compact dock for blush, wave, listen, and tease.
@@ -90,15 +104,17 @@ To use your own avatar, export a VRM you are permitted to distribute or use, the
 
 The VRM was exported with Creator set to **Unspecified**. Its current export permissions are personal use, non-commercial, redistribution prohibited, alteration prohibited, and attribution required. Check the VRM metadata in VRoid Studio before sharing the model.
 
-## 🔐 Network and privacy
+## Network and privacy
 
-The Windows install runs on this PC and defaults to Ollama on `127.0.0.1`. Local chats stay on the PC. OpenAI and compatible modes send recent messages to the provider you select. Keys stay in `.env` and are never put in the page. The Windows installer restricts `.env` permissions to your Windows account, Administrators, and SYSTEM. Do not commit or share it.
+The Windows install runs on this PC and defaults to Ollama on `127.0.0.1`. Local chats, memory, and captures stay on the PC when using Ollama. Hosted modes send recent messages and enabled context to the provider you select; an attached screen frame is included only with the message you send. Keys stay in `.env` and are never put in the page. The Windows installer restricts `.env` permissions to your Windows account, Administrators, and SYSTEM. Do not commit or share it.
+
+The existing PIN/WebAuthn lock gates access to the interface; it does **not** encrypt chat history or workspace records at rest. The current browser-only quick-capture shortcut works while Vesper is open and focused. WebGPU model weights, AES-encrypted vault storage, OS-level global hotkeys, full VMC/virtual-camera output, webcam face tracking, PDF/image document extraction, Markdown tables and syntax highlighting, and Bloom/depth-of-field/SSAO post-processing are not included yet. Workspace project labels currently group notes and imported text; they do not bundle arbitrary binary files.
 
 Vesper uses an affectionate romantic-companion roleplay voice while remaining clear that she is an AI character. The desktop app window uses a separate browser profile beside the app, so its chat and settings stay in this project folder.
 
 For a concise setup guide, see [GETTING-STARTED.md](GETTING-STARTED.md). For a password-protected online preview, see [DEPLOYMENT.md](DEPLOYMENT.md). The online template excludes the current VRM because its export settings prohibit redistribution.
 
-## 📌 TODO / Future Improvements
+## TODO / Future Improvements
 
 - [x] GUI or web interface
 - [x] VRM model frontend
@@ -106,7 +122,7 @@ For a concise setup guide, see [GETTING-STARTED.md](GETTING-STARTED.md). For a p
 - [x] Browser microphone push-to-talk with speech recognition
 - [x] Automatic emotion, blush, and movement reactions while speaking
 
-## 🧑‍🎤 Credits
+## Credits
 
 - Project style and persona inspiration: [Project Riko](https://github.com/rayenfeng/riko_project) by Just Rayen
 - 3D viewer: [three.js](https://threejs.org) and [@pixiv/three-vrm](https://github.com/pixiv/three-vrm)
@@ -117,12 +133,16 @@ For a concise setup guide, see [GETTING-STARTED.md](GETTING-STARTED.md). For a p
 
 Vesper now keeps its main session, model choice, voice profile, personality, theme, backdrop, and stage settings in a versioned `vesper-state-v2` snapshot. IndexedDB is the durable store when available, localStorage is the immediate startup cache and fallback, and `persistence.js` exposes `migrateState()` for future schema changes. Existing legacy keys are imported automatically.
 
+The PC build workspace uses the same local state store. Its compatibility result only checks specifications entered in a build sheet; reference profiles are broad platform examples, not a live SKU database. Retailer offers are manually recorded snapshots (one latest price per retailer and part), and the total uses the lowest recorded offer. Vesper does not scrape stores or imply stock availability. Confirm the exact product revision, shipping, seller, warranty, BIOS support, cooler mounting, case clearance, and PSU connectors before purchase. Budget guides are allocation suggestions rather than guaranteed shopping lists.
+
 The browser UI also has centralized error capture and toast feedback in `feedback.js`, a shared dark/light/system provider in `theme-provider.js`, reusable focus-trap helpers in `a11y.js`, and export/share utilities in `export-utils.js`. Chat exports support Markdown, JSON, and CSV; the share action uses the system share sheet when available and otherwise copies a clean summary to the clipboard. Keyboard shortcuts include Ctrl/Cmd+K for the command palette, Ctrl/Cmd+Shift+E for Markdown export, Ctrl/Cmd+Shift+S for sharing, and Escape for overlays.
 
 ## Productivity workspace
 
 - **Quick Capture** is available at `/quick-capture` and from the main chat with **Ctrl/Cmd + Shift + Space**. It accepts text, pasted links, web clippings, files, image URLs, and browser speech notes without opening the full studio.
 - **Workspace** at `/workspace` includes a draggable dashboard, Quick Checklist, Recent Items, Daily Motivation, time tracker, Kanban inbox, due-date calendar, and drag-and-drop status updates.
+- **Project notes** can be grouped and filtered by project in the Inbox Board. Matching notes carry their project label into chat retrieval and workspace exports; data remains local.
+- **Local text import** accepts `.txt`, `.md`, `.markdown`, and `.csv` files by file picker or drop. It stores extracted text as local workspace notes with per-file and total text limits. Binary files are not uploaded or retained.
 - **Customization Studio** supports Warm Sunset, Cyberpunk, Forest Green, and OLED Pitch Black presets, custom accent colors, local background images, and Sans-serif, Serif, Monospace, or dyslexic-friendly display fonts.
 - Workspace exports include Markdown, CSV, a stylized PNG summary, and print-to-PDF. Share summaries copy clean bullet formatting to the clipboard.
 - **Read-only publishing** creates local Vesper share tokens with 1/7/30-day expiry options and optional password protection. Published links are served by the running Vesper server and are intentionally ephemeral; deploy behind HTTPS and trusted proxy settings before sharing outside the local computer.

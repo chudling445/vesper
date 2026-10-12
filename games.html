@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Play Jan-Ken-Pon, Tic-Tac-Toe, Memory Match and draw an omikuji fortune with Vesper." />
+    <meta name="description" content="Play and create with Vesper in an offline local arcade of puzzles, toys, and gentle soundscapes." />
     <meta name="theme-color" content="#130c18" />
     <title>Arcade — Vesper</title>
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -23,8 +23,15 @@
       <section class="page">
         <div class="page-hero">
           <div class="eyebrow"><span class="eyebrow-dash"></span> ARCADE / PLAY WITH VESPER</div>
-          <h1>Play with <em>Vesper.</em></h1>
-          <p class="page-lead">Seven quick games, all offline. Vesper reacts to every move, in English or 日本語, and can read her reactions out loud.</p>
+          <h1>Take a little <em>play break.</em></h1>
+          <p class="page-lead">A growing collection of tiny games and creative toys. Everything runs on this device, and your best scores stay in your local Vesper vault.</p>
+        </div>
+
+        <div class="arcade-toolbar" aria-label="Arcade controls">
+          <label class="arcade-search"><span aria-hidden="true">⌕</span><span class="sr-only">Find a game</span><input id="arcade-search" type="search" placeholder="Find a game…" autocomplete="off" /></label>
+          <label class="arcade-theme-label" for="arcade-theme">CABINET</label>
+          <select id="arcade-theme" aria-label="Arcade theme"><option value="sakura">Sakura</option><option value="retro">8-bit retro</option><option value="neon">Neon night</option><option value="pastel">Soft pastel</option></select>
+          <div class="arcade-session-controls"><span id="arcade-session-status" role="status">Ready when you are</span><button class="quiet-button" id="arcade-pause" type="button" disabled>PAUSE</button><button class="quiet-button" id="arcade-resume" type="button" hidden>RESUME</button><button class="quiet-button" id="arcade-exit" type="button" disabled>EXIT GAME</button></div>
         </div>
 
         <div class="arcade-tabs" role="tablist" aria-label="Choose a game">
@@ -35,6 +42,19 @@
           <button type="button" role="tab" data-game="reflex" aria-selected="false">⚡ Reflex Test</button>
           <button type="button" role="tab" data-game="starcatch" aria-selected="false">✦ Star Catch</button>
           <button type="button" role="tab" data-game="highlow" aria-selected="false">🔢 High-Low</button>
+          <button type="button" role="tab" data-game="2048" aria-selected="false">🔢 2048</button>
+          <button type="button" role="tab" data-game="mines" aria-selected="false">💣 Mines</button>
+          <button type="button" role="tab" data-game="snake" aria-selected="false">🐍 Snake</button>
+          <button type="button" role="tab" data-game="dvd" aria-selected="false">📀 DVD bounce</button>
+          <button type="button" role="tab" data-game="cow" aria-selected="false">🐄 Find the cow</button>
+          <button type="button" role="tab" data-game="cookie" aria-selected="false">🍪 Cookie garden</button>
+          <button type="button" role="tab" data-game="hacker" aria-selected="false">⌨️ Hacker typer</button>
+          <button type="button" role="tab" data-game="thoughts" aria-selected="false">✦ Pixel thoughts</button>
+          <button type="button" role="tab" data-game="silk" aria-selected="false">🎨 Silk studio</button>
+          <button type="button" role="tab" data-game="doodle" aria-selected="false">✏️ Quick doodle</button>
+          <button type="button" role="tab" data-game="pointer" aria-selected="false">👉 Pointer pals</button>
+          <button type="button" role="tab" data-game="text-toy" aria-selected="false">🪄 Text toy</button>
+          <button type="button" role="tab" data-game="ambience" aria-selected="false">🌧️ Ambient room</button>
         </div>
 
         <div class="arcade-layout">
@@ -111,13 +131,67 @@
               <div class="game-toolbar"><button class="quiet-button" id="highlow-new" type="button">NEW NUMBER</button><span class="game-counter">BEST <b id="highlow-best">—</b></span></div>
               <p class="game-result" id="highlow-status" role="status">I have a number in mind…</p>
             </div>
+
+            <section class="game-panel arcade-extra" data-panel="2048" aria-label="2048 game" hidden>
+              <h2>2048 <span class="jp">数字パズル</span></h2><p class="game-help">Join matching tiles. Use arrow keys, or the buttons below.</p><div class="game-toolbar"><span class="game-counter">SCORE <b id="g2048-score">0</b></span><span class="game-counter">BEST <b id="g2048-best">0</b></span><button class="quiet-button" id="g2048-reset" type="button">NEW GAME</button></div><div class="board-2048" id="g2048-board" role="grid" aria-label="2048 board"></div><div class="game-dpad" aria-label="Move tiles"><button type="button" data-move="up" aria-label="Move up">↑</button><div><button type="button" data-move="left" aria-label="Move left">←</button><button type="button" data-move="down" aria-label="Move down">↓</button><button type="button" data-move="right" aria-label="Move right">→</button></div></div><p id="g2048-status" class="game-result" role="status">Make a move.</p>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="mines" aria-label="Minesweeper game" hidden>
+              <h2>Minesweeper <span class="jp">マインスイーパー</span></h2><p class="game-help">Reveal every safe tile. Right-click to flag; on touch, toggle flag mode.</p><div class="game-toolbar"><span class="game-counter">TIME <b id="mines-time">0</b></span><span class="game-counter">MINES <b id="mines-left">10</b></span><label class="game-counter"><input id="mines-flag-mode" type="checkbox"> FLAG MODE</label><button class="quiet-button" id="mines-reset" type="button">NEW BOARD</button></div><div class="mines-board" id="mines-board" role="grid" aria-label="Minesweeper 9 by 9 board"></div><p id="mines-status" class="game-result" role="status">Your first reveal is always safe.</p>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="snake" aria-label="Snake game" hidden>
+              <h2>Moonlit Snake <span class="jp">へびゲーム</span></h2><p class="game-help">Collect moon fruit and avoid the walls. Arrow keys or touch controls work.</p><div class="game-toolbar"><span class="game-counter">FRUIT <b id="snake-score">0</b></span><span class="game-counter">BEST <b id="snake-best">0</b></span><button class="quiet-button" id="snake-start" type="button">START / RESTART</button></div><canvas id="snake-canvas" class="arcade-canvas snake-canvas" width="480" height="360" aria-label="Snake game field"></canvas><div class="game-dpad" aria-label="Snake direction"><button type="button" data-snake="up" aria-label="Up">↑</button><div><button type="button" data-snake="left" aria-label="Left">←</button><button type="button" data-snake="down" aria-label="Down">↓</button><button type="button" data-snake="right" aria-label="Right">→</button></div></div><p id="snake-status" class="game-result" role="status">Ready for a little moonlight?</p>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="dvd" aria-label="DVD bounce toy" hidden>
+              <h2>Orbiting logo <span class="jp">バウンス</span></h2><p class="game-help">A screen-saver classic with Vesper's little star. Wait for a perfect corner kiss.</p><div class="game-toolbar"><button id="dvd-toggle" class="primary-button" type="button">START DRIFT</button><span class="game-counter">CORNER HITS <b id="dvd-hits">0</b></span><button id="dvd-reset" class="quiet-button" type="button">RESET</button></div><div class="dvd-arena" id="dvd-arena"><span id="dvd-logo" aria-label="Vesper logo">✦ VESPER</span></div><p class="game-result" id="dvd-status" role="status">A tiny screen saver for your tiny break.</p>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="cow" aria-label="Find the cow game" hidden>
+              <h2>Find the cow <span class="jp">牛をさがして</span></h2><p class="game-help">Move closer to the hidden cow to hear the bell more often and more brightly. Audio starts after your first click.</p><div class="cow-field" id="cow-field" role="application" aria-label="Move the pointer around this field to find the hidden cow"><span class="cow-hint">Somewhere in this field…</span><span class="cow-cursor" id="cow-cursor" aria-hidden="true">⌖</span></div><div class="game-toolbar"><button class="primary-button" id="cow-new" type="button">HIDE A NEW COW</button><span class="game-counter">BEST <b id="cow-best">—</b></span></div><p class="game-result" id="cow-status" role="status">Closer means louder. Click when you hear it.</p>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="cookie" aria-label="Cookie garden game" hidden>
+              <h2>Cookie garden <span class="jp">クッキー農園</span></h2><p class="game-help">A soft little idle clicker. Your garden grows while you are away, up to eight hours.</p><div class="cookie-stage"><button id="cookie-click" type="button" aria-label="Bake a cookie">🍪</button><div><strong id="cookie-count">0</strong><span>cookies</span><small id="cookie-rate">0 per second</small></div></div><div class="cookie-upgrades" id="cookie-upgrades"></div><p class="game-result" id="cookie-status" role="status">Your first cookie is waiting.</p>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="hacker" aria-label="Hacker typer toy" hidden>
+              <h2>Hacker typer <span class="jp">ターミナルごっこ</span></h2><p class="game-help">Tap any key to reveal pretend terminal code. It stays completely on this page.</p><div class="hacker-terminal" id="hacker-terminal" tabindex="0" role="textbox" aria-label="Pretend terminal. Type any key to reveal code." aria-readonly="true"><pre id="hacker-output">VESPER LOCAL TERMINAL · READY&#10;PRESS ANY KEY TO BEGIN_</pre></div><button id="hacker-reset" class="quiet-button" type="button">CLEAR TERMINAL</button>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="thoughts" aria-label="Pixel thoughts meditation" hidden>
+              <h2>Pixel thoughts <span class="jp">ひと休み</span></h2><p class="game-help">Write one worry down, then let it drift away. Your words stay on this page and are erased when the timer ends.</p><form id="thoughts-form" class="thoughts-form"><label for="thoughts-input">What would you like to set down for a moment?</label><textarea id="thoughts-input" maxlength="180" rows="3" placeholder="A thought, just for now…" required></textarea><button class="primary-button" type="submit">LET IT DRIFT</button></form><div class="thoughts-sky" id="thoughts-sky" hidden><span id="thoughts-star">✦</span><p id="thoughts-countdown" aria-live="polite">60</p></div><p class="game-result" id="thoughts-status" role="status">One minute, just for you.</p>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="silk" aria-label="Silk generative art" hidden>
+              <h2>Silk studio <span class="jp">光の絵</span></h2><p class="game-help">Draw one side; Vesper mirrors your glowing lines into a symmetrical little dream.</p><div class="game-toolbar"><label class="game-counter">COLOR <input id="silk-color" type="color" value="#e8a7e1" aria-label="Silk drawing color"></label><button id="silk-clear" class="quiet-button" type="button">CLEAR CANVAS</button></div><canvas id="silk-canvas" class="arcade-canvas silk-canvas" width="900" height="460" aria-label="Draw symmetrical glowing art"></canvas><p id="silk-status" class="game-result" role="status">Touch, click, or drag to draw.</p>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="doodle" aria-label="Quick doodle classifier" hidden>
+              <h2>Quick doodle <span class="jp">お絵かき</span></h2><p class="game-help">Draw a simple shape for a playful offline guess. This heuristic toy does not upload or train on your drawing.</p><canvas id="doodle-canvas" class="arcade-canvas doodle-canvas" width="560" height="300" aria-label="Draw a doodle here"></canvas><div class="game-toolbar"><button id="doodle-guess" class="primary-button" type="button">GUESS MY DOODLE</button><button id="doodle-clear" class="quiet-button" type="button">CLEAR</button></div><p id="doodle-status" class="game-result" role="status">I wonder what you will draw.</p>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="pointer" aria-label="Pointer pals toy" hidden>
+              <h2>Pointer pals <span class="jp">こっちだよ</span></h2><p class="game-help">A tiny offline pointer-pointer homage. The little pals turn toward your cursor wherever you wander.</p><div class="pointer-field" id="pointer-field" aria-label="Move your pointer around the field"><span>🐱</span><span>🐰</span><span>🐸</span><span>🦊</span><span>🐼</span><span>🐥</span><span>🐧</span><span>🐻</span><span>🐹</span></div><p class="game-result">Every pal knows where you are.</p>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="text-toy" aria-label="Text transformer" hidden>
+              <h2>Little text spells <span class="jp">ことば遊び</span></h2><p class="game-help">Turn a phrase into playful Pig Latin, pirate talk, leetspeak, or emoji. Everything stays in your browser.</p><label class="arcade-text-label" for="text-toy-input">YOUR PHRASE</label><textarea id="text-toy-input" rows="4" maxlength="2000" placeholder="A tiny phrase to transform…"></textarea><div class="game-toolbar"><label class="game-counter" for="text-toy-style">SPELL</label><select id="text-toy-style"><option value="pig">Pig Latin</option><option value="leet">Leetspeak</option><option value="pirate">Pirate-ish</option><option value="emoji">Emoji mood</option></select><button id="text-toy-copy" class="quiet-button" type="button">COPY</button></div><output class="text-toy-output" id="text-toy-output" aria-live="polite"></output>
+            </section>
+
+            <section class="game-panel arcade-extra" data-panel="ambience" aria-label="Ambient sound mixer" hidden>
+              <h2>Ambient room <span class="jp">音の部屋</span></h2><p class="game-help">Build a quiet soundscape from locally generated rain, soft noise, and warm tones. Audio begins only when you press play.</p><div class="ambience-list"><label><span>🌧️ Rain</span><input type="range" min="0" max="100" value="0" data-ambience="rain"></label><label><span>🔥 Fireplace</span><input type="range" min="0" max="100" value="0" data-ambience="fire"></label><label><span>🌌 Deep space</span><input type="range" min="0" max="100" value="0" data-ambience="space"></label></div><div class="game-toolbar"><button id="ambience-toggle" class="primary-button" type="button">START SOUND</button><button id="ambience-stop" class="quiet-button" type="button">STOP</button></div><p id="ambience-status" class="game-result" role="status">Synthesized locally with Web Audio.</p>
+            </section>
           </div>
 
           <aside class="card vesper-says">
             <div class="says-head"><span class="chess-avatar-sigil">V<span>✿</span></span><div><b>Vesper</b><small>watching you play</small></div></div>
             <p class="says-text" id="says-text" aria-live="polite">Pick a game, senpai.</p>
             <label class="auto-voice says-voice"><input id="speak-reactions" type="checkbox" /> <span>SPEAK HER REACTIONS</span></label>
+            <div id="arcade-idle-suggestion" class="arcade-idle-suggestion" hidden><small>A LITTLE PAUSE?</small><p>Want a tiny round of 2048 or a daily word?</p><div><button type="button" data-idle-launch="2048">2048</button><button type="button" data-idle-launch="wordle">WORD</button><button type="button" id="arcade-idle-dismiss" aria-label="Dismiss suggestion">×</button></div></div>
             <div class="scoreboard" id="scoreboard" aria-label="Scores"></div>
+            <h3 class="arcade-hall-title">ARCADE HALL</h3><div class="arcade-hall" id="arcade-hall" aria-label="Local best scores"></div>
           </aside>
         </div>
       </section>

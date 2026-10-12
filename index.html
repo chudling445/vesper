@@ -32,7 +32,7 @@
           <span class="brand-emblem" aria-hidden="true"><i></i><b>✦</b></span>
           <span class="brand-name">VESPER<span> / </span>ATELIER</span>
         </a>
-        <nav class="site-nav main-nav" aria-label="Pages"><a href="/" aria-current="page">Chat</a><a href="/workspace">Workspace</a><a href="/quick-capture">Capture</a><a href="/games">Arcade</a><a href="/voices">Voice lab</a><a href="/about">Studio guide</a></nav>
+        <nav class="site-nav main-nav" aria-label="Pages"><a href="/" aria-current="page">Chat</a><a href="/workspace">Workspace</a><a href="/lab">Code Lab</a><a href="/quick-capture">Capture</a><a href="/games">Arcade</a><a href="/voices">Voice lab</a><a href="/about">Studio guide</a></nav>
         <div class="topbar-right">
           <span class="edition">PERSONAL BUILD <b>NO. 01</b></span>
           <div class="theme-dock" id="theme-dock">
@@ -52,6 +52,11 @@
               <button class="theme-option" type="button" data-theme-option="jade" aria-pressed="false"><span class="palette-dot jade-dot"></span><span class="theme-option-copy"><b>Jade</b><small>Midnight garden</small></span><span class="theme-check">✦</span></button>
               <button class="theme-option" type="button" data-theme-option="riko" aria-pressed="false"><span class="palette-dot riko-dot"></span><span class="theme-option-copy"><b>Riko Atelier</b><small>Anime studio · warm lilac light</small></span><span class="theme-check">✦</span></button>
               <button class="theme-option" type="button" data-theme-option="portrait" aria-pressed="false"><span class="palette-dot portrait-dot"></span><span class="theme-option-copy"><b>Portrait Stage</b><small>Full model · compact chat overlay</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="ember" aria-pressed="false"><span class="palette-dot ember-dot"></span><span class="theme-option-copy"><b>Ember</b><small>Velvet dusk · warm copper glow</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="tidepool" aria-pressed="false"><span class="palette-dot tidepool-dot"></span><span class="theme-option-copy"><b>Tidepool</b><small>Deep water · soft sea glass</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="dreamlight" aria-pressed="false"><span class="palette-dot dreamlight-dot"></span><span class="theme-option-copy"><b>Dreamlight</b><small>Amethyst haze · silver blue</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="pineglass" aria-pressed="false"><span class="palette-dot pineglass-dot"></span><span class="theme-option-copy"><b>Pineglass</b><small>Evergreen · mint light</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="citrus-noir" aria-pressed="false"><span class="palette-dot citrus-noir-dot"></span><span class="theme-option-copy"><b>Citrus Noir</b><small>Night studio · golden lime</small></span><span class="theme-check">✦</span></button>
               <div class="theme-menu-foot">PRESS <kbd>T</kbd> TO CYCLE PALETTES</div>
             </div>
           </div>
@@ -92,6 +97,7 @@
             </button>
             <div class="stage-toolbar" aria-label="Avatar view controls">
               <button class="stage-tool" id="auto-orbit" type="button" aria-pressed="false" title="Slowly rotate the avatar">ORBIT <b>OFF</b></button>
+              <button class="stage-tool" id="avatar-stream-toggle" type="button" aria-pressed="false" title="Expose a 30 FPS canvas MediaStream to local integrations">STREAM OFF</button>
               <button class="stage-tool" id="reset-view" type="button" title="Reset avatar rotation and zoom">RESET VIEW</button>
               <label class="zoom-control" for="stage-zoom"><span>ZOOM</span><input id="stage-zoom" type="range" min="1.8" max="3.6" step="0.1" value="2.15" aria-label="Avatar zoom" /></label>
             </div>
@@ -116,8 +122,21 @@
               <button type="button" class="expression-button" data-expression="embarrassed" aria-pressed="false">Embarrassed</button>
               <button type="button" class="expression-button" data-expression="excited" aria-pressed="false">Excited</button>
               <button type="button" class="expression-button" data-expression="teasing" aria-pressed="false">Teasing</button>
+              <button type="button" class="expression-button" data-expression="joy" aria-pressed="false">Joy</button>
+              <button type="button" class="expression-button" data-expression="fun" aria-pressed="false">Fun</button>
+              <button type="button" class="expression-button" data-expression="lookup" aria-pressed="false">Look up</button>
+              <button type="button" class="expression-button" data-expression="lookdown" aria-pressed="false">Look down</button>
+              <button type="button" class="expression-button" data-expression="lookleft" aria-pressed="false">Look left</button>
+              <button type="button" class="expression-button" data-expression="lookright" aria-pressed="false">Look right</button>
+              <button type="button" class="expression-button" data-expression="blush" aria-pressed="false">Blush</button>
+              <button type="button" class="expression-button" data-expression="wink" aria-pressed="false">Wink</button>
             </div>
           </div>
+          <section class="wardrobe-dock" aria-label="Avatar customization">
+            <div class="performance-head"><span>AVATAR / CUSTOMIZATION</span><span id="wardrobe-status">LOCAL PRESET</span></div>
+            <div class="wardrobe-controls"><label for="avatar-tint">MODEL TINT<input id="avatar-tint" type="color" value="#ffffff" aria-label="Tint the avatar model" /></label><label class="particle-toggle"><input id="avatar-particles" type="checkbox" checked /> AMBIENT DUST</label></div>
+            <div class="wardrobe-layers" id="wardrobe-layers" aria-label="Toggle avatar clothing and accessory layers"></div>
+          </section>
           <section class="performance-dock" aria-label="Live avatar performance">
             <div class="performance-head"><span>LIVE PERFORMANCE</span><span id="performance-status">IDLE / READY</span></div>
             <div class="performance-grid">
@@ -126,6 +145,8 @@
               <button type="button" class="performance-button" data-pose="tilt"><span>◇</span><b>Tilt</b><small>curious</small></button>
               <button type="button" class="performance-button" data-pose="shrug"><span>⌁</span><b>Shrug</b><small>maybe?</small></button>
               <button type="button" class="performance-button" data-pose="thinking"><span>◒</span><b>Thinking</b><small>one moment</small></button>
+              <button type="button" class="performance-button" data-pose="bow"><span>⌁</span><b>Bow</b><small>thank you</small></button>
+              <button type="button" class="performance-button" data-pose="dance"><span>♫</span><b>Dance</b><small>celebrate</small></button>
               <button type="button" class="performance-button" data-performance="blush"><span>◌</span><b>Blush</b><small>shy mode</small></button>
               <button type="button" class="performance-button" data-performance="listen"><span>◒</span><b>Listen</b><small>soft focus</small></button>
               <button type="button" class="performance-button" data-performance="auto"><span>✧</span><b>Auto react</b><small>speak + blush</small></button>
@@ -160,11 +181,11 @@
             </div>
             <div class="voice-controls">
               <label class="voice-field voice-choice" for="voice-select"><span>VOICE PROFILE</span><select id="voice-select"><option value="__anime_en__">ANIME DUB · ENGLISH</option><option value="__anime_ja__">ANIME DUB · 日本語</option></select></label>
-              <label class="voice-field" for="speech-rate"><span>PACE <output id="speech-rate-value">0.96×</output></span><input id="speech-rate" type="range" min="0.7" max="1.3" step="0.05" value="0.95" /></label>
-              <label class="voice-field" for="speech-pitch"><span>PITCH <output id="speech-pitch-value">1.04×</output></span><input id="speech-pitch" type="range" min="0.7" max="1.4" step="0.05" value="1.05" /></label>
+              <label class="voice-field" for="speech-rate"><span>PACE <output id="speech-rate-value">1.10×</output></span><input id="speech-rate" type="range" min="0.7" max="1.3" step="0.05" value="1.1" /></label>
+              <label class="voice-field" for="speech-pitch"><span>PITCH <output id="speech-pitch-value">1.40×</output></span><input id="speech-pitch" type="range" min="0.7" max="1.4" step="0.05" value="1.4" /></label>
               <button class="voice-stop" id="stop-speaking" type="button" title="Stop voice playback">STOP</button>
             </div>
-            <div class="voice-status" id="voice-status" aria-live="polite">FIRM WAIFU PROFILE · WORD-TIMED LIP SYNC</div>
+            <div class="voice-status" id="voice-status" aria-live="polite">ANIME VOICE PROFILE · SPEECH VISEMES READY</div>
           </section>
           <div class="local-note"><span class="local-icon">⌂</span> <span id="host-note">RUNNING ON THIS COMPUTER · MODEL STAYS IN YOUR FOLDER</span></div>
         </aside>
@@ -188,7 +209,8 @@
             </div>
           </div>
 
-          <div class="chat-tools"><label for="chat-search">SEARCH CHAT</label><input id="chat-search" type="search" placeholder="Find a message…" autocomplete="off" /><span id="chat-search-status" aria-live="polite"></span></div>
+          <div class="chat-tools"><label for="chat-search">SEARCH CHAT</label><input id="chat-search" type="search" placeholder="Find a message…" autocomplete="off" /><span id="chat-search-status" aria-live="polite"></span><span id="local-context-status" aria-live="polite" title="Matching notes are searched from this device's local workspace"></span><label class="branch-label" for="conversation-branches">BRANCHES</label><select id="conversation-branches" aria-label="Restore a saved conversation branch" hidden><option value="">SAVED BRANCHES</option></select></div>
+          <div class="vision-preview" id="vision-preview" hidden><img id="vision-preview-image" alt="Captured screen frame for the next message" /><span>SCREEN FRAME READY · SENT ONLY WITH YOUR NEXT MESSAGE</span><button type="button" id="vision-clear" aria-label="Remove captured screen frame">×</button></div>
           <div class="messages" id="messages" aria-live="polite" aria-label="Messages">
             <div class="welcome-card" id="welcome-card">
               <div class="welcome-ornament" aria-hidden="true"><span></span>✦<span></span></div>
@@ -219,6 +241,7 @@
             <form class="composer" id="chat-form">
               <span class="composer-sigil" aria-hidden="true">✦</span>
               <textarea id="message-input" rows="1" maxlength="4000" placeholder="Say something worth my attention, senpai…" aria-label="Your message"></textarea>
+              <button class="voice-input-button" id="screen-capture" type="button" aria-label="Capture a screen frame" title="Capture a screen or app window for this message">▧</button>
               <button class="voice-input-button" id="voice-input" type="button" aria-label="Speak to Vesper" title="Speak to Vesper"><span aria-hidden="true">◉</span></button>
               <button class="send-button" id="send-button" type="submit" aria-label="Send message">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12h14M12.5 5.5l6.5 6.5-6.5 6.5" /></svg>
@@ -268,6 +291,8 @@
           <select id="provider-select">
             <option value="ollama">Ollama · local</option>
             <option value="openai">OpenAI API</option>
+            <option value="anthropic">Anthropic Claude</option>
+            <option value="xai">xAI Grok</option>
             <option value="compatible">OpenAI-compatible API</option>
           </select>
         </label>
@@ -277,6 +302,30 @@
         <div class="provider-hint" id="provider-hint" aria-live="polite"></div>
         <div class="installed-models" id="installed-models" hidden></div>
         <div class="provider-status" id="provider-status"><span class="status-dot"></span><span>Loading provider settings…</span></div>
+        <label class="setting-field" for="system-prompt"><span>PERSONA / CORE INSTRUCTIONS</span>
+          <textarea id="system-prompt" maxlength="4000" rows="5" placeholder="Define Vesper's backstory, response style, boundaries, and rules. Saved only on this device."></textarea>
+          <small>With a hosted provider, these instructions, matched notes, relevant memories, and recent messages are sent to that provider. Ollama keeps them on this computer.</small>
+        </label>
+        <section class="setting-field character-card-tools" aria-label="Character card tools">
+          <span>CHARACTER CARD / SILLYTAVERN</span>
+          <div class="card-tools-row"><label class="card-import-button" for="character-card-file">IMPORT JSON OR PNG</label><input id="character-card-file" type="file" accept=".json,.png,application/json,image/png" hidden /><button class="quiet-button" id="character-card-export-json" type="button">EXPORT JSON</button><button class="quiet-button" id="character-card-export-png" type="button">EXPORT PNG CARD</button></div>
+          <small id="character-card-status" aria-live="polite">No character card loaded. Imported cards stay on this device.</small>
+        </section>
+        <section class="setting-field memory-tools" aria-label="Persistent local memory">
+          <span>LONG-TERM MEMORY / STORED ON THIS DEVICE</span>
+          <p id="memory-summary">Loading local memory…</p>
+          <button class="quiet-button" id="memory-add" type="button">ADD A MEMORY</button>
+          <form id="memory-form" class="memory-form" hidden>
+            <label>MEMORY TYPE<select id="memory-category"><option value="note">Personal note</option><option value="preference">Preference</option><option value="project">Project</option><option value="goal">Goal</option><option value="work">Work</option><option value="name">Name</option></select></label>
+            <label>DETAIL<input id="memory-value" maxlength="220" required placeholder="A preference, goal, or important detail" /></label>
+            <label class="memory-pin-option"><input id="memory-pinned" type="checkbox" /> Keep this near the top of Vesper’s memory</label>
+            <div class="card-tools-row"><button class="quiet-button" type="submit">SAVE MEMORY</button><button class="quiet-button" id="memory-cancel" type="button">CANCEL</button></div>
+            <small id="memory-form-status" aria-live="polite"></small>
+          </form>
+          <ul id="memory-facts" aria-label="Saved memory facts"></ul>
+          <button class="quiet-button" id="forget-memory" type="button">FORGET SAVED MEMORIES</button>
+          <small>Vesper remembers explicit preferences, goals, and project details in local IndexedDB. Pinned memories always stay near the top. Relevant facts may be included in prompts sent to a hosted model. Do not save passwords, API keys, or financial or identity details.</small>
+        </section>
         <div class="credentials-note" id="credentials-note"><b>Need credentials?</b> Edit <code>.env</code> next to <code>Start Vesper.bat</code>, then restart the app. Never paste API keys into chat.</div>
         <div class="dialog-actions"><button id="settings-cancel" class="quiet-button" type="button">CANCEL</button><button id="settings-save" class="primary-button" type="button">SAVE MODEL</button></div>
       </dialog>
