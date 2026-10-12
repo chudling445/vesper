@@ -63,6 +63,8 @@ if not defined READY (
 )
 
 if /I "%~1"=="desktop" goto desktopMode
+if /I "%~1"=="model-only" goto modelOnlyMode
+if /I "%~1"=="capture" goto quickCaptureMode
 
 set "BROWSER1=%ProgramFiles%\LibreWolf\librewolf.exe"
 set "BROWSER2=%LOCALAPPDATA%\Programs\LibreWolf\librewolf.exe"
@@ -97,6 +99,37 @@ if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
 ) else (
   call "%~dp0Start Vesper.bat"
 )
+goto launchDone
+
+:modelOnlyMode
+if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
+  start "" "%ProgramFiles%\Google\Chrome\Application\chrome.exe" --app=%URL%/model-only --user-data-dir="%~dp0desktop-profile" --no-first-run --window-size=560,820
+) else if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" (
+  start "" "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" --app=%URL%/model-only --user-data-dir="%~dp0desktop-profile" --no-first-run --window-size=560,820
+) else if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" (
+  start "" "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" --app=%URL%/model-only --user-data-dir="%~dp0desktop-profile" --no-first-run --window-size=560,820
+) else if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" (
+  start "" "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" --app=%URL%/model-only --user-data-dir="%~dp0desktop-profile" --no-first-run --window-size=560,820
+) else if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" (
+  start "" "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" --app=%URL%/model-only --user-data-dir="%~dp0desktop-profile" --no-first-run --window-size=560,820
+) else if exist "%LOCALAPPDATA%\Microsoft\Edge\Application\msedge.exe" (
+  start "" "%LOCALAPPDATA%\Microsoft\Edge\Application\msedge.exe" --app=%URL%/model-only --user-data-dir="%~dp0desktop-profile" --no-first-run --window-size=560,820
+) else (
+  start "" "%URL%/model-only"
+)
+goto launchDone
+
+:quickCaptureMode
+if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
+  start "" "%ProgramFiles%\Google\Chrome\Application\chrome.exe" --app=%URL%/quick-capture --user-data-dir="%~dp0desktop-profile" --no-first-run --window-size=520,760
+) else if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" (
+  start "" "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" --app=%URL%/quick-capture --user-data-dir="%~dp0desktop-profile" --no-first-run --window-size=520,760
+) else if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" (
+  start "" "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" --app=%URL%/quick-capture --user-data-dir="%~dp0desktop-profile" --no-first-run --window-size=520,760
+) else (
+  start "" "%URL%/quick-capture"
+)
+goto launchDone
 
 :launchDone
 endlocal

@@ -6,16 +6,22 @@ const canvas = document.querySelector('#avatar-canvas');
 const sceneElement = document.querySelector('#scene');
 const placeholder = document.querySelector('#model-placeholder');
 const stageStatus = document.querySelector('#stage-status');
+const modelOnly = document.body.classList.contains('model-only');
 
 let vrm = null;
 let speaking = false;
 let thinking = false;
 let speakingTime = 0;
 let mouthPulse = 0;
+let speechWordEnergy = 0;
 let mouthShape = 'aa';
 let speechExpression = 'relaxed';
 let speechExpressionWeight = 0.18;
 let speechExpressionTime = 0;
+let performanceMode = 'idle';
+let performanceTime = 0;
+let blushAmount = 0;
+let autoPerformance = true;
 let armRig = [];
 let headRig = null;
 let neckRig = null;
@@ -37,6 +43,9 @@ const expressionPresets = {
   thinking: { relaxed: 0.54, sad: 0.12 },
   soft: { relaxed: 0.69, sad: 0.18 },
   surprised: { surprised: 0.78, happy: 0.12 },
+  embarrassed: { relaxed: 0.48, happy: 0.2, sad: 0.16 },
+  excited: { happy: 0.58, surprised: 0.4 },
+  teasing: { happy: 0.48, angry: 0.22 },
 };
 const personalityExpressions = { playful: 'smirk', tender: 'fond', thoughtful: 'thinking' };
 let selectedExpression = 'neutral';
@@ -48,18 +57,40 @@ let autoRotate = false;
 let modelHeight = 1.8;
 let modelBaseY = 0.04;
 let zoomFactor = 2.15;
+const mouthShapes = ['aa', 'ih', 'ou', 'ee', 'oh'];
+let visemeTargets = Object.fromEntries(mouthShapes.map((shape) => [shape, 0]));
+let visemeWeights = Object.fromEntries(mouthShapes.map((shape) => [shape, 0]));
+let visemeManager = null;
+let springBoneManager = null;
+let poseRig = [];
+let activePose = 'idle';
+let poseBlend = 1;
+let poseFrom = new THREE.Quaternion();
+let poseTo = new THREE.Quaternion();
+let gazeX = 0;
+let gazeY = 0;
+let gazeCurrentX = 0;
+let gazeCurrentY = 0;
+let eyeRig = [];
+let autoFrameTarget = new THREE.Vector3(0, 1, 0);
+const poseDefinitions = {
+  idle: {}, wave: { rightUpperArm: { x: -0.25, y: 0.12, z: -0.72 }, rightLowerArm: { x: -0.2, z: -0.35 }, rightHand: { z: -0.2 } },
+  nod: { head: { x: -0.14 }, neck: { x: -0.06 } }, tilt: { head: { z: 0.16 }, neck: { z: 0.07 } },
+  shrug: { leftUpperArm: { z: -0.14, x: -0.16 }, rightUpperArm: { z: 0.14, x: -0.16 }, chest: { x: -0.03 } },
+  thinking: { head: { x: -0.18, z: 0.04 }, neck: { x: -0.05 }, leftUpperArm: { x: -0.18, z: 0.12 } },
+};
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d0712);
+scene.background = null;
 const camera = new THREE.PerspectiveCamera(29, 1, 0.1, 100);
 camera.position.set(0, 1.35, 3.7);
 
-const renderer = new THREE.WebGLRenderer({ canvas, alpha: false, antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: modelOnly, antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NoToneMapping; // VRM/MToon materials are authored for plain sRGB output
 renderer.toneMappingExposure = 1;
-renderer.setClearColor(0x0d0712, 1);
+renderer.setClearColor(0x0d0712, 0);
 
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x222222, 1);
 scene.add(hemiLight);
@@ -100,6 +131,43 @@ window.addEventListener('keydown', (event) => {
   else if (event.key === '\\') window.setAvatarLight(0.4);
 });
 
+const TOON_KEY = 'vesper-toon-v1';
+const toonSettings = { threshold: 0.52, shadowColor: '#6c4f79', outlineColor: '#211827', outlineWidth: 0.012, rimColor: '#f0bde8', rimPower: 2.8 };
+try { Object.assign(toonSettings, JSON.parse(localStorage.getItem(TOON_KEY) || '{}')); } catch { /* use authored defaults */ }
+function toonGradient() {
+  const canvasTexture = document.createElement('canvas'); canvasTexture.width = 2; canvasTexture.height = 1; const context = canvasTexture.getContext('2d');
+  const ramp = context.createLinearGradient(0, 0, 2, 0); const threshold = Math.max(0.05, Math.min(0.95, toonSettings.threshold)); ramp.addColorStop(0, toonSettings.shadowColor); ramp.addColorStop(threshold, toonSettings.shadowColor); ramp.addColorStop(Math.min(1, threshold + 0.01), '#ffffff'); ramp.addColorStop(1, '#ffffff'); context.fillStyle = ramp; context.fillRect(0, 0, 2, 1);
+  const texture = new THREE.CanvasTexture(canvasTexture); texture.colorSpace = THREE.SRGBColorSpace; texture.magFilter = THREE.NearestFilter; texture.minFilter = THREE.NearestFilter; return texture;
+}
+function addRimShader(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.vesperRimColor = { value: new THREE.Color(toonSettings.rimColor) }; shader.uniforms.vesperRimPower = { value: Number(toonSettings.rimPower) || 2.8 };
+    shader.vertexShader = `varying vec3 vVesperNormal;\n${shader.vertexShader}`.replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n vVesperNormal = normalize(normalMatrix * objectNormal);');
+    shader.fragmentShader = `uniform vec3 vesperRimColor; uniform float vesperRimPower; varying vec3 vVesperNormal;\n${shader.fragmentShader}`;
+    shader.fragmentShader = shader.fragmentShader.replace('#include <output_fragment>', 'float vesperRim = pow(1.0 - max(dot(normalize(vVesperNormal), normalize(vViewPosition)), 0.0), vesperRimPower); outgoingLight += vesperRimColor * vesperRim * 0.16;\n#include <output_fragment>');
+    material.userData.vesperShader = shader;
+  };
+  material.needsUpdate = true;
+}
+function applyToonLook(root) {
+  let outlines = 0; let toonMaterials = 0;
+  root.traverse((node) => {
+    if (!node.isMesh || node.userData.vesperOutline) return;
+    const materials = [].concat(node.material || []);
+    node.material = materials.map((material) => {
+      if (!material || material.isShaderMaterial) return material;
+      const toon = new THREE.MeshToonMaterial({ color: material.color || 0xffffff, map: material.map || null, normalMap: material.normalMap || null, transparent: material.transparent, opacity: material.opacity, alphaTest: material.alphaTest, side: material.side, gradientMap: toonGradient() });
+      toon.name = `${material.name || 'material'} · Vesper Toon`; addRimShader(toon); toonMaterials += 1; return toon;
+    });
+    if (node.material.length === 1) node.material = node.material[0];
+    const outlineMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(toonSettings.outlineColor), side: THREE.BackSide, transparent: true, opacity: 0.92, depthWrite: false });
+    const outline = node.isSkinnedMesh ? new THREE.SkinnedMesh(node.geometry, outlineMaterial) : new THREE.Mesh(node.geometry, outlineMaterial);
+    if (node.isSkinnedMesh) { outline.bind(node.skeleton, node.bindMatrix); outline.bindMatrixInverse.copy(node.bindMatrixInverse); }
+    outline.scale.setScalar(1 + Number(toonSettings.outlineWidth || 0.012)); outline.renderOrder = -1; outline.userData.vesperOutline = true; node.add(outline); outlines += 1;
+  });
+  return { toonMaterials, outlines };
+}
+
 const floor = new THREE.Mesh(
   new THREE.PlaneGeometry(200, 200),
   new THREE.MeshBasicMaterial({ color: 0x030303 }),
@@ -128,6 +196,12 @@ const platformEdge = new THREE.Mesh(
 platformEdge.rotation.x = Math.PI / 2;
 platformEdge.position.y = 0.038;
 scene.add(platformEdge);
+if (modelOnly) {
+  floor.visible = false;
+  grid.visible = false;
+  platform.visible = false;
+  platformEdge.visible = false;
+}
 
 function resize() {
   const width = sceneElement.clientWidth;
@@ -155,17 +229,52 @@ function setFaceExpression(name) {
   return true;
 }
 
+const emotionMap = { joy: 'grin', happy: 'grin', angry: 'pout', sorrow: 'pout', sad: 'pout', surprised: 'surprised', neutral: 'neutral', idle: 'neutral' };
+let emotionTimer = 0;
+window.setExpression = (emotion = 'neutral', intensity = 1, duration = 0.35) => {
+  const name = emotionMap[String(emotion).toLowerCase()] || 'neutral'; const preset = expressionPresets[name] || {};
+  faceFrom = { ...faceWeights }; faceTarget = Object.fromEntries(faceExpressions.map((expression) => [expression, (preset[expression] || 0) * THREE.MathUtils.clamp(Number(intensity) || 1, 0, 1)])); faceBlend = 0; selectedExpression = name; emotionTimer = Math.max(0, Number(duration) || 0); if (name === 'joy' || name === 'happy') performanceMode = 'blush'; return true;
+};
+function setViseme(shape, weight = 0) { const key = mouthShapes.includes(shape) ? shape : 'aa'; for (const name of mouthShapes) visemeTargets[name] = name === key ? THREE.MathUtils.clamp(Number(weight) || 0, 0, 1) : 0; }
+function createPoseRig() {
+  const names = ['head', 'neck', 'chest', 'spine', 'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm', 'leftHand', 'rightHand'];
+  poseRig = names.map((name) => { const node = vrm.humanoid?.getNormalizedBoneNode(name); return { name, node, baseX: node?.rotation.x || 0, current: new THREE.Quaternion(), target: new THREE.Quaternion() }; }).filter((entry) => entry.node);
+  poseRig.forEach((entry) => { entry.current.identity(); entry.target.identity(); });
+  eyeRig = ['leftEye', 'rightEye'].map((name) => { const node = vrm.humanoid?.getNormalizedBoneNode(name); return { node, x: node?.rotation.x || 0, y: node?.rotation.y || 0 }; }).filter((entry) => entry.node);
+}
+window.setAvatarPose = (name = 'idle', duration = 0.45) => { activePose = Object.hasOwn(poseDefinitions, name) ? name : 'idle'; poseBlend = 0; poseFrom.identity(); poseTo.identity(); for (const entry of poseRig) { const offset = poseDefinitions[activePose][entry.name] || {}; entry.target.setFromEuler(new THREE.Euler(offset.x || 0, offset.y || 0, offset.z || 0)); entry.current.copy(poseFrom); } window.dispatchEvent(new CustomEvent('avatar-pose', { detail: { name: activePose, duration } })); };
+window.setAvatarViseme = (shape, weight = 1) => setViseme(shape, weight);
+
 window.setAvatarExpression = (name) => setFaceExpression(name);
 window.setAvatarPersonality = (mode) => {
   if (!Object.hasOwn(personalityExpressions, mode)) return;
   actingStyle = mode;
   setFaceExpression(personalityExpressions[mode]);
 };
+window.setAvatarPerformance = (mode) => {
+  performanceMode = ['wave', 'blush', 'listen'].includes(mode) ? mode : 'idle';
+  performanceTime = 0;
+  if (performanceMode === 'blush') setFaceExpression('shy');
+  if (performanceMode === 'listen') setFaceExpression('soft');
+  if (performanceMode === 'idle') setFaceExpression('neutral');
+};
+window.setAvatarAutoPerformance = (enabled) => { autoPerformance = Boolean(enabled); };
 window.setAvatarSpeaking = (value) => {
   speaking = Boolean(value);
+  speakingTime = 0;
+  if (autoPerformance && speaking) {
+    performanceMode = 'blush';
+    performanceTime = 0;
+    setFaceExpression('embarrassed');
+  } else if (autoPerformance && !speaking && performanceMode === 'blush') {
+    performanceMode = 'idle';
+    setFaceExpression('neutral');
+  }
   if (!speaking) {
     mouthPulse = 0;
+    speechWordEnergy = 0;
     speechExpressionTime = 0;
+    visemeTargets = Object.fromEntries(mouthShapes.map((shape) => [shape, 0]));
   } else {
     speechExpression = vrm?.expressionManager?.getExpression('relaxed') ? 'relaxed' : 'happy';
     speechExpressionWeight = 0.18;
@@ -177,11 +286,13 @@ window.setAvatarSpeechWord = (word, punctuation = '') => {
   const normalized = String(word || '').toLowerCase();
   mouthShape = /[a]/.test(normalized) ? 'aa' : /[o]/.test(normalized) ? 'oh' : /[u]/.test(normalized) ? 'ou' : /[e]/.test(normalized) ? 'ee' : /[i]/.test(normalized) ? 'ih' : 'aa';
   mouthPulse = 0.24;
+  speechWordEnergy = Math.min(1, 0.32 + normalized.replace(/[^\p{L}\p{N}]/gu, '').length * 0.035 + (/[!?]/.test(punctuation) ? 0.22 : 0));
   const mark = String(punctuation || '');
   const requested = mark.includes('?') ? 'surprised' : mark.includes('!') ? 'happy' : (actingStyle === 'thoughtful' ? 'relaxed' : actingStyle === 'tender' ? 'relaxed' : 'happy');
   speechExpression = vrm?.expressionManager?.getExpression(requested) ? requested : 'happy';
   speechExpressionWeight = requested === 'relaxed' ? 0.16 : 0.38;
   speechExpressionTime = requested === 'relaxed' ? 0.24 : 0.55;
+  setViseme(mouthShape, Math.min(1, 0.55 + speechWordEnergy * 0.35));
 };
 window.setAvatarAutoRotate = (enabled) => { autoRotate = Boolean(enabled); };
 window.setAvatarZoom = (factor) => {
@@ -248,6 +359,7 @@ function captureBonePose(name) {
 
 const loadingManager = new THREE.LoadingManager();
 loadingManager.onError = (url) => console.warn('Vesper: could not load', url);
+loadingManager.onProgress = (url, loaded, total) => { if (stageStatus) stageStatus.textContent = total ? `LOADING AVATAR · ${Math.round((loaded / total) * 100)}%` : 'LOADING AVATAR'; };
 const loader = new GLTFLoader(loadingManager);
 loader.register((parser) => new VRMLoaderPlugin(parser));
 // Embedded textures are decoded through <img> elements (allowed by the page's security policy)
@@ -257,11 +369,12 @@ loader.register((parser) => {
   return { name: 'VesperTextureLoader' };
 });
 let modelLoadStarted = false;
+const avatarSource = (() => { try { const requested = new URLSearchParams(location.search).get('avatar'); if (!requested) return '/models/character.vrm'; const url = new URL(requested, location.origin); return url.origin === location.origin ? url.pathname + url.search : '/models/character.vrm'; } catch { return '/models/character.vrm'; } })();
 function loadAvatarModel() {
   if (modelLoadStarted) return;
   modelLoadStarted = true;
   loader.load(
-    '/models/character.vrm',
+    avatarSource,
     (gltf) => {
     vrm = gltf.userData.vrm;
     if (!vrm) {
@@ -277,6 +390,10 @@ function loadAvatarModel() {
     modelBaseY = -bounds.min.y + 0.04;
     vrm.scene.position.set(-center.x, modelBaseY, -center.z);
     scene.add(vrm.scene);
+    springBoneManager = vrm.springBoneManager || vrm.springBone?.manager || null;
+    const visual = applyToonLook(vrm.scene);
+    createPoseRig();
+    autoFrameTarget.set(0, height * 0.52, 0);
     createRelaxedArmPose();
     headRig = captureBonePose('head');
     neckRig = captureBonePose('neck');
@@ -300,7 +417,7 @@ function loadAvatarModel() {
       }
     });
     console.info(`Vesper: ${texturedMaterials}/${totalMaterials} materials have textures`);
-    stageStatus.textContent = texturedMaterials === 0 && totalMaterials > 0 ? 'MODEL LOADED · TEXTURES MISSING' : 'MODEL LOADED';
+    stageStatus.textContent = texturedMaterials === 0 && totalMaterials > 0 ? 'MODEL LOADED · TEXTURES MISSING' : `MODEL LOADED · TOON ${visual.toonMaterials} · SPRINGS ${springBoneManager ? 'ON' : 'N/A'}`;
     placeholder.classList.add('hidden');
     window.dispatchEvent(new CustomEvent('avatar-ready', { detail: { expressions: availableExpressions } }));
     window.setAvatarPersonality?.(actingStyle);
@@ -309,7 +426,7 @@ function loadAvatarModel() {
     (error) => {
     stageStatus.textContent = 'MODEL COULD NOT LOAD';
     placeholder.querySelector('.placeholder-title').textContent = 'Vesper could not load';
-    placeholder.querySelector('.placeholder-copy').innerHTML = 'Check that <code>models/character.vrm</code> exists and is a valid VRM export.';
+    placeholder.querySelector('.placeholder-copy').innerHTML = `Check that <code>${avatarSource}</code> exists and is a valid VRM 0.x or 1.0 export.`;
     if (error?.message) console.warn('Could not load the VRM avatar:', error);
     },
   );
@@ -327,11 +444,13 @@ canvas.addEventListener('pointerdown', (event) => {
   canvas.setPointerCapture(event.pointerId);
 });
 canvas.addEventListener('pointermove', (event) => {
+  const rect = canvas.getBoundingClientRect(); gazeX = THREE.MathUtils.clamp(((event.clientX - rect.left) / rect.width - 0.5) * 2, -1, 1); gazeY = THREE.MathUtils.clamp(((event.clientY - rect.top) / rect.height - 0.5) * 2, -1, 1);
   if (dragX === null || !vrm) return;
   const delta = event.clientX - dragX;
   dragX = event.clientX;
   vrm.scene.rotation.y += delta * 0.008;
 });
+canvas.addEventListener('pointerleave', () => { gazeX = 0; gazeY = 0; });
 canvas.addEventListener('pointerup', () => { dragX = null; });
 canvas.addEventListener('pointercancel', () => { dragX = null; });
 canvas.addEventListener('wheel', (event) => {
@@ -340,6 +459,12 @@ canvas.addEventListener('wheel', (event) => {
   camera.position.z = modelHeight * zoomFactor;
   window.dispatchEvent(new CustomEvent('avatar-zoom', { detail: zoomFactor }));
 }, { passive: false });
+
+function applyPoseOverlay(delta) {
+  for (const entry of poseRig) { entry.current.slerp(entry.target, Math.min(1, delta * 7.5)); entry.node.quaternion.multiply(entry.current); }
+  gazeCurrentX = THREE.MathUtils.damp(gazeCurrentX, gazeX, 5, delta); gazeCurrentY = THREE.MathUtils.damp(gazeCurrentY, gazeY, 5, delta);
+  for (const eye of eyeRig) { eye.node.rotation.y = THREE.MathUtils.damp(eye.node.rotation.y, eye.y + gazeCurrentX * 0.12, 8, delta); eye.node.rotation.x = THREE.MathUtils.damp(eye.node.rotation.x, eye.x + gazeCurrentY * 0.08, 8, delta); }
+}
 
 function animate(now) {
   requestAnimationFrame(animate);
@@ -352,44 +477,57 @@ function animate(now) {
     faceBlend = Math.min(1, faceBlend + delta / 0.22);
     for (const expression of faceExpressions) {
       faceWeights[expression] = THREE.MathUtils.lerp(faceFrom[expression], faceTarget[expression], faceBlend);
-      const speechPulse = speaking ? 0.12 + Math.max(0, Math.sin(speakingTime * 2.2)) * 0.07 : 0;
+      const speechPulse = speaking ? 0.1 + Math.max(0, Math.sin(speakingTime * 2.2)) * 0.06 + speechWordEnergy * 0.08 : 0;
       const speechBlend = speechExpressionTime > 0 ? Math.min(1, speechExpressionTime * 5) : 0;
       const emphasized = speechBlend * speechExpressionWeight;
       const reactiveWeight = expression === speechExpression ? Math.max(speechPulse, emphasized) : 0;
-      const thoughtWeight = thinking && expression === 'relaxed' ? 0.2 + Math.max(0, Math.sin(now * 0.00075)) * 0.08 : 0;
+      const thoughtWeight = (thinking || performanceMode === 'listen') && expression === 'relaxed' ? 0.2 + Math.max(0, Math.sin(now * 0.00075)) * 0.08 : 0;
       const selectedWeight = faceWeights[expression] * (1 - speechBlend * 0.7);
       vrm.expressionManager?.setValue(expression, Math.max(selectedWeight, reactiveWeight, thoughtWeight));
     }
+    const blushTarget = performanceMode === 'blush' ? (speaking ? 0.82 : 0.68) : 0;
+    blushAmount = THREE.MathUtils.lerp(blushAmount, blushTarget, Math.min(1, delta * 8));
+    if (vrm.expressionManager?.getExpression('blush')) vrm.expressionManager.setValue('blush', blushAmount);
     speechExpressionTime = Math.max(0, speechExpressionTime - delta);
-    const armMotion = speaking ? (actingStyle === 'playful' ? 0.085 : actingStyle === 'tender' ? 0.048 : 0.058) : 0;
+    speechWordEnergy = THREE.MathUtils.damp(speechWordEnergy, 0, 5, delta);
+    performanceTime += delta;
+    const armMotion = performanceMode === 'wave'
+      ? 0.16 + Math.sin(performanceTime * 3.4) * 0.04
+      : speaking ? (actingStyle === 'playful' ? 0.085 : actingStyle === 'tender' ? 0.048 : 0.058) : 0;
     for (const arm of armRig) {
-      const sway = Math.sin(now * 0.0018 + arm.phase) * armMotion;
-      arm.upper.rotation.z = arm.upperBase + arm.lowerSign * sway;
-      arm.lower.rotation.z = arm.lowerBase - arm.lowerSign * sway * 0.42;
-      if (arm.hand) arm.hand.rotation.z = arm.handBase + arm.lowerSign * sway * 0.2;
+      const sway = performanceMode === 'wave' && arm.phase > 0
+        ? Math.sin(performanceTime * 8) * 0.23
+        : Math.sin(now * 0.0018 + arm.phase) * armMotion;
+      arm.upper.rotation.z = THREE.MathUtils.damp(arm.upper.rotation.z, arm.upperBase + arm.lowerSign * sway, 12, delta);
+      arm.lower.rotation.z = THREE.MathUtils.damp(arm.lower.rotation.z, arm.lowerBase - arm.lowerSign * sway * 0.42, 12, delta);
+      if (arm.hand) arm.hand.rotation.z = THREE.MathUtils.damp(arm.hand.rotation.z, arm.handBase + arm.lowerSign * sway * 0.2, 12, delta);
     }
     const breath = Math.sin(now * 0.00145);
-    if (chestRig) chestRig.node.rotation.x = chestRig.x + breath * 0.006;
+    const breathLift = breath * 0.009 + Math.sin(now * 0.00072) * 0.003;
+    if (chestRig) chestRig.node.rotation.x = THREE.MathUtils.damp(chestRig.node.rotation.x, chestRig.x + breathLift, 9, delta);
+    const spineEntry = poseRig.find((entry) => entry.name === 'spine');
+    if (spineEntry) spineEntry.node.rotation.x = THREE.MathUtils.damp(spineEntry.node.rotation.x, spineEntry.baseX + breath * 0.0015, 7, delta);
     if (neckRig) {
-      neckRig.node.rotation.x = neckRig.x + (thinking ? 0.025 : Math.sin(now * 0.0008) * 0.009);
-      neckRig.node.rotation.y = neckRig.y + Math.sin(now * 0.00055) * 0.012;
+      const neckX = neckRig.x + ((thinking || performanceMode === 'listen') ? 0.025 : Math.sin(now * 0.0008) * 0.009);
+      const neckY = neckRig.y + Math.sin(now * 0.00055) * 0.012;
+      neckRig.node.rotation.x = THREE.MathUtils.damp(neckRig.node.rotation.x, neckX, 8, delta);
+      neckRig.node.rotation.y = THREE.MathUtils.damp(neckRig.node.rotation.y, neckY, 8, delta);
     }
     if (headRig) {
       const thoughtfulTilt = actingStyle === 'thoughtful' ? 0.018 : actingStyle === 'tender' ? -0.012 : 0;
-      headRig.node.rotation.x = headRig.x + (thinking ? -0.025 : Math.sin(now * 0.00095) * 0.009);
-      headRig.node.rotation.y = headRig.y + Math.sin(now * 0.00062) * 0.018 + (speaking && actingStyle === 'playful' ? Math.sin(speakingTime * 1.3) * 0.012 : 0);
-      headRig.node.rotation.z = headRig.z + Math.sin(now * 0.00072) * 0.012 + thoughtfulTilt;
+      const headX = headRig.x + ((thinking || performanceMode === 'listen') ? -0.025 : Math.sin(now * 0.00095) * 0.009);
+      const headY = headRig.y + Math.sin(now * 0.00062) * 0.018 + gazeCurrentX * 0.075 + (speaking && actingStyle === 'playful' ? Math.sin(speakingTime * 1.3) * 0.012 : 0);
+      const headZ = headRig.z + Math.sin(now * 0.00072) * 0.012 - gazeCurrentX * 0.018 + thoughtfulTilt;
+      const headLookX = headX + gazeCurrentY * 0.035;
+      headRig.node.rotation.x = THREE.MathUtils.damp(headRig.node.rotation.x, headLookX, 7, delta);
+      headRig.node.rotation.y = THREE.MathUtils.damp(headRig.node.rotation.y, headY, 7, delta);
+      headRig.node.rotation.z = THREE.MathUtils.damp(headRig.node.rotation.z, headZ, 7, delta);
     }
     speakingTime += delta;
     mouthPulse = Math.max(0, mouthPulse - delta);
-    const mouthShapes = ['aa', 'ee', 'ih', 'oh', 'ou'];
-    if (speaking) {
-      const syllable = Math.max(0, Math.sin(speakingTime * 12));
-      const envelope = 0.08 + syllable * 0.22 + (mouthPulse > 0 ? 0.24 : 0);
-      for (const shape of mouthShapes) vrm.expressionManager?.setValue(shape, shape === mouthShape ? Math.min(envelope, 0.64) : 0);
-    } else {
-      for (const shape of mouthShapes) vrm.expressionManager?.setValue(shape, 0);
-    }
+    if (speaking) { const syllable = Math.max(0, Math.sin(speakingTime * 12)); const envelope = 0.07 + syllable * 0.2 + speechWordEnergy * 0.18 + (mouthPulse > 0 ? 0.24 : 0); visemeTargets[mouthShape] = Math.max(visemeTargets[mouthShape], Math.min(envelope, 0.72)); }
+    for (const shape of mouthShapes) { visemeWeights[shape] = THREE.MathUtils.damp(visemeWeights[shape], visemeTargets[shape], 14, delta); vrm.expressionManager?.setValue(shape, visemeWeights[shape]); }
+    applyPoseOverlay(delta);
 
     if (blinkTime > 0) {
       blinkTime -= delta;

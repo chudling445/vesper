@@ -57,6 +57,18 @@ export function describeVoice(lang) {
   return voice ? `${voice.name} (${voice.lang})` : null;
 }
 
+export function supportsOfflineVoice() { return 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined'; }
+
+export function speakOfflineFallback(text, { onEnd } = {}) {
+  if (supportsOfflineVoice()) return speakWaifu(text, { onEnd });
+  window.setAvatarSpeaking?.(true);
+  try {
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextCtor) { const context = new AudioContextCtor(); const oscillator = context.createOscillator(); const gain = context.createGain(); oscillator.frequency.value = 330; gain.gain.setValueAtTime(0.0001, context.currentTime); gain.gain.exponentialRampToValueAtTime(0.035, context.currentTime + 0.02); gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18); oscillator.connect(gain).connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + 0.2); window.setTimeout(() => { window.setAvatarSpeaking?.(false); context.close?.(); onEnd?.(); }, 220); return true; }
+  } catch { /* Some privacy modes disable AudioContext. */ }
+  window.setAvatarSpeaking?.(false); onEnd?.(); return false;
+}
+
 export function isMostlyJapanese(text) {
   const value = String(text || '');
   const japanese = (value.match(/[\u3040-\u30ff\u4e00-\u9fff]/g) || []).length;
@@ -86,7 +98,7 @@ export function toMouthWord(word) {
 export function speakWaifu(text, { onEnd, forceLang } = {}) {
   if (!('speechSynthesis' in window)) return false;
   const prefs = loadVoicePrefs();
-  const lang = forceLang || (isMostlyJapanese(text) ? 'ja' : 'en');
+  const lang = forceLang || (isMostlyJapanese(text) ? 'ja' : prefs.language === 'ja' ? 'ja' : 'en');
   const utterance = new SpeechSynthesisUtterance(text);
   const voice = prefs.style === 'waifu'
     ? pickWaifuVoice(lang)
@@ -95,8 +107,21 @@ export function speakWaifu(text, { onEnd, forceLang } = {}) {
   utterance.lang = voice?.lang || (lang === 'ja' ? 'ja-JP' : 'en-US');
   utterance.pitch = prefs.pitch;
   utterance.rate = prefs.rate;
-  utterance.onend = () => onEnd?.();
-  utterance.onerror = () => onEnd?.();
+  let boundarySeen = false;
+  let fallbackIndex = 0;
+  let fallbackTimer = null;
+  const fallbackWords = text.match(/\S+/g) || [text];
+  utterance.onstart = () => { window.setAvatarSpeaking?.(true); window.setAvatarSpeechWord?.(fallbackWords[0], ''); fallbackTimer = window.setInterval(() => { if (!boundarySeen) window.setAvatarSpeechWord?.(fallbackWords[Math.min(++fallbackIndex, fallbackWords.length - 1)], ''); }, Math.max(180, 60000 / (150 * Number(utterance.rate || 1)))); };
+  utterance.onboundary = (event) => {
+    boundarySeen = true;
+    if (fallbackTimer) { window.clearInterval(fallbackTimer); fallbackTimer = null; }
+    const start = event.charIndex || 0;
+    const end = start + Math.max(event.charLength || 1, 1);
+    window.setAvatarSpeechWord?.(text.slice(start, end), text.slice(end, end + 4));
+  };
+  const finish = () => { if (fallbackTimer) window.clearInterval(fallbackTimer); fallbackTimer = null; window.setAvatarSpeaking?.(false); onEnd?.(); };
+  utterance.onend = finish;
+  utterance.onerror = finish;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
   return true;

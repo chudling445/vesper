@@ -5,7 +5,7 @@ const pick = (items) => items[Math.floor(Math.random() * items.length)];
 const STORE = 'vesper-arcade-v1';
 
 function loadStats() {
-  const base = { jkp: { w: 0, l: 0, d: 0, best: 0 }, ttt: { w: 0, l: 0, d: 0 }, memory: { best: 0 }, omikuji: { day: '', index: -1 } };
+  const base = { jkp: { w: 0, l: 0, d: 0, best: 0 }, ttt: { w: 0, l: 0, d: 0 }, memory: { best: 0 }, omikuji: { day: '', index: -1 }, reflex: { best: 0 }, starcatch: { best: 0 }, highlow: { best: 0 } };
   try {
     const saved = JSON.parse(localStorage.getItem(STORE) || '{}');
     for (const key of Object.keys(base)) if (saved[key] && typeof saved[key] === 'object') Object.assign(base[key], saved[key]);
@@ -32,7 +32,10 @@ const Q = {
   memMatch: [['Hmph, nice one.', 'むっ、やるじゃん。'], ['A match! You do have a brain in there.', 'ペア成立！ちゃんと頭使ってるね。']],
   memMiss: [['Not that one, senpai.', 'それじゃないよ、センパイ。'], ['I could have told you that was wrong.', 'そこは違うって教えられたのに。']],
   memWin: [['All pairs found. I am only a little impressed.', '全部見つけたね。ちょっとだけ感心したかも。']],
-  omikuji: [['Do not look so nervous. It is only paper.', 'そんなに緊張しないでよ、ただの紙だよ。']],
+    omikuji: [['Do not look so nervous. It is only paper.', 'そんなに緊張しないでよ、ただの紙だよ。']],
+    reflex: [['Ready, senpai? Try not to blink.', '準備できた？まばたきしないでね、センパイ。']],
+    starcatch: [['Catch the stars for me, senpai.', '星をつかまえてね、センパイ。']],
+    highlow: [['I picked a number. Think carefully.', '数字を選んだよ。よく考えてね。']],
   again: [['You already drew today, senpai. Do not be greedy.', '今日はもう引いたでしょ、センパイ。欲張らないの。']],
 };
 
@@ -52,6 +55,9 @@ function renderScore(game) {
     ttt: [['WINS', stats.ttt.w], ['LOSSES', stats.ttt.l], ['DRAWS', stats.ttt.d]],
     memory: [['BEST (FEWEST MOVES)', stats.memory.best || '—']],
     omikuji: [['TODAY', stats.omikuji.day === new Date().toDateString() ? 'DRAWN' : 'NOT YET']],
+    reflex: [['BEST (MS)', stats.reflex.best || '—']],
+    starcatch: [['BEST STARS', stats.starcatch.best || '—']],
+    highlow: [['BEST GUESSES', stats.highlow.best || '—']],
   }[game] || [];
   scoreboard.replaceChildren(...rows.map(([label, value]) => {
     const item = document.createElement('div');
@@ -253,9 +259,33 @@ $('#omi-draw').addEventListener('click', () => {
   saveStats(); renderScore('omikuji'); showFortune(index);
   say(pick(Q.omikuji));
 });
+
+// ---- Reflex Test -------------------------------------------------------
+const reflexArena = $('#reflex-arena'); const reflexPrompt = $('#reflex-prompt'); const reflexStatus = $('#reflex-status'); const reflexBest = $('#reflex-best');
+let reflexReadyAt = 0; let reflexTimer = null; let reflexWaiting = false;
+function renderReflexBest() { reflexBest.textContent = stats.reflex.best ? `${stats.reflex.best}ms` : '—'; }
+function resetReflex() { window.clearTimeout(reflexTimer); reflexReadyAt = 0; reflexWaiting = false; reflexArena.classList.remove('ready', 'false-start'); reflexPrompt.textContent = 'PRESS START'; reflexStatus.textContent = 'Your best reaction will be kept locally.'; }
+$('#reflex-start').addEventListener('click', () => { resetReflex(); reflexWaiting = true; reflexPrompt.textContent = 'WAIT FOR PINK…'; reflexStatus.textContent = 'Do not tap early.'; reflexTimer = window.setTimeout(() => { reflexReadyAt = performance.now(); reflexArena.classList.add('ready'); reflexPrompt.textContent = 'TAP NOW'; }, 900 + Math.random() * 1800); });
+reflexArena.addEventListener('click', () => { if (!reflexWaiting) return; if (!reflexReadyAt) { window.clearTimeout(reflexTimer); reflexWaiting = false; reflexArena.classList.add('false-start'); reflexPrompt.textContent = 'TOO SOON'; reflexStatus.textContent = 'Hmph. Wait for the pink star next time.'; return; } const result = Math.round(performance.now() - reflexReadyAt); reflexWaiting = false; reflexArena.classList.remove('ready'); reflexPrompt.textContent = `${result} MS`; reflexStatus.textContent = result < 260 ? 'That was fast, senpai.' : 'You can do better than that.'; if (!stats.reflex.best || result < stats.reflex.best) { stats.reflex.best = result; saveStats(); } renderReflexBest(); say(pick(Q.reflex)); });
+
+// ---- Star Catch --------------------------------------------------------
+const starArena = $('#starcatch-arena'); const starTarget = $('#starcatch-target'); const starCount = $('#starcatch-count'); const starTime = $('#starcatch-time'); const starBest = $('#starcatch-best'); const starStatus = $('#starcatch-status');
+let starActive = false; let starScore = 0; let starSeconds = 20; let starInterval = null;
+function moveStar() { starTarget.style.left = `${8 + Math.random() * 80}%`; starTarget.style.top = `${10 + Math.random() * 72}%`; }
+function finishStarCatch() { starActive = false; window.clearInterval(starInterval); starTarget.disabled = true; starStatus.textContent = `${starScore} stars. ${starScore >= 15 ? 'That was dazzling, senpai.' : 'A quiet little night.'}`; if (!stats.starcatch.best || starScore > stats.starcatch.best) { stats.starcatch.best = starScore; saveStats(); } renderScore('starcatch'); say(starScore >= 15 ? ['You caught so many! I am impressed.', 'すごい数だね！感心しちゃった。'] : ['A gentle night, then. Try again?', '穏やかな夜だったね。もう一回する？']); }
+$('#starcatch-start').addEventListener('click', () => { starActive = true; starScore = 0; starSeconds = 20; starCount.textContent = '0'; starTime.textContent = '20'; starTarget.disabled = false; moveStar(); starStatus.textContent = 'Catch, catch, catch!'; window.clearInterval(starInterval); starInterval = window.setInterval(() => { starSeconds -= 1; starTime.textContent = String(starSeconds); if (starSeconds <= 0) finishStarCatch(); }, 1000); say(pick(Q.starcatch)); });
+starTarget.addEventListener('click', () => { if (!starActive) return; starScore += 1; starCount.textContent = String(starScore); moveStar(); if (starScore % 5 === 0) say(['Five more! Do not slow down, senpai.', 'あと五つ！スピード落とさないでね。']); });
+
+// ---- High-Low ----------------------------------------------------------
+const highlowInput = $('#highlow-input'); const highlowGuess = $('#highlow-guess'); const highlowNew = $('#highlow-new'); const highlowStatus = $('#highlow-status'); const highlowBest = $('#highlow-best');
+let highlowSecret = 1 + Math.floor(Math.random() * 100); let highlowAttempts = 0;
+function newHighLow() { highlowSecret = 1 + Math.floor(Math.random() * 100); highlowAttempts = 0; highlowInput.value = ''; highlowStatus.textContent = 'I have a number in mind…'; }
+function checkHighLow() { const guess = Number(highlowInput.value); if (!Number.isInteger(guess) || guess < 1 || guess > 100) { highlowStatus.textContent = 'Choose a whole number from 1 to 100.'; return; } highlowAttempts += 1; if (guess === highlowSecret) { highlowStatus.textContent = `Correct in ${highlowAttempts} guess${highlowAttempts === 1 ? '' : 'es'}!`; if (!stats.highlow.best || highlowAttempts < stats.highlow.best) { stats.highlow.best = highlowAttempts; saveStats(); } renderScore('highlow'); say(highlowAttempts <= 4 ? ['You found it quickly. Not bad, senpai.', '早く見つけたね。なかなかやるじゃん。'] : ['You got there eventually. I will allow it.', 'やっと見つけたね。まあ、許してあげる。']); } else { highlowStatus.textContent = guess < highlowSecret ? 'Higher.' : 'Lower.'; say(pick([['Nope. Think a little bigger.', '違うよ。もう少し大きく。'], ['Nope. Think smaller, senpai.', '違うよ。もう少し小さく、センパイ。']])); } highlowInput.select(); }
+highlowGuess.addEventListener('click', checkHighLow); highlowInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') checkHighLow(); }); highlowNew.addEventListener('click', () => { newHighLow(); say(pick(Q.highlow)); });
 if (stats.omikuji.day === new Date().toDateString() && stats.omikuji.index >= 0) showFortune(stats.omikuji.index);
 
 newTtt();
 newMemory();
+renderReflexBest(); starBest.textContent = stats.starcatch.best || '—'; highlowBest.textContent = stats.highlow.best || '—'; starTarget.disabled = true;
 const start = location.hash.replace('#', '');
-show(['jkp', 'ttt', 'memory', 'omikuji'].includes(start) ? start : 'jkp');
+show(['jkp', 'ttt', 'memory', 'omikuji', 'reflex', 'starcatch', 'highlow'].includes(start) ? start : 'jkp');

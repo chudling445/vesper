@@ -19,6 +19,7 @@
         }
       }
     </script>
+    <script src="/first-run.js"></script>
     <script type="module" src="/avatar.js"></script>
     <script type="module" src="/app.js"></script>
   </head>
@@ -31,6 +32,7 @@
           <span class="brand-emblem" aria-hidden="true"><i></i><b>✦</b></span>
           <span class="brand-name">VESPER<span> / </span>ATELIER</span>
         </a>
+        <nav class="site-nav main-nav" aria-label="Pages"><a href="/" aria-current="page">Chat</a><a href="/workspace">Workspace</a><a href="/quick-capture">Capture</a><a href="/games">Arcade</a><a href="/voices">Voice lab</a><a href="/about">Studio guide</a></nav>
         <div class="topbar-right">
           <span class="edition">PERSONAL BUILD <b>NO. 01</b></span>
           <div class="theme-dock" id="theme-dock">
@@ -41,18 +43,23 @@
             </button>
             <div class="theme-menu" id="theme-menu" role="group" aria-label="Choose a color theme" hidden>
               <div class="theme-menu-heading">CHOOSE YOUR ATMOSPHERE</div>
+              <div class="color-mode-control" aria-label="Choose color mode"><span>COLOR MODE</span><div role="group" aria-label="Dark, light, or system color mode"><button type="button" data-color-mode="dark" aria-pressed="false">DARK</button><button type="button" data-color-mode="light" aria-pressed="false">LIGHT</button><button type="button" data-color-mode="system" aria-pressed="true">SYSTEM</button></div></div>
               <button class="theme-option" type="button" data-theme-option="sakura" aria-pressed="true"><span class="palette-dot sakura-dot"></span><span class="theme-option-copy"><b>Sakura Senpai</b><small>Anime petals · snarky pink night</small></span><span class="theme-check">✦</span></button>
               <button class="theme-option" type="button" data-theme-option="mica" aria-pressed="false"><span class="palette-dot mica-dot"></span><span class="theme-option-copy"><b>Mica Night</b><small>Fluent glass · studio black</small></span><span class="theme-check">✦</span></button>
               <button class="theme-option" type="button" data-theme-option="velvet" aria-pressed="false"><span class="palette-dot velvet-dot"></span><span class="theme-option-copy"><b>Velvet</b><small>Violet hour</small></span><span class="theme-check">✦</span></button>
               <button class="theme-option" type="button" data-theme-option="petal" aria-pressed="false"><span class="palette-dot petal-dot"></span><span class="theme-option-copy"><b>Petal</b><small>Soft rebellion</small></span><span class="theme-check">✦</span></button>
               <button class="theme-option" type="button" data-theme-option="moonstone" aria-pressed="false"><span class="palette-dot moonstone-dot"></span><span class="theme-option-copy"><b>Moonstone</b><small>Quiet clarity</small></span><span class="theme-check">✦</span></button>
               <button class="theme-option" type="button" data-theme-option="jade" aria-pressed="false"><span class="palette-dot jade-dot"></span><span class="theme-option-copy"><b>Jade</b><small>Midnight garden</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="riko" aria-pressed="false"><span class="palette-dot riko-dot"></span><span class="theme-option-copy"><b>Riko Atelier</b><small>Anime studio · warm lilac light</small></span><span class="theme-check">✦</span></button>
+              <button class="theme-option" type="button" data-theme-option="portrait" aria-pressed="false"><span class="palette-dot portrait-dot"></span><span class="theme-option-copy"><b>Portrait Stage</b><small>Full model · compact chat overlay</small></span><span class="theme-check">✦</span></button>
               <div class="theme-menu-foot">PRESS <kbd>T</kbd> TO CYCLE PALETTES</div>
             </div>
           </div>
           <button class="settings-trigger" id="settings-open" type="button" title="Choose your language model">
             <span aria-hidden="true">⚙</span> <span>LLM SETTINGS</span>
           </button>
+          <button class="model-only-trigger" id="model-only-open" type="button" title="Open Vesper as a floating model-only window"><span aria-hidden="true">◈</span> <span>MODEL ONLY</span></button>
+          <button class="model-only-trigger capture-trigger" id="quick-capture-open" type="button" title="Open Quick Capture · Ctrl/Cmd+Shift+Space"><span aria-hidden="true">＋</span> <span>CAPTURE</span></button>
           <a class="download-trigger" id="download-app" data-app-download href="/Vesper-Setup.exe" download="Vesper-Setup.exe" title="Download the Windows setup · chat model and avatar are separate">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11m0 0 4-4m-4 4-4-4M4.5 16.5v3h15v-3" /></svg>
             <span>GET THE APP</span>
@@ -88,6 +95,7 @@
               <button class="stage-tool" id="reset-view" type="button" title="Reset avatar rotation and zoom">RESET VIEW</button>
               <label class="zoom-control" for="stage-zoom"><span>ZOOM</span><input id="stage-zoom" type="range" min="1.8" max="3.6" step="0.1" value="2.15" aria-label="Avatar zoom" /></label>
             </div>
+            <div class="background-dock" aria-label="Avatar background presets"><span>BACKDROP</span><button type="button" data-background="atelier" aria-pressed="true">ATELIER</button><button type="button" data-background="sakura" aria-pressed="false">SAKURA</button><button type="button" data-background="midnight" aria-pressed="false">NIGHT</button><button type="button" data-background="aurora" aria-pressed="false">AURORA</button><button type="button" data-background="sunset" aria-pressed="false">SUNSET</button></div>
             <div class="scene-controls"><span>DRAG</span> ROTATE <i>·</i> <span>SCROLL</span> ZOOM</div>
             <div class="stage-base" aria-hidden="true"><span></span></div>
           </div>
@@ -105,8 +113,25 @@
               <button type="button" class="expression-button" data-expression="thinking" aria-pressed="false">Thinking</button>
               <button type="button" class="expression-button" data-expression="soft" aria-pressed="false">Soft</button>
               <button type="button" class="expression-button" data-expression="surprised" aria-pressed="false">Surprised</button>
+              <button type="button" class="expression-button" data-expression="embarrassed" aria-pressed="false">Embarrassed</button>
+              <button type="button" class="expression-button" data-expression="excited" aria-pressed="false">Excited</button>
+              <button type="button" class="expression-button" data-expression="teasing" aria-pressed="false">Teasing</button>
             </div>
           </div>
+          <section class="performance-dock" aria-label="Live avatar performance">
+            <div class="performance-head"><span>LIVE PERFORMANCE</span><span id="performance-status">IDLE / READY</span></div>
+            <div class="performance-grid">
+              <button type="button" class="performance-button" data-performance="wave"><span>✦</span><b>Wave</b><small>greet me</small></button>
+              <button type="button" class="performance-button" data-pose="nod"><span>↕</span><b>Nod</b><small>yes, senpai</small></button>
+              <button type="button" class="performance-button" data-pose="tilt"><span>◇</span><b>Tilt</b><small>curious</small></button>
+              <button type="button" class="performance-button" data-pose="shrug"><span>⌁</span><b>Shrug</b><small>maybe?</small></button>
+              <button type="button" class="performance-button" data-pose="thinking"><span>◒</span><b>Thinking</b><small>one moment</small></button>
+              <button type="button" class="performance-button" data-performance="blush"><span>◌</span><b>Blush</b><small>shy mode</small></button>
+              <button type="button" class="performance-button" data-performance="listen"><span>◒</span><b>Listen</b><small>soft focus</small></button>
+              <button type="button" class="performance-button" data-performance="auto"><span>✧</span><b>Auto react</b><small>speak + blush</small></button>
+              <button type="button" class="performance-button" data-performance="reset"><span>○</span><b>Reset</b><small>neutral pose</small></button>
+            </div>
+          </section>
 
           <div class="profile-card">
             <div class="profile-main">
@@ -134,12 +159,12 @@
               <label class="auto-voice"><input id="auto-speak" type="checkbox" /> <span>AUTO SPEAK</span></label>
             </div>
             <div class="voice-controls">
-              <label class="voice-field voice-choice" for="voice-select"><span>VOICE</span><select id="voice-select"><option value="">SYSTEM DEFAULT</option></select></label>
+              <label class="voice-field voice-choice" for="voice-select"><span>VOICE PROFILE</span><select id="voice-select"><option value="__anime_en__">ANIME DUB · ENGLISH</option><option value="__anime_ja__">ANIME DUB · 日本語</option></select></label>
               <label class="voice-field" for="speech-rate"><span>PACE <output id="speech-rate-value">0.96×</output></span><input id="speech-rate" type="range" min="0.7" max="1.3" step="0.05" value="0.95" /></label>
               <label class="voice-field" for="speech-pitch"><span>PITCH <output id="speech-pitch-value">1.04×</output></span><input id="speech-pitch" type="range" min="0.7" max="1.4" step="0.05" value="1.05" /></label>
               <button class="voice-stop" id="stop-speaking" type="button" title="Stop voice playback">STOP</button>
             </div>
-            <div class="voice-status" id="voice-status" aria-live="polite">SYSTEM VOICE · WORD-TIMED LIP SYNC</div>
+            <div class="voice-status" id="voice-status" aria-live="polite">FIRM WAIFU PROFILE · WORD-TIMED LIP SYNC</div>
           </section>
           <div class="local-note"><span class="local-icon">⌂</span> <span id="host-note">RUNNING ON THIS COMPUTER · MODEL STAYS IN YOUR FOLDER</span></div>
         </aside>
@@ -152,7 +177,10 @@
           <p class="chat-subtitle">Hmph. I am only talking to you because I want to, senpai.</p>
             </div>
             <div class="heading-actions">
-              <div class="connection-chip"><span class="connection-star">✦</span> <span id="provider-badge">LOCAL MODEL</span></div>
+              <div class="connection-chip"><span class="connection-star">✦</span> <span id="provider-badge">LOCAL MODEL</span><span class="connection-detail">· PRIVATE</span></div>
+              <button class="utility-button" id="command-open" type="button" title="Open command palette" aria-label="Open command palette">⌘K</button>
+              <button class="utility-button" id="export-chat" type="button" title="Export this conversation" aria-label="Export conversation as Markdown">EXPORT</button>
+              <button class="utility-button" id="share-chat" type="button" title="Copy or share a conversation summary" aria-label="Share conversation summary">SHARE</button>
               <button class="chess-trigger" id="chess-open" type="button" aria-haspopup="dialog" aria-controls="chess-dialog" title="Play a private game of chess with Vesper"><span aria-hidden="true">♟</span> CHESS</button>
               <button class="icon-button" id="clear-chat" type="button" title="Clear conversation" aria-label="Clear conversation">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
@@ -160,6 +188,7 @@
             </div>
           </div>
 
+          <div class="chat-tools"><label for="chat-search">SEARCH CHAT</label><input id="chat-search" type="search" placeholder="Find a message…" autocomplete="off" /><span id="chat-search-status" aria-live="polite"></span></div>
           <div class="messages" id="messages" aria-live="polite" aria-label="Messages">
             <div class="welcome-card" id="welcome-card">
               <div class="welcome-ornament" aria-hidden="true"><span></span>✦<span></span></div>
@@ -190,6 +219,7 @@
             <form class="composer" id="chat-form">
               <span class="composer-sigil" aria-hidden="true">✦</span>
               <textarea id="message-input" rows="1" maxlength="4000" placeholder="Say something worth my attention, senpai…" aria-label="Your message"></textarea>
+              <button class="voice-input-button" id="voice-input" type="button" aria-label="Speak to Vesper" title="Speak to Vesper"><span aria-hidden="true">◉</span></button>
               <button class="send-button" id="send-button" type="submit" aria-label="Send message">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12h14M12.5 5.5l6.5 6.5-6.5 6.5" /></svg>
               </button>
@@ -200,7 +230,7 @@
         </section>
       </section>
 
-      <dialog class="chess-dialog" id="chess-dialog" aria-labelledby="chess-title">
+      <dialog class="chess-dialog" id="chess-dialog" aria-modal="true" aria-labelledby="chess-title">
         <div class="chess-dialog-head">
           <div><span class="chess-eyebrow">VESPER / THE QUIET MATCH</span><h2 id="chess-title">A little <em>strategy.</em></h2></div>
           <button class="dialog-close" id="chess-close" type="button" aria-label="Close chess">×</button>
@@ -227,7 +257,7 @@
         </div>
       </dialog>
 
-      <dialog class="settings-dialog" id="llm-dialog" aria-labelledby="settings-title">
+      <dialog class="settings-dialog" id="llm-dialog" aria-modal="true" aria-labelledby="settings-title">
         <div class="dialog-topline"><span>VESPER / CONFIGURATION</span><button class="dialog-close" id="settings-close" type="button" aria-label="Close settings">×</button></div>
         <div class="dialog-heading">
           <span class="eyebrow"><span class="eyebrow-dash"></span> YOUR MODEL, YOUR RULES</span>
@@ -250,7 +280,7 @@
         <div class="credentials-note" id="credentials-note"><b>Need credentials?</b> Edit <code>.env</code> next to <code>Start Vesper.bat</code>, then restart the app. Never paste API keys into chat.</div>
         <div class="dialog-actions"><button id="settings-cancel" class="quiet-button" type="button">CANCEL</button><button id="settings-save" class="primary-button" type="button">SAVE MODEL</button></div>
       </dialog>
-      <dialog class="access-dialog" id="access-dialog" aria-labelledby="access-title">
+      <dialog class="access-dialog" id="access-dialog" aria-modal="true" aria-labelledby="access-title">
         <div class="access-emblem" aria-hidden="true">✦</div>
         <div class="eyebrow"><span class="eyebrow-dash"></span> VESPER / PRIVATE ACCESS</div>
         <h2 id="access-title">Welcome <em>back.</em></h2>
@@ -262,7 +292,23 @@
           <button class="primary-button" type="submit">UNLOCK VESPER</button>
         </form>
       </dialog>
-      <footer class="footer"><span>VESPER <i>—</i> A SMALL, PRIVATE UNIVERSE</span><span>3D AVATAR <i>·</i> CHOOSE A LOCAL OR ONLINE MODEL</span></footer>
+      <dialog class="command-dialog" id="command-dialog" aria-modal="true" aria-labelledby="command-title">
+        <div class="dialog-topline"><span>VESPER / COMMAND PALETTE</span><button class="dialog-close" id="command-close" type="button" aria-label="Close command palette">×</button></div>
+        <h2 id="command-title">What shall we <em>do?</em></h2>
+        <input class="command-search" id="command-search" type="search" placeholder="Type a command…" autocomplete="off" />
+        <div class="command-list" id="command-list">
+          <button type="button" data-command="focus"><b>Focus chat</b><small>Jump to the message composer</small><kbd>F</kbd></button>
+          <button type="button" data-command="export-md"><b>Export Markdown</b><small>Download a readable conversation export</small><kbd>E</kbd></button>
+          <button type="button" data-command="export-json"><b>Export JSON</b><small>Save the full workspace data</small><kbd>J</kbd></button>
+          <button type="button" data-command="export-csv"><b>Export CSV</b><small>Save message rows for spreadsheets</small><kbd>C</kbd></button>
+          <button type="button" data-command="share"><b>Share summary</b><small>Copy or share a clean conversation summary</small><kbd>S</kbd></button>
+          <button type="button" data-command="health"><b>Check local system</b><small>Inspect Ollama, installed models, and avatar readiness</small><kbd>H</kbd></button>
+          <button type="button" data-command="model"><b>Open Model Only</b><small>Float Vesper in a separate window</small><kbd>M</kbd></button>
+          <button type="button" data-command="clear"><b>Clear conversation</b><small>Remove the current chat from this device</small><kbd>⌫</kbd></button>
+        </div>
+        <div class="command-status" id="command-status" role="status" aria-live="polite">LOCAL SHORTCUTS · ESC TO CLOSE</div>
+      </dialog>
+      <footer class="footer"><span>VESPER <i>—</i> A SMALL, PRIVATE UNIVERSE</span><span>3D AVATAR <i>·</i> CHOOSE A LOCAL OR ONLINE MODEL <i>·</i> PRESS ⌘K FOR COMMANDS</span></footer>
     </main>
     <script src="/chess.js" defer></script>
   </body>

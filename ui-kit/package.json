@@ -1,0 +1,10 @@
+{
+  "name": "vesper-ui-kit",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Optional React/Tailwind workspace for Kokonut UI components used with Vesper",
+  "scripts": {
+    "ui:init": "bunx --bun shadcn@latest init",
+    "ui:add": "bunx --bun shadcn@latest add"
+  }
+}

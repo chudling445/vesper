@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <title>Vesper · Model Only</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/","@pixiv/three-vrm":"/vendor/three-vrm/lib/three-vrm.module.min.js"}}</script>
+  </head>
+  <body class="model-only" data-theme="riko">
+    <main class="model-only-shell">
+      <div class="model-only-stage" id="scene">
+        <canvas id="avatar-canvas" tabindex="0" aria-label="Vesper model. Drag to rotate and scroll to zoom."></canvas>
+        <div class="model-only-placeholder" id="model-placeholder"><span class="model-only-orbit">✦</span><b class="placeholder-title">LOADING VESPER</b><small class="placeholder-copy">Put your VRM in models/character.vrm</small></div>
+        <div class="model-only-top"><span>VESPER / MODEL ONLY</span><span id="stage-status">LOADING AVATAR</span></div>
+          <div class="model-only-dock" aria-label="Model-only controls">
+          <button type="button" data-performance="blush">BLUSH</button><button type="button" data-performance="wave">WAVE</button><button type="button" data-performance="listen">LISTEN</button><button type="button" data-expression="teasing">TEASE</button><button type="button" id="model-only-close">CLOSE</button>
+          <div class="model-only-backgrounds" aria-label="Choose model background"><span>BG</span><button type="button" data-background="atelier">A</button><button type="button" data-background="sakura">S</button><button type="button" data-background="midnight">N</button><button type="button" data-background="aurora">U</button><button type="button" data-background="sunset">D</button></div>
+          </div>
+      </div>
+    </main>
+    <script type="module" src="/avatar.js"></script>
+    <script type="module" src="/model-only.js"></script>
+  </body>
+</html>

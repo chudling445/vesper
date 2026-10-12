@@ -24,7 +24,7 @@
         <div class="page-hero">
           <div class="eyebrow"><span class="eyebrow-dash"></span> ARCADE / PLAY WITH VESPER</div>
           <h1>Play with <em>Vesper.</em></h1>
-          <p class="page-lead">Four quick games, all offline. Vesper reacts to every move, in English or 日本語, and can read her reactions out loud.</p>
+          <p class="page-lead">Seven quick games, all offline. Vesper reacts to every move, in English or 日本語, and can read her reactions out loud.</p>
         </div>
 
         <div class="arcade-tabs" role="tablist" aria-label="Choose a game">
@@ -32,6 +32,9 @@
           <button type="button" role="tab" data-game="ttt" aria-selected="false">⭕ Tic-Tac-Toe</button>
           <button type="button" role="tab" data-game="memory" aria-selected="false">🎴 Memory Match</button>
           <button type="button" role="tab" data-game="omikuji" aria-selected="false">⛩️ Omikuji</button>
+          <button type="button" role="tab" data-game="reflex" aria-selected="false">⚡ Reflex Test</button>
+          <button type="button" role="tab" data-game="starcatch" aria-selected="false">✦ Star Catch</button>
+          <button type="button" role="tab" data-game="highlow" aria-selected="false">🔢 High-Low</button>
         </div>
 
         <div class="arcade-layout">
@@ -85,6 +88,28 @@
                 <p id="omi-text">Press the button to draw.</p>
               </div>
               <button class="primary-button" id="omi-draw" type="button">SHAKE THE BOX</button>
+            </div>
+
+            <div class="game-panel" data-panel="reflex" hidden>
+              <h2>Reflex Test <span class="jp">反応速度</span></h2>
+              <p class="game-help">Wait for the star to turn pink, then tap as fast as you can. Do not jump the start, senpai.</p>
+              <div class="reflex-arena" id="reflex-arena"><span id="reflex-prompt">PRESS START</span></div>
+              <div class="game-toolbar"><button class="primary-button" id="reflex-start" type="button">START TEST</button><span class="game-counter">BEST <b id="reflex-best">—</b></span></div>
+              <p class="game-result" id="reflex-status" role="status">Your best reaction will be kept locally.</p>
+            </div>
+            <div class="game-panel" data-panel="starcatch" hidden>
+              <h2>Star Catch <span class="jp">星つかみ</span></h2>
+              <p class="game-help">Catch as many little stars as possible before the 20-second night ends.</p>
+              <div class="starcatch-arena" id="starcatch-arena"><button id="starcatch-target" type="button" aria-label="Catch the star">✦</button><span id="starcatch-count">0</span></div>
+              <div class="game-toolbar"><button class="primary-button" id="starcatch-start" type="button">START NIGHT</button><span class="game-counter">BEST <b id="starcatch-best">—</b></span><span class="game-counter">TIME <b id="starcatch-time">20</b></span></div>
+              <p class="game-result" id="starcatch-status" role="status">Catch the star, senpai.</p>
+            </div>
+            <div class="game-panel" data-panel="highlow" hidden>
+              <h2>High-Low <span class="jp">大小ゲーム</span></h2>
+              <p class="game-help">Guess the secret number from 1 to 100. Fewer guesses means a higher score.</p>
+              <div class="highlow-card"><span class="highlow-range">1 — 100</span><input id="highlow-input" type="number" min="1" max="100" placeholder="Your guess" /><button class="primary-button" id="highlow-guess" type="button">GUESS</button></div>
+              <div class="game-toolbar"><button class="quiet-button" id="highlow-new" type="button">NEW NUMBER</button><span class="game-counter">BEST <b id="highlow-best">—</b></span></div>
+              <p class="game-result" id="highlow-status" role="status">I have a number in mind…</p>
             </div>
           </div>
 

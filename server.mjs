@@ -43,7 +43,9 @@ const SESSION_SECRET = randomBytes(32);
 const MAX_PUBLIC_CHAT_CONCURRENCY = 2;
 const loginAttempts = new Map();
 const chatAttempts = new Map();
+const sharedDocuments = new Map();
 let activePublicChats = 0;
+let ollamaStartAttempted = false;
 if (!PUBLIC_MODE && !LOCAL_HOSTS.has(normalizedBindHost)) {
   throw new Error('Vesper only listens on localhost by default. Set up password-protected HTTPS mode before binding to a network address.');
 }
@@ -119,17 +121,55 @@ for (const [mode, text] of Object.entries(characterConfig?.modes || {})) {
 const staticFiles = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/index.html', ['index.html', 'text/html; charset=utf-8']],
+  ['/chat', ['index.html', 'text/html; charset=utf-8']],
+  ['/start', ['onboarding.html', 'text/html; charset=utf-8']],
+  ['/onboarding.html', ['onboarding.html', 'text/html; charset=utf-8']],
+  ['/onboarding', ['onboarding.html', 'text/html; charset=utf-8']],
+  ['/welcome.html', ['welcome.html', 'text/html; charset=utf-8']],
   ['/getting-started', ['getting-started.html', 'text/html; charset=utf-8']],
   ['/getting-started.html', ['getting-started.html', 'text/html; charset=utf-8']],
+  ['/games', ['games.html', 'text/html; charset=utf-8']],
+  ['/games.html', ['games.html', 'text/html; charset=utf-8']],
+  ['/voices', ['voices.html', 'text/html; charset=utf-8']],
+  ['/voices.html', ['voices.html', 'text/html; charset=utf-8']],
+  ['/about', ['about.html', 'text/html; charset=utf-8']],
+  ['/about.html', ['about.html', 'text/html; charset=utf-8']],
+  ['/model-only', ['model-only.html', 'text/html; charset=utf-8']],
+  ['/model-only.html', ['model-only.html', 'text/html; charset=utf-8']],
+  ['/workspace', ['workspace.html', 'text/html; charset=utf-8']],
+  ['/workspace.html', ['workspace.html', 'text/html; charset=utf-8']],
+  ['/quick-capture', ['quick-capture.html', 'text/html; charset=utf-8']],
+  ['/quick-capture.html', ['quick-capture.html', 'text/html; charset=utf-8']],
+  ['/share.html', ['share.html', 'text/html; charset=utf-8']],
+  ['/share', ['share.html', 'text/html; charset=utf-8']],
   ['/Vesper-Setup.exe', ['Vesper-Setup.exe', 'application/octet-stream']],
   ['/favicon.svg', ['favicon.svg', 'image/svg+xml']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json; charset=utf-8']],
   ['/sw.js', ['sw.js', 'text/javascript; charset=utf-8']],
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
+  ['/first-run.js', ['first-run.js', 'text/javascript; charset=utf-8']],
+  ['/welcome.js', ['welcome.js', 'text/javascript; charset=utf-8']],
+  ['/onboarding.js', ['onboarding.js', 'text/javascript; charset=utf-8']],
   ['/avatar.js', ['avatar.js', 'text/javascript; charset=utf-8']],
+  ['/model-only.js', ['model-only.js', 'text/javascript; charset=utf-8']],
   ['/guide.js', ['guide.js', 'text/javascript; charset=utf-8']],
   ['/chess.js', ['chess.js', 'text/javascript; charset=utf-8']],
+  ['/page.js', ['page.js', 'text/javascript; charset=utf-8']],
+  ['/games.js', ['games.js', 'text/javascript; charset=utf-8']],
+  ['/voices.js', ['voices.js', 'text/javascript; charset=utf-8']],
+  ['/voice-utils.js', ['voice-utils.js', 'text/javascript; charset=utf-8']],
+  ['/persistence.js', ['persistence.js', 'text/javascript; charset=utf-8']],
+  ['/feedback.js', ['feedback.js', 'text/javascript; charset=utf-8']],
+  ['/theme-provider.js', ['theme-provider.js', 'text/javascript; charset=utf-8']],
+  ['/export-utils.js', ['export-utils.js', 'text/javascript; charset=utf-8']],
+  ['/a11y.js', ['a11y.js', 'text/javascript; charset=utf-8']],
+  ['/offline-sync.js', ['offline-sync.js', 'text/javascript; charset=utf-8']],
+  ['/security-lock.js', ['security-lock.js', 'text/javascript; charset=utf-8']],
+  ['/workspace.js', ['workspace.js', 'text/javascript; charset=utf-8']],
+  ['/quick-capture.js', ['quick-capture.js', 'text/javascript; charset=utf-8']],
+  ['/share.js', ['share.js', 'text/javascript; charset=utf-8']],
+  ['/manus-routes.json', ['manus-routes.json', 'application/json; charset=utf-8']],
 ]);
 
 function applySecurityHeaders(req, res) {
@@ -168,6 +208,28 @@ async function installerAvailable() {
   catch { return false; }
 }
 
+function startLocalOllama() {
+  if (ollamaStartAttempted || PUBLIC_MODE || process.env.OLLAMA_AUTOSTART === 'false') return;
+  ollamaStartAttempted = true;
+  try {
+    const child = spawn(process.env.OLLAMA_COMMAND || 'ollama', ['serve'], { detached: true, stdio: 'ignore', windowsHide: true });
+    child.on('error', () => {});
+    child.unref();
+  } catch { /* The final response explains how to start Ollama manually. */ }
+}
+
+async function waitForOllama(base, timeout = 5000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(700) });
+      if (response.ok) return response;
+    } catch { /* Keep waiting for ollama serve. */ }
+    await new Promise((resolveWait) => setTimeout(resolveWait, 350));
+  }
+  return null;
+}
+
 function providerConfig(provider) {
   if (provider === 'openai') return { model: process.env.OPENAI_MODEL || DEFAULT_MODELS.openai, ready: Boolean(process.env.OPENAI_API_KEY) };
   if (provider === 'ollama') return { model: process.env.OLLAMA_MODEL || DEFAULT_MODELS.ollama, ready: true };
@@ -191,7 +253,7 @@ async function publicSettings() {
     defaultProvider: ['openai', 'ollama', 'compatible'].includes(process.env.DEFAULT_LLM_PROVIDER) ? process.env.DEFAULT_LLM_PROVIDER : 'ollama',
     providers: {
       openai: { ...providerConfig('openai'), label: 'OpenAI API' },
-      ollama: { ...providerConfig('ollama'), label: 'Ollama · local' , models: ollamaModels },
+      ollama: { ...providerConfig('ollama'), ready: ollamaModels.length > 0, label: 'Ollama · local' , models: ollamaModels },
       compatible: { ...providerConfig('compatible'), label: 'OpenAI-compatible API' },
     },
   };
@@ -212,7 +274,7 @@ function modelErrorMessage(provider, model) {
   return '';
 }
 
-async function readUpstreamText(response, provider) {
+async function readUpstreamText(response, provider, model = '') {
   const maxResponseBytes = 1_048_576;
   const declaredSize = Number(response.headers.get('content-length'));
   if (Number.isFinite(declaredSize) && declaredSize > maxResponseBytes) {
@@ -236,6 +298,7 @@ async function readUpstreamText(response, provider) {
   try { result = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
   catch { result = {}; }
   if (!response.ok) {
+    if (provider === 'ollama' && response.status === 404) throw Object.assign(new Error(`Ollama cannot find the model “${model}”. Open LLM Settings and choose an installed model.`), { status: 503 });
     const status = response.status >= 500 ? 502 : response.status;
     throw Object.assign(new Error(`${provider} rejected the request (HTTP ${response.status}). Check the selected model and provider settings.`), { status });
   }
@@ -294,14 +357,24 @@ async function handleChat(req, res) {
   }
 
   try {
-    const upstream = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(payload), signal: AbortSignal.timeout(120_000) });
-    const reply = await readUpstreamText(upstream, provider);
+    let upstream;
+    try {
+      upstream = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(payload), signal: AbortSignal.timeout(120_000) });
+    } catch (firstError) {
+      if (provider !== 'ollama') throw firstError;
+      const base = (process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
+      startLocalOllama();
+      const ready = await waitForOllama(base);
+      if (!ready) throw firstError;
+      upstream = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(payload), signal: AbortSignal.timeout(120_000) });
+    }
+    const reply = await readUpstreamText(upstream, provider, model);
     if (!reply) { sendJson(res, 502, { error: 'The model returned no text. Try again.' }); return; }
     sendJson(res, 200, { reply });
   } catch (error) {
     if (error?.status) { sendJson(res, error.status, { error: error.message }); return; }
     const message = provider === 'ollama'
-      ? 'Could not reach Ollama. Open Ollama and make sure the selected model is installed.'
+      ? `Could not reach Ollama at ${(process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '')}. Start Ollama, then choose an installed model in LLM Settings.`
       : 'Could not reach the model service. Check the provider settings and your connection.';
     sendJson(res, 502, { error: message });
   }
@@ -380,6 +453,37 @@ function chatRateLimit(req) {
   }
   recent.count += 1;
   return recent.count > 8;
+}
+
+function cleanupSharedDocuments() {
+  const now = Date.now();
+  for (const [token, document] of sharedDocuments) if (document.expiresAt <= now) sharedDocuments.delete(token);
+}
+
+function sharePasswordHash(password, salt) { return createHash('sha256').update(`${salt}:${password}`).digest('hex'); }
+
+async function handleCreateShare(req, res) {
+  if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Create shares from the Vesper site.' }); return; }
+  let body; try { body = await readBody(req); } catch (error) { sendJson(res, 400, { error: error.message || 'Could not read the share.' }); return; }
+  if (!body?.snapshot || typeof body.snapshot !== 'object') { sendJson(res, 400, { error: 'A workspace snapshot is required.' }); return; }
+  cleanupSharedDocuments();
+  const expiryDays = [1, 7, 30].includes(Number(body.expiryDays)) ? Number(body.expiryDays) : 7;
+  const token = randomBytes(18).toString('base64url');
+  const salt = randomBytes(16).toString('hex');
+  const password = typeof body.password === 'string' ? body.password.slice(0, 100) : '';
+  const document = { title: typeof body.title === 'string' ? body.title.slice(0, 100) : 'Vesper workspace', snapshot: body.snapshot, allowCopy: body.allowCopy !== false, expiresAt: Date.now() + expiryDays * 86_400_000, salt, passwordHash: password ? sharePasswordHash(password, salt) : '' };
+  sharedDocuments.set(token, document);
+  sendJson(res, 200, { token, expiresAt: document.expiresAt, protected: Boolean(password) });
+}
+
+async function handleReadShare(req, res, token) {
+  cleanupSharedDocuments();
+  const document = sharedDocuments.get(token);
+  if (!document) { sendJson(res, 404, { error: 'This shared view is unavailable or has expired.' }); return; }
+  let password = '';
+  if (req.method === 'POST') { try { const body = await readBody(req); password = typeof body?.password === 'string' ? body.password : ''; } catch { sendJson(res, 400, { error: 'Could not read the password.' }); return; } }
+  if (document.passwordHash && sharePasswordHash(password, document.salt) !== document.passwordHash) { sendJson(res, 401, { error: 'A password is required for this shared view.' }); return; }
+  sendJson(res, 200, { title: document.title, snapshot: document.snapshot, allowCopy: document.allowCopy, expiresAt: document.expiresAt });
 }
 
 async function serveFile(pathname, res, headOnly = false) {
@@ -483,6 +587,10 @@ const server = createServer(async (req, res) => {
     sendJson(res, 200, { ok: true });
   } else if (req.method === 'GET' && url.pathname === '/api/settings') {
     sendJson(res, 200, await publicSettings());
+  } else if (req.method === 'POST' && url.pathname === '/api/share') {
+    await handleCreateShare(req, res);
+  } else if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/api/share/')) {
+    await handleReadShare(req, res, decodeURIComponent(url.pathname.slice('/api/share/'.length)));
   } else if (req.method === 'POST' && url.pathname === '/api/open-model-folder') {
     if (!sameOrigin(req)) {
       sendJson(res, 403, { error: 'This action is only available from the local site.' });
@@ -504,6 +612,8 @@ const server = createServer(async (req, res) => {
       try { await handleChat(req, res); }
       finally { if (PUBLIC_MODE) activePublicChats -= 1; }
     }
+  } else if ((req.method === 'GET' || req.method === 'HEAD') && url.pathname.startsWith('/share/')) {
+    await serveFile('/share.html', res, req.method === 'HEAD');
   } else if (req.method === 'GET' || req.method === 'HEAD') {
     let pathname;
     try { pathname = decodeURIComponent(url.pathname); }

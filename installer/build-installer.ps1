@@ -16,7 +16,7 @@ if (Test-Path -LiteralPath $buildRoot) {
 }
 New-Item -ItemType Directory -Path $payloadRoot -Force | Out-Null
 
-$files = @('app.js', 'avatar.js', 'guide.js', 'chess.js', 'server.mjs', 'character_config.yaml', 'index.html', 'getting-started.html', 'styles.css', 'favicon.svg', 'manifest.webmanifest', 'sw.js', '.env.example', 'README.md', 'GETTING-STARTED.md', 'DEPLOYMENT.md', 'Start Vesper.bat', 'Start Vesper Desktop.bat')
+$files = @('app.js', 'avatar.js', 'guide.js', 'chess.js', 'server.mjs', 'character_config.yaml', 'index.html', 'workspace.html', 'workspace.js', 'quick-capture.html', 'quick-capture.js', 'share.html', 'share.js', 'onboarding.html', 'onboarding.js', 'getting-started.html', 'about.html', 'games.html', 'games.js', 'voices.html', 'voices.js', 'page.js', 'voice-utils.js', 'persistence.js', 'feedback.js', 'theme-provider.js', 'export-utils.js', 'a11y.js', 'offline-sync.js', 'security-lock.js', 'model-only.html', 'model-only.js', 'welcome.html', 'welcome.js', 'first-run.js', 'styles.css', 'favicon.svg', 'manifest.webmanifest', 'manus-routes.json', 'sw.js', '.env.example', 'README.md', 'GETTING-STARTED.md', 'DEPLOYMENT.md', 'Start Vesper.bat', 'Start Vesper Desktop.bat', 'Start Vesper Model Only.bat', 'Start Vesper Quick Capture.bat')
 foreach ($file in $files) {
   Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination (Join-Path $payloadRoot $file)
 }

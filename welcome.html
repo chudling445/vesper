@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#130c18" />
+    <meta name="description" content="Get started with Vesper, your private 3D companion." />
+    <title>Welcome to Vesper</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="welcome-page" data-theme="riko">
+    <div class="grain" aria-hidden="true"></div>
+    <main class="welcome-shell">
+      <header class="welcome-top"><a class="brand" href="/start"><span class="brand-emblem" aria-hidden="true"><i></i><b>✦</b></span><span class="brand-name">VESPER<span> / </span>ATELIER</span></a><span class="welcome-build">FIRST-RUN SETUP · LOCAL BY DEFAULT</span></header>
+      <section class="welcome-hero">
+        <div class="welcome-copy"><p class="eyebrow"><span class="eyebrow-dash"></span> NICE TO MEET YOU, SENPAI</p><h1>Let’s get you<br /><em>started.</em></h1><p class="welcome-lead">Vesper is a private 3D companion with a living avatar, anime-style reactions, voice, games, and thoughtful conversation. This takes less than a minute.</p><div class="welcome-actions"><a class="guide-primary" id="welcome-enter" href="/chat">ENTER THE ATELIER <span aria-hidden="true">↗</span></a><a class="guide-secondary" href="/getting-started">READ THE QUICK START</a></div><div class="welcome-theme-picker" aria-label="Choose your welcome theme"><span>CHOOSE YOUR ATELIER</span><button type="button" data-welcome-theme="sakura">SAKURA</button><button type="button" data-welcome-theme="mica">MICA</button><button type="button" data-welcome-theme="velvet">VELVET</button><button type="button" data-welcome-theme="petal">PETAL</button><button type="button" data-welcome-theme="moonstone">MOON</button><button type="button" data-welcome-theme="jade">JADE</button><button type="button" data-welcome-theme="riko">RIKO</button><button type="button" data-welcome-theme="portrait">PORTRAIT</button></div></div>
+        <div class="welcome-orbit" aria-hidden="true"><span class="welcome-orbit-ring one"></span><span class="welcome-orbit-ring two"></span><span class="welcome-spark">✦</span><small>YOUR PRIVATE<br />CHARACTER STUDIO</small></div>
+      </section>
+      <section class="welcome-steps" aria-label="Getting started steps">
+        <article class="welcome-step"><span>01</span><div><b>Choose how she thinks</b><p>Open LLM Settings after entering the studio. Ollama keeps chat local on your computer.</p></div></article>
+        <article class="welcome-step"><span>02</span><div><b>Bring the character to life</b><p>Place your permitted VRM at <code>models\character.vrm</code>, then use Auto React for movement and blush.</p></div></article>
+        <article class="welcome-step"><span>03</span><div><b>Make it yours</b><p>Try Portrait Stage, the Arcade, curated Anime Waifu voice, and the floating Model Only window.</p></div></article>
+      </section>
+      <section class="welcome-coming"><div><p class="eyebrow"><span class="eyebrow-dash"></span> ON THE ROADMAP</p><h2>Model Gallery <em>coming soon.</em></h2><p>We’re preparing a friendly model-selection experience with curated local models, requirements, and one-click setup guidance. For now, use LLM Settings to choose an installed Ollama model.</p></div><span class="coming-badge">COMING SOON</span></section>
+      <footer class="welcome-footer"><span>VESPER · A SMALL, PRIVATE UNIVERSE</span><a href="/games">VISIT THE ARCADE →</a></footer>
+    </main>
+    <script type="module" src="/welcome.js"></script>
+  </body>
+</html>
