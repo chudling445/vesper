@@ -16,12 +16,13 @@
     </header>
 
     <section class="planner-hero">
-      <div><span class="eyebrow">VESPER / PERSONAL WORKBENCH</span><h1>Build wisely.<br /><em>Keep the numbers yours.</em></h1><p>Offline PC planning, portfolio notes, health estimates, and money tracking. Your entries stay on this device.</p></div>
+      <div><span class="eyebrow">VESPER / PERSONAL WORKBENCH</span><h1>Build wisely.<br /><em>Keep the numbers yours.</em></h1><p>Offline PC planning, portfolio notes, health estimates, and money tracking. Browser data stays in this browser; tracker history is stored with this Vesper installation.</p></div>
       <div class="planner-local-badge"><span class="status-dot"></span><span>LOCAL DATA</span><small id="planner-save-status">READY</small></div>
     </section>
 
     <nav class="planner-tabs" role="tablist" aria-label="Personal tools">
       <button class="planner-tab is-active" type="button" role="tab" aria-selected="true" data-planner-tab="builder">PC BUILDER</button>
+      <button class="planner-tab" type="button" role="tab" aria-selected="false" data-planner-tab="trackers">MARKET TRACKERS</button>
       <button class="planner-tab" type="button" role="tab" aria-selected="false" data-planner-tab="portfolio">MARKETS</button>
       <button class="planner-tab" type="button" role="tab" aria-selected="false" data-planner-tab="health">HEALTH ESTIMATES</button>
       <button class="planner-tab" type="button" role="tab" aria-selected="false" data-planner-tab="ledger">MONEY</button>
@@ -76,6 +77,143 @@
         </form>
         <p class="planner-footnote">Add one offer per retailer and Vesper compares the lowest price you recorded. Quotes are manual local snapshots; this offline build does not scrape stores or claim live prices. Check the exact seller, revision, warranty, board BIOS support, card dimensions, shipping, and return policy before ordering.</p>
       </section>
+    </section>
+
+    <section class="planner-view" id="planner-trackers" data-planner-view="trackers" role="tabpanel" hidden>
+      <div class="planner-section-heading"><div><span class="eyebrow">INDIA / OBSERVED DATA FIRST</span><h2>Market trackers, <em>with receipts.</em></h2><p class="tracker-intro">Source-linked observations and transparent calculations. Missing history stays missing; estimates are never shown as actual prices or offers.</p></div><span class="planner-note">INR · opt-in feeds · private instance history</span></div>
+      <nav class="tracker-tabs" role="tablist" aria-label="Market tracker types">
+        <button type="button" class="tracker-tab is-active" data-tracker-tab="pc" aria-selected="true">PC COMPONENTS</button>
+        <button type="button" class="tracker-tab" data-tracker-tab="funds" aria-selected="false">INDIA INDEX & FUNDS</button>
+        <button type="button" class="tracker-tab" data-tracker-tab="loans" aria-selected="false">HOME LOAN / LAP</button>
+        <button type="button" class="tracker-tab" data-tracker-tab="stress" aria-selected="false">MARKET STRESS</button>
+      </nav>
+
+      <section class="tracker-view is-visible" data-tracker-view="pc" role="tabpanel">
+        <div class="tracker-headline"><div><span class="eyebrow">PC PARTS / INDIA</span><h3>New, used, and free listings</h3><p>Annual history from 2020 to the current year. Each year is an observed record, an unreleased period, or explicitly unverified.</p></div><button type="button" class="planner-button tracker-refresh" data-refresh-tracker="pc">REFRESH AUTHORIZED FEEDS</button></div>
+        <div class="tracker-source-status" id="pc-tracker-status" role="status">Loading source status…</div>
+        <div class="tracker-control-grid">
+          <label class="planner-field">CATEGORY<select id="pc-tracker-category"></select></label>
+          <label class="planner-field">COMPONENT<select id="pc-tracker-part"></select></label>
+          <label class="planner-field">CONDITION<select id="pc-tracker-condition"><option value="new">New</option><option value="used">Used</option><option value="free">Free</option></select></label>
+        </div>
+        <div class="tracker-metrics" id="pc-tracker-metrics" aria-live="polite"></div>
+        <div class="tracker-comparison" id="pc-tracker-comparison"></div>
+        <div id="pc-tracker-listings" class="tracker-history-list" aria-label="Recent sourced listings"></div>
+        <div class="tracker-split">
+          <section class="planner-card tracker-card"><div class="planner-card-heading"><div><span class="eyebrow">OBSERVED HISTORY</span><h3>2020 to now</h3></div><span class="planner-note">No modelled backfill</span></div><div id="pc-tracker-years" class="tracker-years"></div></section>
+          <section class="planner-card tracker-card"><div class="planner-card-heading"><div><span class="eyebrow">OPTIONAL FORECAST</span><h3>2027 and 2028</h3></div><span class="planner-note">Estimate only</span></div><div id="pc-tracker-forecast" class="tracker-forecast"></div></section>
+        </div>
+        <section class="planner-card tracker-card">
+          <div class="planner-card-heading"><div><span class="eyebrow">RECORD AN OBSERVATION</span><h3>Add a sourced listing</h3></div><span class="planner-note">Older observations are welcome</span></div>
+          <form id="pc-tracker-observation-form" class="tracker-form">
+            <label class="planner-field">PRODUCT<select id="pc-observation-part" required></select></label>
+            <label class="planner-field">CONDITION<select id="pc-observation-condition"><option value="new">New</option><option value="used">Used</option><option value="free">Free</option></select></label>
+            <label class="planner-field">PRICE ₹<input id="pc-observation-price" type="number" min="0" step="0.01" required /></label>
+            <label class="planner-field">SOURCE / MARKETPLACE<input id="pc-observation-source" maxlength="100" placeholder="e.g. retailer, OLX, local shop" required /></label>
+            <label class="planner-field">LISTING URL <small>Optional, HTTPS only</small><input id="pc-observation-url" type="url" placeholder="https://…" /></label>
+            <label class="planner-field">OBSERVED DATE<input id="pc-observation-date" type="date" required /></label>
+            <button class="planner-button" type="submit">SAVE OBSERVATION</button>
+          </form>
+          <div class="tracker-transfer"><label class="planner-field">IMPORT JSON (dated source records)<input id="pc-tracker-import" type="file" accept=".json,application/json" /></label><button type="button" class="planner-button planner-button-soft" id="pc-tracker-export">EXPORT SELECTED HISTORY</button></div>
+          <p class="planner-footnote">Free records must be explicit zero-price offers; they are not treated as missing prices. Use exact model/source URLs. Automated feeds run every three hours only after you configure a permitted feed. Import template: <a href="/pc-price-feeds.example.json" download>PC feed example</a>.</p>
+        </section>
+      </section>
+
+      <section class="tracker-view" data-tracker-view="funds" role="tabpanel" hidden>
+        <div class="tracker-headline"><div><span class="eyebrow">INDIA / INDEX LEVELS / FUND NAV</span><h3>Separate the index from its fund</h3><p>Index points, mutual-fund NAV, and calculated returns are different measures and are never combined.</p></div><button type="button" class="planner-button tracker-refresh" data-refresh-tracker="fund">CHECK FUND FEEDS</button></div>
+        <div class="tracker-source-status" id="fund-tracker-status" role="status">Loading source status…</div>
+        <div class="tracker-control-grid tracker-fund-controls"><label class="planner-field">INSTRUMENT / SOURCE<select id="fund-tracker-instrument"></select></label></div>
+        <div class="tracker-metrics" id="fund-tracker-metrics" aria-live="polite"></div>
+        <section id="fund-tracker-comparisons" class="tracker-comparisons" aria-label="Index and fund observations compared"></section>
+        <div id="fund-tracker-history" class="tracker-history-list"></div>
+        <section class="planner-card tracker-card">
+          <div class="planner-card-heading"><div><span class="eyebrow">RECORD INDEX OR FUND DATA</span><h3>Add a timestamped observation</h3></div><span class="planner-note">Source URL required</span></div>
+          <form id="fund-tracker-observation-form" class="tracker-form">
+            <label class="planner-field">NAME<input id="fund-observation-name" maxlength="140" placeholder="e.g. Nifty 50 TRI or scheme name" required /></label>
+            <label class="planner-field">STABLE INSTRUMENT ID<input id="fund-observation-id" maxlength="100" placeholder="Index symbol or AMFI scheme code" required /></label>
+            <label class="planner-field">TYPE<select id="fund-observation-type"><option value="index">Index</option><option value="index-fund">Index mutual fund</option><option value="etf">Index ETF</option></select></label>
+            <label class="planner-field">INDEX BASIS<select id="fund-observation-basis"><option value="not-stated">Not stated</option><option value="price-index">Price index</option><option value="total-return-index">Total-return index</option></select></label>
+            <label class="planner-field">LEVEL / NAV VALUE<input id="fund-observation-value" type="number" min="0.000001" step="any" required /></label>
+            <label class="planner-field">SOURCE<input id="fund-observation-source" maxlength="100" placeholder="AMFI, NSE, BSE, fund house…" required /></label>
+            <label class="planner-field">SOURCE URL<input id="fund-observation-url" type="url" placeholder="https://…" required /></label>
+            <label class="planner-field">AS-OF / OBSERVED DATE<input id="fund-observation-date" type="datetime-local" required /></label>
+            <label class="planner-field">PUBLISHED DATE <small>Optional, if stated by source</small><input id="fund-observation-published" type="datetime-local" /></label>
+            <button class="planner-button" type="submit">SAVE OBSERVATION</button>
+          </form>
+          <div class="tracker-transfer"><label class="planner-field">IMPORT JSON<input id="fund-tracker-import" type="file" accept=".json,application/json" /></label><button type="button" class="planner-button planner-button-soft" id="fund-tracker-export">EXPORT SELECTED HISTORY</button></div>
+          <p class="planner-footnote">Fund feeds are checked hourly, but NAV publication is normally once per business day and may be delayed on holidays or by the provider. Each row shows both the source’s observation time and Vesper’s check time. An hourly poll does not mean an hourly NAV.</p>
+        </section>
+      </section>
+
+      <section class="tracker-view" data-tracker-view="loans" role="tabpanel" hidden>
+        <div class="tracker-headline"><div><span class="eyebrow">INDIA / HOME LOAN & LAP TERMS</span><h3>Published terms, then your EMI math</h3><p>Rate and fees belong to the lender source; the EMI calculator uses assumptions you can inspect. <a href="https://www.icici.bank.in/personal-banking/loans/home-loan/interest-rates" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">ICICI official home-loan and LAP rate page</a>.</p></div><button type="button" class="planner-button tracker-refresh" data-refresh-tracker="loan">CHECK LENDER FEEDS</button></div>
+        <div class="tracker-source-status" id="loan-tracker-status" role="status">Loading source status…</div>
+        <div id="loan-tracker-list" class="loan-tracker-list"></div>
+        <div id="loan-tracker-history" class="tracker-history-list" aria-label="Lender term history"></div>
+        <section class="planner-card tracker-card">
+          <div class="planner-card-heading"><div><span class="eyebrow">USER-INPUT EMI CALCULATOR</span><h3>Compare a reducing-balance estimate</h3></div><span class="planner-note">Not an offer or advice</span></div>
+          <form id="emi-calculator-form" class="tracker-form">
+            <label class="planner-field">SOURCED RATE <small>Optional: copy from a saved lender snapshot</small><select id="emi-source-offer"></select></label>
+            <label class="planner-field">PRINCIPAL ₹<input id="emi-principal" type="number" min="1" step="1000" value="2500000" required /></label>
+            <label class="planner-field">ANNUAL RATE %<input id="emi-rate" type="number" min="0" max="100" step="0.01" placeholder="Enter a rate" required /></label>
+            <label class="planner-field">TENURE MONTHS<input id="emi-months" type="number" min="1" max="600" step="1" value="240" required /></label>
+            <label class="planner-field">PROCESSING FEE % <small>Optional</small><input id="emi-fee-percent" type="number" min="0" max="100" step="0.01" /></label>
+            <label class="planner-field">PROCESSING FEE ₹ <small>Optional fixed amount</small><input id="emi-fee-amount" type="number" min="0" step="1" /></label>
+            <button class="planner-button" type="submit">CALCULATE EMI</button>
+          </form>
+          <div id="emi-calculator-result" class="tracker-calculation" aria-live="polite">Enter principal, published/user-entered annual rate, and tenure to see the estimate.</div>
+          <p class="planner-footnote">Formula: monthly EMI = P × r × (1+r)<sup>n</sup> ÷ ((1+r)<sup>n</sup>−1), where monthly r = annual nominal rate ÷ 12 and n = months. This assumes a fixed monthly reducing-balance rate. Taxes, insurance, floating-rate changes, lender rounding, legal/valuation charges, and other fees are excluded unless entered.</p>
+        </section>
+        <section class="planner-card tracker-card">
+          <div class="planner-card-heading"><div><span class="eyebrow">RECORD PUBLISHED LENDER TERMS</span><h3>Add a cited rate or fee</h3></div><span class="planner-note">Checked time is set on save</span></div>
+          <form id="loan-tracker-observation-form" class="tracker-form">
+            <label class="planner-field">LENDER<input id="loan-observation-lender" maxlength="100" required /></label>
+            <label class="planner-field">PRODUCT / BORROWER SLAB <small>If published</small><input id="loan-observation-product" maxlength="100" placeholder="e.g. salaried, score tier, loan slab" /></label>
+            <label class="planner-field">LOAN TYPE<select id="loan-observation-type"><option value="home-loan">Home loan</option><option value="lap">Loan against property (LAP)</option></select></label>
+            <label class="planner-field">PUBLISHED RATE FROM %<input id="loan-observation-rate" type="number" min="0.01" max="100" step="0.01" required /></label>
+            <label class="planner-field">PUBLISHED RATE TO % <small>If a range</small><input id="loan-observation-rate-max" type="number" min="0.01" max="100" step="0.01" /></label>
+            <label class="planner-field">PROCESSING FEE % <small>If published</small><input id="loan-observation-fee-percent" type="number" min="0" max="100" step="0.01" /></label>
+            <label class="planner-field">PROCESSING FEE ₹ <small>If fixed</small><input id="loan-observation-fee-amount" type="number" min="0" step="1" /></label>
+            <label class="planner-field">MIN TENURE MONTHS<input id="loan-observation-min-tenure" type="number" min="1" max="600" step="1" /></label>
+            <label class="planner-field">MAX TENURE MONTHS<input id="loan-observation-max-tenure" type="number" min="1" max="600" step="1" /></label>
+            <label class="planner-field">MAX LTV % <small>If published</small><input id="loan-observation-ltv" type="number" min="0.01" max="100" step="0.01" /></label>
+            <label class="planner-field">PUBLISHED DATE <small>Optional</small><input id="loan-observation-published" type="date" /></label>
+            <label class="planner-field">SOURCE<input id="loan-observation-source" maxlength="100" required /></label>
+            <label class="planner-field">OFFICIAL SOURCE URL<input id="loan-observation-url" type="url" placeholder="https://…" required /></label>
+            <label class="planner-field">ELIGIBILITY <small>Optional published summary</small><input id="loan-observation-eligibility" maxlength="1000" /></label>
+            <label class="planner-field">OTHER TERMS <small>Optional published fees/conditions</small><input id="loan-observation-terms" maxlength="1500" /></label>
+            <button class="planner-button" type="submit">SAVE LENDER SNAPSHOT</button>
+          </form>
+          <div class="tracker-transfer"><label class="planner-field">IMPORT JSON<input id="loan-tracker-import" type="file" accept=".json,application/json" /></label><button type="button" class="planner-button planner-button-soft" id="loan-tracker-export">EXPORT LENDER HISTORY</button></div>
+          <p class="planner-footnote">Loan feeds are checked every 48 hours only when you configure a permitted source. Advertised “starting from” rates may depend on credit score, income, property, loan size, and other conditions; confirm directly with the lender before acting.</p>
+        </section>
+      </section>
+      <section class="tracker-view" data-tracker-view="stress" role="tabpanel" hidden>
+        <div class="tracker-headline"><div><span class="eyebrow">INDIA / GLOBAL / HISTORICAL REFERENCE</span><h3>Observed market stress, not crash prediction</h3><p>Higher normalized readings mean more stress in the selected sourced indicators. A lower reading means those indicators eased; it does not establish why or predict what happens next.</p></div><button type="button" class="planner-button tracker-refresh" data-refresh-tracker="stress">CHECK STRESS FEEDS</button></div>
+        <div class="tracker-source-status" id="stress-tracker-status" role="status">Loading stress source status…</div>
+        <div id="stress-market-dashboard" class="stress-market-grid"></div>
+        <section class="planner-card tracker-card">
+          <div class="planner-card-heading"><div><span class="eyebrow">RECORD A NORMALIZED INDICATOR</span><h3>Keep the raw value and scoring method visible</h3></div><span class="planner-note">2-hour feed checks</span></div>
+          <form id="stress-tracker-observation-form" class="tracker-form">
+            <label class="planner-field">MARKET<select id="stress-observation-market"><option value="india">India</option><option value="global">Global</option><option value="reference-2008">Historical 2008 reference</option></select></label>
+            <label class="planner-field">INDICATOR CATEGORY<select id="stress-observation-category"><option value="volatility">Volatility</option><option value="drawdown">Drawdown</option><option value="credit">Credit</option><option value="liquidity">Liquidity</option><option value="breadth">Market breadth</option><option value="currency">Currency</option><option value="flows">Flows</option></select></label>
+            <label class="planner-field">INDICATOR ID<input id="stress-observation-id" maxlength="100" placeholder="e.g. india-vix" required /></label>
+            <label class="planner-field">INDICATOR NAME<input id="stress-observation-name" maxlength="140" placeholder="Source's published indicator" required /></label>
+            <label class="planner-field">RAW READING<input id="stress-observation-value" type="number" step="any" required /></label>
+            <label class="planner-field">RAW UNIT<input id="stress-observation-unit" maxlength="40" placeholder="index points, %, bps…" required /></label>
+            <label class="planner-field">NORMALIZED STRESS SCORE<input id="stress-observation-score" type="number" min="0" max="100" step="0.1" required /></label>
+            <label class="planner-field">NORMALIZATION METHOD<input id="stress-observation-method" maxlength="500" placeholder="Document thresholds/reference and direction" required /></label>
+            <label class="planner-field">OBSERVED DATE & TIME<input id="stress-observation-date" type="datetime-local" required /></label>
+            <label class="planner-field">SOURCE<input id="stress-observation-source" maxlength="100" required /></label>
+            <label class="planner-field">SOURCE URL<input id="stress-observation-url" type="url" placeholder="https://…" required /></label>
+            <button class="planner-button" type="submit">SAVE INDICATOR</button>
+          </form>
+          <div class="tracker-transfer"><label class="planner-field">IMPORT JSON<input id="stress-tracker-import" type="file" accept=".json,application/json" /></label><button type="button" class="planner-button planner-button-soft" id="stress-tracker-export">EXPORT STRESS HISTORY</button></div>
+          <p class="planner-footnote">Checks run every two hours only for configured authorized feeds. Scores are supplied with their source-specific normalization method; they are not calibrated crash probabilities. Aggregate arithmetic: average indicators within each represented category, then give each represented category equal weight (1 divided by the number of represented categories). Missing categories are excluded, never scored as zero.</p>
+        </section>
+        <p class="planner-footnote tracker-disclaimer">The 2008-style panel is a dated historical comparison only; no equivalence to current conditions is inferred. Credit, liquidity, breadth, volatility, currency, and flow data can be delayed, incomparable, or unavailable. No crash timing, probability, certainty, intervention causality, or financial advice is provided.</p>
+      </section>
+      <p class="planner-footnote tracker-disclaimer">India market feeds are opt-in. No retailer, exchange, AMFI, fund-house, or lender site is scraped by default. Manual records and imports must retain source and timestamp details. Historic coverage depends on data you provide; no past prices, returns, NAVs, or lending terms are invented.</p>
     </section>
 
     <section class="planner-view" id="planner-portfolio" data-planner-view="portfolio" role="tabpanel" hidden>
@@ -153,9 +291,10 @@
       </div>
     </section>
 
-    <footer class="footer"><span>VESPER · PRIVATE BY DEFAULT</span><span>PLANS, QUOTES, AND NOTES STAY ON THIS DEVICE</span></footer>
+    <footer class="footer"><span>VESPER · PRIVATE BY DEFAULT</span><span>BROWSER DATA STAYS HERE · TRACKER HISTORY STAYS IN LOCAL INSTANCE STORAGE</span></footer>
   </main>
   <script type="module" src="/planner.js"></script>
+  <script type="module" src="/money-tracker.js"></script>
   <script type="module" src="/page.js"></script>
 </body>
 </html>

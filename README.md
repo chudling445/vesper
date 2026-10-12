@@ -23,7 +23,7 @@ Project Vesper is an anime-focused LLM companion project. She chats in a snarky-
 - **Bright anime-dub voice profiles** in English and 日本語 using installed system voices, 1.1× pace and 1.4× pitch defaults, speech-boundary visemes, and a timer fallback when browser boundary events are unavailable
 - **Push-to-talk** speech input when the browser exposes Speech Recognition
 - **Offline Arcade** with seven games: Jan-Ken-Pon, Tic-Tac-Toe, Memory Match, Omikuji, Reflex Test, Star Catch, and High-Low
-- **PC Builds & Money** — offline PC build sheets with per-retailer price snapshots, specification-based compatibility checks, Indian budget allocation guides from ₹15,000 upward, local exports, plus optional portfolio, ledger, and habit tools
+- **PC Builds & Money** — offline PC build sheets, component price tracking, Indian index/fund observations, home-loan/LAP term history, transparent calculations, local exports, plus portfolio, ledger, and habit tools
 - **Selectable model backdrops** with Atelier, Sakura, Night, Aurora, and Sunset presets shared by the full studio and Model Only window
 - **First-run welcome flow** with setup steps and a Model Gallery coming-soon preview
 - **Twenty-three shared themes** — the original Vesper palettes plus Omarchy Quattro, Tokyo Night, Catppuccin Mocha, Lumon Industries, Fenrir Cyberpunk, Gruber Darker, Rosé Pine Dark, Miasma Forest, Solitude Slate, and Nord Frost. Press **T** on Chat or **Ctrl/Cmd+Shift+T** on any page to cycle.
@@ -70,7 +70,7 @@ Install [Ollama](https://ollama.com/download/windows), download any chat model, 
 
 - Double-click **Start Vesper.bat** to open the local site in your browser.
 - Open **Code Lab** from Chat or Workspace to draft locally, preview HTML/CSS, run a short JavaScript snippet, or export a standalone HTML preview.
-- Open **Builds & Money** from Workspace or visit `/planner` to plan a PC build, keep manual Indian retailer price snapshots, compare the lowest recorded offer, and save or export a shopping sheet.
+- Open **Builds & Money** from Workspace or visit `/planner` to plan a PC build, review the India market trackers, add/import source-backed observations, compare recorded quotes, and calculate EMI assumptions.
 - The first launch opens the welcome page; choose **ENTER THE ATELIER** to continue to `/chat`. Returning launches go directly to the chat studio.
 - The desktop shortcut (**Start Vesper Desktop.bat**) opens an app-style window with Chrome or Edge when available.
 - Use **MODEL ONLY** in the header, or double-click **Start Vesper Model Only.bat**, for a separate floating avatar window with a transparent canvas and compact reaction controls.
@@ -133,7 +133,11 @@ For a concise setup guide, see [GETTING-STARTED.md](GETTING-STARTED.md). For a p
 
 Vesper now keeps its main session, model choice, voice profile, personality, theme, backdrop, and stage settings in a versioned `vesper-state-v2` snapshot. IndexedDB is the durable store when available, localStorage is the immediate startup cache and fallback, and `persistence.js` exposes `migrateState()` for future schema changes. Existing legacy keys are imported automatically.
 
-The PC build workspace uses the same local state store. Its compatibility result only checks specifications entered in a build sheet; reference profiles are broad platform examples, not a live SKU database. Retailer offers are manually recorded snapshots (one latest price per retailer and part), and the total uses the lowest recorded offer. Vesper does not scrape stores or imply stock availability. Confirm the exact product revision, shipping, seller, warranty, BIOS support, cooler mounting, case clearance, and PSU connectors before purchase. Budget guides are allocation suggestions rather than guaranteed shopping lists.
+The PC build workspace uses the same local state store. Its compatibility result only checks specifications entered in a build sheet; reference profiles are broad platform examples, not a live SKU database. Retailer offers in the builder are manual snapshots. Vesper does not scrape stores or imply stock availability. Confirm the exact product revision, shipping, seller, warranty, BIOS support, cooler mounting, case clearance, and PSU connectors before purchase. Budget guides are allocation suggestions rather than guaranteed shopping lists.
+
+### India market trackers
+
+The tracker includes observed new/used/free PC listings, AMFI index-scheme NAV observations, optional index/fund feeds, sourced home-loan/LAP terms, and a non-predictive India/global market-stress dashboard with a separate historical 2008 reference. PC feeds check every three hours, fund/index sources hourly, lender feeds every 48 hours, and stress feeds every two hours. AMFI NAV publication is daily on business days even though its public NAV file is polled hourly. Missing historical years remain unfilled; 2027/2028 PC price forecasts are withheld when observations are insufficient and use an explicitly heuristic trend range when available. Stress scores retain their source normalization method and coverage; they are not crash probabilities. Configure permitted JSON feeds and review data-source caveats in [MARKET-TRACKERS.md](MARKET-TRACKERS.md). Feed secrets belong only in private environment variables; runtime observations stay in ignored `work/`.
 
 The browser UI also has centralized error capture and toast feedback in `feedback.js`, a shared dark/light/system provider in `theme-provider.js`, reusable focus-trap helpers in `a11y.js`, and export/share utilities in `export-utils.js`. Chat exports support Markdown, JSON, and CSV; the share action uses the system share sheet when available and otherwise copies a clean summary to the clipboard. Keyboard shortcuts include Ctrl/Cmd+K for the command palette, Ctrl/Cmd+Shift+E for Markdown export, Ctrl/Cmd+Shift+S for sharing, and Escape for overlays.
 

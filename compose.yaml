@@ -15,6 +15,12 @@ services:
       COMPAT_LLM_BASE_URL: ${COMPAT_LLM_BASE_URL:-}
       COMPAT_LLM_API_KEY: ${COMPAT_LLM_API_KEY:-}
       COMPAT_LLM_MODEL: ${COMPAT_LLM_MODEL:-local-model}
+      VESPER_PARTS_FEED_TOKEN: ${VESPER_PARTS_FEED_TOKEN:-}
+      VESPER_FUNDS_FEED_TOKEN: ${VESPER_FUNDS_FEED_TOKEN:-}
+      VESPER_LOANS_FEED_TOKEN: ${VESPER_LOANS_FEED_TOKEN:-}
+      VESPER_STRESS_FEED_TOKEN: ${VESPER_STRESS_FEED_TOKEN:-}
+    volumes:
+      - vesper-work:/app/work
     ports:
       - "127.0.0.1:3174:3174"
     healthcheck:
@@ -23,3 +29,5 @@ services:
       timeout: 5s
       retries: 3
 
+volumes:
+  vesper-work:

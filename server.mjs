@@ -5,6 +5,8 @@ import { createReadStream } from 'node:fs';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createIndiaMoneyTracker } from './india-money-tracker.mjs';
+import { createPCPriceTracker } from './pc-price-tracker.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3174);
@@ -40,6 +42,16 @@ async function readLocalEnv() {
 }
 
 await readLocalEnv();
+
+const pcPriceTracker = await createPCPriceTracker({
+  root: ROOT,
+  dataPath: join(ROOT, 'work', 'pc-price-tracker.json'),
+  configPath: join(ROOT, 'pc-price-feeds.local.json'),
+});
+const indiaMoneyTracker = await createIndiaMoneyTracker({
+  dataPath: join(ROOT, 'work', 'india-money-tracker.json'),
+  configPath: join(ROOT, 'money-tracker-feeds.local.json'),
+});
 
 const ACCESS_PASSWORD = process.env.VESPER_ACCESS_PASSWORD || '';
 const PUBLIC_MODE = process.env.VESPER_PUBLIC_MODE === 'true' || process.env.NODE_ENV === 'production';
@@ -195,6 +207,11 @@ const staticFiles = new Map([
   ['/planner.js', ['planner.js', 'text/javascript; charset=utf-8']],
   ['/local-tools.js', ['local-tools.js', 'text/javascript; charset=utf-8']],
   ['/pc-catalog.js', ['pc-catalog.js', 'text/javascript; charset=utf-8']],
+  ['/pc-price-catalog.mjs', ['pc-price-catalog.mjs', 'text/javascript; charset=utf-8']],
+  ['/tracker-calculations.mjs', ['tracker-calculations.mjs', 'text/javascript; charset=utf-8']],
+  ['/money-tracker.js', ['money-tracker.js', 'text/javascript; charset=utf-8']],
+  ['/pc-price-feeds.example.json', ['pc-price-feeds.example.json', 'application/json; charset=utf-8']],
+  ['/money-tracker-feeds.example.json', ['money-tracker-feeds.example.json', 'application/json; charset=utf-8']],
   ['/themeManager.js', ['themeManager.js', 'text/javascript; charset=utf-8']],
   ['/theme-selector.js', ['theme-selector.js', 'text/javascript; charset=utf-8']],
   ['/code-lab.js', ['code-lab.js', 'text/javascript; charset=utf-8']],
@@ -689,6 +706,73 @@ const server = createServer(async (req, res) => {
     sendJson(res, 200, { ok: true });
   } else if (req.method === 'GET' && url.pathname === '/api/settings') {
     sendJson(res, 200, await publicSettings());
+  } else if (req.method === 'GET' && url.pathname === '/api/pc-prices') {
+    sendJson(res, 200, pcPriceTracker.getStatus());
+  } else if (req.method === 'GET' && url.pathname === '/api/pc-prices/history') {
+    const partId = url.searchParams.get('partId') || '';
+    if (!partId) sendJson(res, 400, { error: 'Choose a PC component to load its dated price history.' });
+    else sendJson(res, 200, { observations: pcPriceTracker.getHistory({ partId, condition: url.searchParams.get('condition') || undefined }) });
+  } else if (req.method === 'POST' && url.pathname === '/api/pc-prices/observations') {
+    if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Add price observations from the Vesper site.' }); return; }
+    try {
+      const body = await readBody(req, 2_000_000);
+      const count = await pcPriceTracker.addObservations(body?.observations);
+      sendJson(res, 201, { ok: true, count });
+    } catch (error) { sendJson(res, 400, { error: error.message || 'Could not save the price observations.' }); }
+  } else if (req.method === 'POST' && url.pathname === '/api/pc-prices/refresh') {
+    if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Refresh price feeds from the Vesper site.' }); return; }
+    const result = await pcPriceTracker.refresh({ manual: true });
+    sendJson(res, result.rateLimited ? 429 : result.noSources ? 409 : 200, result);
+  } else if (req.method === 'GET' && url.pathname === '/api/money-tracker') {
+    sendJson(res, 200, indiaMoneyTracker.getStatus());
+  } else if (req.method === 'GET' && url.pathname === '/api/market-stress') {
+    const status = indiaMoneyTracker.getStatus();
+    sendJson(res, 200, { stress: status.stress, stressCount: status.stressCount, latestStress: status.latestStress });
+  } else if (req.method === 'GET' && url.pathname === '/api/market-stress/history') {
+    const market = url.searchParams.get('market') || '';
+    if (!['india', 'global', 'reference-2008'].includes(market)) sendJson(res, 400, { error: 'Choose India, global, or the historical 2008 reference.' });
+    else {
+      const requestedLimit = url.searchParams.get('limit');
+      const limit = requestedLimit == null ? null : Number(requestedLimit);
+      if (limit != null && (!Number.isSafeInteger(limit) || limit < 1 || limit > 100_000)) {
+        sendJson(res, 400, { error: 'History limit must be a whole number from 1 to 100,000.' });
+      } else {
+        const observations = indiaMoneyTracker.getHistory('stress', market);
+        sendJson(res, 200, { observations: limit == null ? observations : observations.slice(0, limit) });
+      }
+    }
+  } else if (req.method === 'POST' && url.pathname === '/api/market-stress/observations') {
+    if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Add market-stress observations from the Vesper site.' }); return; }
+    try {
+      const body = await readBody(req, 2_000_000);
+      const count = await indiaMoneyTracker.addObservations('stress', body?.observations);
+      sendJson(res, 201, { ok: true, count });
+    } catch (error) { sendJson(res, 400, { error: error.message || 'Could not save the market-stress observations.' }); }
+  } else if (req.method === 'POST' && url.pathname === '/api/market-stress/refresh') {
+    if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Refresh stress feeds from the Vesper site.' }); return; }
+    const result = await indiaMoneyTracker.refresh('stress', { manual: true });
+    sendJson(res, result.rateLimited ? 429 : result.noSources ? 409 : 200, result);
+  } else if (req.method === 'GET' && url.pathname === '/api/money-tracker/history') {
+    const type = url.searchParams.get('type') || '';
+    const instrumentId = url.searchParams.get('instrumentId') || '';
+    if (!['fund', 'loan'].includes(type) || !instrumentId) {
+      sendJson(res, 400, { error: 'Choose an instrument or lender to load dated history.' });
+    } else {
+      sendJson(res, 200, { observations: indiaMoneyTracker.getHistory(type, instrumentId) });
+    }
+  } else if (req.method === 'POST' && url.pathname === '/api/money-tracker/observations') {
+    if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Add market observations from the Vesper site.' }); return; }
+    try {
+      const body = await readBody(req, 2_000_000);
+      const count = await indiaMoneyTracker.addObservations(body?.type, body?.observations);
+      sendJson(res, 201, { ok: true, count });
+    } catch (error) { sendJson(res, 400, { error: error.message || 'Could not save the market observations.' }); }
+  } else if (req.method === 'POST' && url.pathname === '/api/money-tracker/refresh') {
+    if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Refresh market feeds from the Vesper site.' }); return; }
+    const type = url.searchParams.get('type');
+    if (!['fund', 'loan'].includes(type)) { sendJson(res, 400, { error: 'Choose the fund or loan tracker to refresh.' }); return; }
+    const result = await indiaMoneyTracker.refresh(type, { manual: true });
+    sendJson(res, result.rateLimited ? 429 : result.noSources ? 409 : 200, result);
   } else if (req.method === 'POST' && url.pathname === '/api/share') {
     await handleCreateShare(req, res);
   } else if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/api/share/')) {
@@ -732,4 +816,8 @@ server.keepAliveTimeout = 5_000;
 server.maxHeadersCount = 100;
 server.maxRequestsPerSocket = 100;
 
-server.listen(PORT, HOST, () => console.log(`Vesper is running at http://${HOST}:${PORT}`));
+server.listen(PORT, HOST, () => {
+  console.log(`Vesper is running at http://${HOST}:${PORT}`);
+  void pcPriceTracker.start().catch((error) => console.error('PC price tracker could not start:', error));
+  void indiaMoneyTracker.start().catch((error) => console.error('India market tracker could not start:', error));
+});

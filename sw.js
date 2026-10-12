@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesper-atelier-v24';
+const CACHE_NAME = 'vesper-atelier-v26';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -55,8 +55,11 @@ const APP_SHELL = [
   '/model-only.js',
   '/workspace.js',
   '/planner.js',
+  '/money-tracker.js',
   '/local-tools.js',
   '/pc-catalog.js',
+  '/pc-price-catalog.mjs',
+  '/tracker-calculations.mjs',
   '/code-lab.js',
   '/code-worker.js',
   '/quick-capture.js',

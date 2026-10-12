@@ -4,7 +4,9 @@
 *.log
 /llm-models/
 /desktop-profile/
-/backup-before-*/
+/pc-price-feeds.local.json
+money-tracker-feeds.local.json
+backup-before-*/
 /work/
 /Vesper-Setup.exe
 /node_modules/

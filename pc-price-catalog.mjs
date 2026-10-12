@@ -1,13 +1,9 @@
 /**
- * Vesper · India PC-parts price tracker — catalogue and market-regime data.
+ * Vesper · India PC-parts price tracker catalogue.
  *
- * What is real and what is modelled
- *  - Live prices come from the daily refresh (pc-price-tracker.mjs). Each observation is the cheapest
- *    in-stock listing that matches a part's rules at the retailers Vesper may query automatically.
- *  - History before the first live observation is a MODELLED reference curve: launch street price x a
- *    per-category market-regime index (shortage / crypto / DRAM-cycle eras) x a lifecycle decay, then
- *    calibrated to the first real observation. It is an estimate, not retailer-verified history, and
- *    the interface labels it that way.
+ * Product launch-month and launchINR fields are approximate catalogue metadata, not price observations.
+ * The tracker never uses them to fill historical gaps or to create forecasts. History and optional
+ * estimates are calculated only from dated, source-attributed observations.
  *
  * Edit the catalogue freely: add a part with p(...). `all` patterns must ALL match a listing title,
  * `none` patterns must NOT. Titles are matched case-insensitively with HTML entities decoded.
@@ -16,15 +12,14 @@
 export const CATEGORIES = [
   ['cpu', 'Processors'], ['gpu', 'Graphics cards'], ['motherboard', 'Motherboards'], ['memory', 'Memory'],
   ['storage', 'Storage'], ['psu', 'Power supplies'], ['cooler', 'CPU coolers'], ['fans', 'Case fans'], ['monitor', 'Monitors'],
+  ['case', 'Cases'], ['keyboard', 'Keyboards'], ['mouse', 'Mice'], ['headset', 'Headsets & speakers'],
+  ['ups', 'UPS & surge protection'], ['network', 'Networking & expansion'],
 ];
-
-/** Weight of each category in the overall PC-parts index. */
-export const CATEGORY_WEIGHTS = { cpu: 0.2, gpu: 0.3, motherboard: 0.1, memory: 0.12, storage: 0.1, psu: 0.06, cooler: 0.04, fans: 0.01, monitor: 0.07 };
 
 /**
  * Market-regime index per quarter, Q1 2020 -> Q4 2026 (28 values, Q1 2020 = 1.00).
- * Approximate shape of Indian street prices for a constant-performance part: the 2021 shortage,
- * the 2022-23 correction, and the 2025-26 memory/AI-demand squeeze. Estimates, not measurements.
+ * Legacy, unverified shape metadata retained for catalogue compatibility only. It is not used by
+ * the tracker, calculations, history view, or forecast feature.
  */
 export const REGIME = {
   cpu: [1, 1, 1, 1, 1.03, 1.12, 1.22, 1.18, 1.08, 1, 0.95, 0.92, 0.9, 0.88, 0.88, 0.9, 0.9, 0.9, 0.9, 0.9, 0.92, 0.95, 0.97, 1.02, 1.08, 1.12, 1.14, 1.15],
@@ -165,6 +160,21 @@ export const PARTS = [
   p('monitor', 'Various', '24" FHD 144-165Hz monitor', '2020-01', 14500, { q: '24 inch 144hz monitor', all: ['\\b2[1-4](\\.\\d)?\\s?(inch|"|”|-inch)', '\\b(144|165)\\s?hz'], spec: {} }),
   p('monitor', 'Various', '27" QHD 144-180Hz monitor', '2021-06', 28000, { q: '27 inch qhd monitor', all: ['\\b27(\\.\\d)?\\s?(inch|"|”|-inch)', '(qhd|1440p|2k|2560)', '\\b(144|165|170|180)\\s?hz'], spec: {} }),
   p('monitor', 'Various', '27" 4K monitor', '2020-01', 36000, { q: '27 inch 4k monitor', all: ['\\b(27|28)(\\.\\d)?\\s?(inch|"|”|-inch)', '(4k|uhd|3840)'], spec: {} }),
+
+  // ── Cases and common peripherals ───────────────────────────────────────────
+  p('case', 'Various', 'mATX airflow case', '2020-01', 3500, { q: 'mATX airflow case', all: ['(matx|micro[-\\s]?atx)', '(case|cabinet|chassis)'], spec: { formFactor: 'mATX' } }),
+  p('case', 'Various', 'ATX airflow case', '2020-01', 4800, { q: 'ATX airflow case', all: ['\\batx\\b', '(case|cabinet|chassis)'], spec: { formFactor: 'ATX' } }),
+  p('case', 'Various', 'Mini-ITX case', '2020-01', 5500, { q: 'mini ITX case', all: ['(mini[-\\s]?itx|\\bitx\\b)', '(case|cabinet|chassis)'], spec: { formFactor: 'ITX' } }),
+  p('keyboard', 'Various', 'Full-size wired keyboard', '2020-01', 500, { q: 'full size wired keyboard', all: ['keyboard', '(wired|usb|mechanical|membrane)'], none: ['keycap', 'switches only'] }),
+  p('keyboard', 'Various', 'Mechanical gaming keyboard', '2020-01', 2200, { q: 'mechanical gaming keyboard', all: ['keyboard', '(mechanical|gaming)'], none: ['keycap', 'switches only'] }),
+  p('mouse', 'Various', 'Wired optical mouse', '2020-01', 350, { q: 'wired optical mouse', all: ['mouse', '(wired|usb|optical)'], none: ['mousepad', 'skatez', 'feet'] }),
+  p('mouse', 'Various', 'Wireless gaming mouse', '2020-01', 1200, { q: 'wireless gaming mouse', all: ['mouse', '(wireless|2\\.4g|bluetooth)'], none: ['mousepad', 'skatez', 'feet'] }),
+  p('headset', 'Various', 'Wired PC headset', '2020-01', 900, { q: 'wired PC headset', all: ['(headset|headphone)', '(wired|3\\.5mm|usb)'], none: ['earpads', 'cable only'] }),
+  p('headset', 'Various', 'Desktop PC speakers', '2020-01', 800, { q: 'desktop PC speakers', all: ['speaker', '(desktop|computer|pc|usb)'], none: ['car speaker', 'replacement driver'] }),
+  p('ups', 'Various', '600VA line-interactive UPS', '2020-01', 3000, { q: '600VA UPS', all: ['\\b600\\s?va\\b', '\\bups\\b'], none: ['battery only', 'replacement battery'] }),
+  p('ups', 'Various', '1100VA line-interactive UPS', '2020-01', 5200, { q: '1100VA UPS', all: ['\\b(1000|1100|1200)\\s?va\\b', '\\bups\\b'], none: ['battery only', 'replacement battery'] }),
+  p('network', 'Various', 'PCIe Wi-Fi 6 card', '2020-01', 1800, { q: 'PCIe WiFi 6 card', all: ['(pcie|pci-e)', '(wi-?fi|wireless)', '(wifi\\s?6|802\\.11ax)'], none: ['antenna only', 'router'] }),
+  p('network', 'Various', '2.5GbE PCIe network card', '2020-01', 1600, { q: '2.5GbE PCIe network card', all: ['(pcie|pci-e)', '(2\\.5g|2\\.5gbe)', '(ethernet|network|lan)'], none: ['switch', 'router'] }),
 ];
 
 export const PART_BY_ID = new Map(PARTS.map((part) => [part.id, part]));
