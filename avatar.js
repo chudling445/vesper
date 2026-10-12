@@ -529,11 +529,11 @@ function reactToAvatarTouch(event) {
 
 function handleAvatarTouch({ target }) {
   const reaction = {
-    head: { emoji: '✨', line: 'Eep—head pats? I noticed, senpai~', expression: 'surprised', gesture: 'nod' },
-    cheek: { emoji: '💗', line: 'W-was that a cheek poke? You are bold today.', expression: 'blush', gesture: 'thinking' },
-    shoulder: { emoji: '🌸', line: 'A little shoulder tap? I am listening.', expression: 'joy', gesture: 'shrug' },
-    hand: { emoji: '🤝', line: 'You found my hand. Hmph, fine—just this once.', expression: 'happy', gesture: 'wave' },
-  }[target] || { emoji: '✨', line: 'Vesper noticed your touch.', expression: 'happy', gesture: 'nod' };
+    head: { line: 'Eep—head pats? I noticed, senpai~', expression: 'surprised', gesture: 'nod' },
+    cheek: { line: 'W-was that a cheek poke? You are bold today.', expression: 'blush', gesture: 'thinking' },
+    shoulder: { line: 'A little shoulder tap? I am listening.', expression: 'joy', gesture: 'shrug' },
+    hand: { line: 'You found my hand. Hmph, fine—just this once.', expression: 'happy', gesture: 'wave' },
+  }[target] || { line: 'Vesper noticed your touch.', expression: 'happy', gesture: 'nod' };
   window.setAvatarExpression?.(reaction.expression);
   window.playAvatarGesture?.(reaction.gesture, 1500);
   window.dispatchEvent(new CustomEvent('avatar-touch', { detail: { target, ...reaction } }));

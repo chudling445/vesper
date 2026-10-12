@@ -231,15 +231,15 @@ export function initializeArcadeExtras(arcade) {
   });
   cowField.addEventListener('click', (event) => {
     void startCowAudio(); const rect = cowField.getBoundingClientRect(); const x = (event.clientX - rect.left) / rect.width; const y = (event.clientY - rect.top) / rect.height;
-    if (Math.hypot((x - cowTarget.x) * rect.width, (y - cowTarget.y) * rect.height) < 42) { cowFound = true; cowField.querySelector('.cow-hint').textContent = '🐄 Moo! You found me!'; byId('cow-status').textContent = `Found in ${cowMoves} little moves. Lovely listening.`; recordScore('cow', Math.max(cowMoves, 1), true); }
+    if (Math.hypot((x - cowTarget.x) * rect.width, (y - cowTarget.y) * rect.height) < 42) { cowFound = true; cowField.querySelector('.cow-hint').textContent = 'Moo! You found me!'; byId('cow-status').textContent = `Found in ${cowMoves} little moves. Lovely listening.`; recordScore('cow', Math.max(cowMoves, 1), true); }
   });
   byId('cow-new').addEventListener('click', hideCow); hideCow();
 
   // ---- Cookie garden -----------------------------------------------
   const upgradeCatalog = [
-    { id: 'baker', name: 'Helpful baker', icon: '👩‍🍳', base: 15, rate: 0.2 },
-    { id: 'oven', name: 'Little oven', icon: '🔥', base: 80, rate: 1.5 },
-    { id: 'orchard', name: 'Cookie orchard', icon: '🌳', base: 360, rate: 8 },
+    { id: 'baker', name: 'Helpful baker', icon: 'BAKE', base: 15, rate: 0.2 },
+    { id: 'oven', name: 'Little oven', icon: 'HEAT', base: 80, rate: 1.5 },
+    { id: 'orchard', name: 'Cookie orchard', icon: 'GROW', base: 360, rate: 8 },
   ];
   const cookieState = progress.cookie;
   const cookieRate = () => upgradeCatalog.reduce((total, item) => total + (cookieState.upgrades[item.id] || 0) * item.rate, 0);
@@ -327,8 +327,9 @@ export function initializeArcadeExtras(arcade) {
     if (mode === 'pig') { const match = word.match(/^([^A-Za-z]*)([A-Za-z]+)([^A-Za-z]*)$/); if (!match) return word; const [, before, core, after] = match; const vowel = core.search(/[aeiou]/i); const shift = vowel <= 0 ? `${core}way` : `${core.slice(vowel)}${core.slice(0, vowel)}ay`; return `${before}${/^[A-Z]/.test(core) ? shift[0].toUpperCase() + shift.slice(1).toLowerCase() : shift}${after}`; }
     if (mode === 'leet') return word.replace(/[aAeEiIlLoOsStT]/g, (char) => ({ a: '4', A: '4', e: '3', E: '3', i: '1', I: '1', l: '1', L: '1', o: '0', O: '0', s: '5', S: '5', t: '7', T: '7' })[char]);
     if (mode === 'pirate') return word.replace(/\bhello\b/gi, 'ahoy').replace(/\bfriend\b/gi, 'matey').replace(/\bmy\b/gi, 'me').replace(/\byou\b/gi, 'ye').replace(/\bthe\b/gi, 'th\'');
-    const emojiWords = { love: '💖', happy: '😊', sad: '🌧️', star: '⭐', cat: '🐱', hello: '👋', dream: '🌙', magic: '✨', coffee: '☕', moon: '🌙' };
-    return word.replace(/\b[a-z]+\b/gi, (token) => emojiWords[token.toLowerCase()] || token);
+    if (mode !== 'mood') return word;
+    const moodWords = { love: '[affection]', happy: '[cheerful]', sad: '[rainy]', star: '[star]', cat: '[curious]', hello: '[greeting]', dream: '[dreaming]', magic: '[wonder]', coffee: '[cozy]', moon: '[night]' };
+    return word.replace(/\b[a-z]+\b/gi, (token) => moodWords[token.toLowerCase()] || token);
   };
   const updateTextSpell = () => { const mode = spell.value; outputText.textContent = mode === 'pirate' ? `${transformWord(inputText.value, mode)} Arrr!` : transformWord(inputText.value, mode); };
   inputText.addEventListener('input', updateTextSpell); spell.addEventListener('change', updateTextSpell);

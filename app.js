@@ -701,7 +701,7 @@ function makeMessage(role, content, extraClass = '', pinned = false, messageInde
   row.className = `message ${role}${extraClass ? ` ${extraClass}` : ''}${pinned ? ' is-pinned' : ''}`;
   const avatar = document.createElement('div');
   avatar.className = 'message-avatar';
-  avatar.textContent = role === 'assistant' ? '✿' : 'Y';
+  avatar.textContent = role === 'assistant' ? 'V' : 'Y';
   const messageContent = document.createElement('div');
   messageContent.className = 'message-content';
   const bubble = document.createElement('div');
@@ -1129,8 +1129,8 @@ function reactToAssistantReply(reply, userText = '') {
 }
 
 window.addEventListener('avatar-touch', (event) => {
-  const { emoji = '✨', line = 'Vesper noticed your touch.' } = event.detail || {};
-  showToast(`${emoji} ${line}`, 'success', { timeout: 2200 });
+  const { line = 'Vesper noticed your touch.' } = event.detail || {};
+  showToast(line, 'success', { timeout: 2200 });
 });
 
 form.addEventListener('submit', (event) => { event.preventDefault(); sendMessage(input.value); });

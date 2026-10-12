@@ -129,7 +129,7 @@ for (const tab of tabs) {
 function show(game, announce = true) { arcade.activate(game, { announce }); }
 
 // ---- Jan-Ken-Pon ------------------------------------------------------
-const HANDS = [{ id: 'rock', icon: '✊' }, { id: 'scissors', icon: '✌️' }, { id: 'paper', icon: '✋' }];
+const HANDS = [{ id: 'rock', icon: 'ROCK' }, { id: 'scissors', icon: 'SCISSORS' }, { id: 'paper', icon: 'PAPER' }];
 const BEATS = { rock: 'scissors', scissors: 'paper', paper: 'rock' };
 let streak = 0;
 document.querySelectorAll('.hand').forEach((button) => button.addEventListener('click', () => {
@@ -230,7 +230,7 @@ function newTtt() { board = Array(9).fill(null); tttOver = false; tttStatus.text
 $('#ttt-reset').addEventListener('click', newTtt);
 
 // ---- Memory Match -----------------------------------------------------
-const FACES = ['🌸', '🍡', '🐱', '🍓', '🍙', '⭐', '🎀', '🌙'];
+const FACES = ['MOON', 'STAR', 'CAT', 'FLOWER', 'SHELL', 'SUN', 'LEAF', 'HEART'];
 const memEl = $('#mem-board');
 let deck = []; let open = []; let matched = new Set(); let moves = 0; let locked = false;
 function shuffle(items) {
@@ -244,7 +244,7 @@ function renderMemory() {
     const faceUp = open.includes(index) || matched.has(index);
     card.type = 'button';
     card.className = `mem-card${faceUp ? ' up' : ''}${matched.has(index) ? ' done' : ''}`;
-    card.textContent = faceUp ? face : '✿';
+    card.textContent = faceUp ? face : '?';
     card.disabled = faceUp || locked;
     card.setAttribute('aria-label', faceUp ? `Card ${index + 1}, ${face}` : `Card ${index + 1}, face down`);
     card.addEventListener('click', () => flip(index));
