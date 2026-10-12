@@ -2,7 +2,7 @@ const STORAGE_KEY = 'vesper-state-v2';
 const DB_NAME = 'vesper-local';
 const DB_VERSION = 1;
 const OBJECT_STORE = 'state';
-export const STATE_SCHEMA_VERSION = 3;
+export const STATE_SCHEMA_VERSION = 4;
 
 const safeParse = (value, fallback) => { try { return value ? JSON.parse(value) : fallback; } catch { return fallback; } };
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -17,7 +17,6 @@ export function createFallbackState() {
       voice: { auto: false, voiceURI: '', language: 'en', rate: 0.99, pitch: 1.16 },
       theme: 'omarchy-quattro', colorMode: 'system', background: 'atelier', personality: 'playful',
       stage: { zoom: 2.15, orbit: false },
-      security: { pinSalt: '', pinHash: '', pinHashAlgorithm: '', pinIterations: 0, autoLockMinutes: 15, biometricId: '', biometricPublicKey: '', biometricAlgorithm: 0, biometricOrigin: '', biometricRpId: '', protectInbox: false },
       cloudSync: { endpoint: '', token: '', enabled: false },
     },
     workspace: {
@@ -60,17 +59,18 @@ function legacyState() {
 export function migrateState(input) {
   const fallback = createFallbackState();
   const source = input && typeof input === 'object' ? input : {};
+  const savedSettings = { ...(source.settings || {}) };
+  delete savedSettings.security;
   const migrated = {
     ...fallback,
     ...source,
     session: { ...fallback.session, ...(source.session || {}) },
     settings: {
       ...fallback.settings,
-      ...(source.settings || {}),
+      ...savedSettings,
       llm: { ...fallback.settings.llm, ...(source.settings?.llm || {}) },
       voice: { ...fallback.settings.voice, ...(source.settings?.voice || {}) },
       stage: { ...fallback.settings.stage, ...(source.settings?.stage || {}) },
-      security: { ...fallback.settings.security, ...(source.settings?.security || {}) },
       cloudSync: { ...fallback.settings.cloudSync, ...(source.settings?.cloudSync || {}) },
     },
     ui: { ...fallback.ui, ...(source.ui || {}) },
@@ -167,6 +167,7 @@ class VesperStateStore {
         writeLocal(this.state);
         this.listeners.forEach((listener) => listener(this.state, '*'));
         window.dispatchEvent(new CustomEvent('vesper-state-hydrated', { detail: this.snapshot() }));
+        await writeIndexed(this.state);
       } else await writeIndexed(this.state);
     } catch { /* localStorage remains the guaranteed fallback */ }
     return this.state;

@@ -1,6 +1,6 @@
 ---
 name: vesper-atelier-studio
-description: Improve, test, and package a local Windows LLM companion studio with a VRM avatar, anime-style voice, facial expressions, lip-sync, transparent Model Only mode, offline-first persistence and sync, privacy lock, onboarding, habit tracking, themed backdrops, mini-games, and a one-click installer. Use when modifying this Vesper project or a similar local 3D chatbot desktop/site experience.
+description: Improve, test, and package a local Windows LLM companion studio with a VRM avatar, anime-style voice, facial expressions, lip-sync, transparent Model Only mode, offline-first persistence and sync, onboarding, habit tracking, themed backdrops, mini-games, and a one-click installer. Use when modifying this Vesper project or a similar local 3D chatbot desktop/site experience.
 ---
 
 # Vesper Atelier Studio
@@ -29,9 +29,8 @@ Use this workflow to extend a local-first 3D chatbot without breaking desktop la
    - Flush only on `online` or a bounded interval. Use HTTPS endpoints and bearer authentication for optional sync; do not claim cross-device cloud backup without a real compatible service and recovery policy.
    - Test offline by disconnecting the network, creating/editing/deleting items, reloading, reconnecting, and confirming the queue remains safe until an endpoint accepts it.
 
-4. **Privacy and security**
-   - Use `security-lock.js` for local PIN/master-password hashing, auto-lock inactivity, Ctrl/Cmd+Shift+L, and optional WebAuthn. Keep lock state separate from data persistence.
-   - Explain that a UI lock protects access on the device; it is not transparent data encryption. Use Web Crypto, never store plaintext credentials, and never send local PINs to a server.
+4. **Privacy and sync**
+   - Keep local data on-device by default and make network transfers explicit.
    - For cloud sync, require a user-supplied HTTPS endpoint and authenticated token. Never invent a hosted identity provider or silently upload personal data.
 
 5. **Onboarding and habits**
@@ -58,12 +57,12 @@ Use this workflow to extend a local-first 3D chatbot without breaking desktop la
 9. **Installer and desktop delivery**
    - Build with `powershell -NoProfile -ExecutionPolicy Bypass -File .\\installer\\build-installer.ps1` from the project root.
    - Verify `Vesper-Setup.exe` exists and has a fresh timestamp.
-   - Ensure the installer payload copies the complete route/script list, `vendor`, `models`, `.env.example`, onboarding, Quick Capture, security/sync modules, and standard, Model Only, and Quick Capture launchers.
+   - Ensure the installer payload copies the complete route/script list, `vendor`, `models`, `.env.example`, onboarding, Quick Capture, sync modules, and standard, Model Only, and Quick Capture launchers.
    - Never bundle `.env` secrets or user VRM files.
 
 ## Validation
 
-Run `scripts/verify-vesper.ps1` from the project root. If Node is available, run `node --check app.js`, `node --check avatar.js`, `node --check server.mjs`, `node --check offline-sync.js`, `node --check security-lock.js`, start the server, then request `/api/health`, `/`, `/start`, `/workspace`, `/quick-capture`, `/model-only`, `/games`, and `/api/settings`. If Node is unavailable, complete static checks and clearly report the limitation.
+Run `scripts/verify-vesper.ps1` from the project root. If Node is available, run `node --check app.js`, `node --check avatar.js`, `node --check server.mjs`, and `node --check offline-sync.js`, start the server, then request `/api/health`, `/`, `/start`, `/workspace`, `/quick-capture`, `/model-only`, `/games`, and `/api/settings`. If Node is unavailable, complete static checks and clearly report the limitation.
 
 For visual verification, check the full studio and Model Only window at desktop and narrow widths. In Model Only, confirm the page background is transparent outside the selected backdrop, the avatar remains visible, controls work, and the window does not fall back into the main chat route.
 

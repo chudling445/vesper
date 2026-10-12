@@ -28,9 +28,8 @@
 **Narration:** “Vesper tracks lightweight habits locally—check-ins, notes, and completed tasks. The activity heat map and milestone badges encourage continuity without noisy notifications or public comparison.”
 
 ### Scene 6 — Privacy by design
-**On screen:** The Offline Ready badge changes to Offline Mode. The Security & Sync panel shows a local PIN, auto-lock, biometric option, and a disabled cloud endpoint.
-
-**Narration:** “Offline is not an error state. It is a supported mode. LocalStorage and IndexedDB keep CRUD operations available without a connection, while a sync queue waits quietly for a trusted endpoint. A local PIN, auto-lock, Lock Now hotkey, and optional WebAuthn protect the visible workspace.”
+**On screen:** The Offline Ready badge changes to Offline Mode. The Cloud Sync panel shows the optional endpoint and bearer token settings.
+**Narration:** “Offline is not an error state. It is a supported mode. LocalStorage and IndexedDB keep CRUD operations available without a connection, while a sync queue waits quietly for a trusted endpoint. Vesper keeps your workspace local unless you configure a trusted sync service.”
 
 ### Scene 7 — The companion layer
 **On screen:** The 3D VRM avatar waves, blushes, listens, and speaks. The transparent Model Only window moves beside another application.

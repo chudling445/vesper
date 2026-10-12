@@ -6,7 +6,9 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-COPY --chown=node:node server.mjs character_config.yaml app.js avatar.js guide.js chess.js index.html getting-started.html Vesper-Setup.exe styles.css favicon.svg manifest.webmanifest sw.js ./
+COPY --chown=node:node ./*.html ./*.js ./*.mjs ./*.css ./*.yaml ./*.json ./*.webmanifest ./*.svg ./
+COPY --chown=node:node Vesper-Setup.exe ./
+COPY --chown=node:node assets/ ./assets/
 COPY --chown=node:node vendor/ ./vendor/
 COPY --chown=node:node models/ ./models/
 

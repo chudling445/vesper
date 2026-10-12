@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesper-atelier-v21';
+const CACHE_NAME = 'vesper-atelier-v24';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -20,10 +20,10 @@ const APP_SHELL = [
   '/manus-routes.json',
   '/guide.js',
   '/first-run.js',
+  '/welcome-gate.js',
   '/welcome.js',
   '/onboarding.js',
   '/offline-sync.js',
-  '/security-lock.js',
   '/page.js',
   '/games.js',
   '/arcade-framework.js',
@@ -62,6 +62,7 @@ const APP_SHELL = [
   '/quick-capture.js',
   '/share.js',
   '/favicon.svg',
+  '/assets/vesper-banner.png',
   '/manifest.webmanifest',
 ];
 
@@ -96,13 +97,20 @@ self.addEventListener('fetch', (event) => {
       const response = await fetch(request);
       if (response.ok && response.type === 'basic') event.waitUntil(cache.put(request, response.clone()));
       return response;
-    } catch (error) {
+    } catch {
       if (cached) return cached;
       if (request.mode === 'navigate') {
         const shell = await cache.match('/index.html');
         if (shell) return shell;
+        return new Response('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vesper is offline</title><body><main><h1>Vesper is offline</h1><p>The local Vesper server is not responding, and no saved app page is available. Start Vesper, then try again.</p><button onclick="location.reload()">Try again</button></main></body></html>', {
+          status: 503,
+          headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+        });
       }
-      throw error;
+      return new Response('Vesper could not reach the local server, and this resource is not available offline.', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
+      });
     }
   })());
 });

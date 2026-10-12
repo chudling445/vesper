@@ -4,7 +4,6 @@ import { applyPaletteTheme, initThemeProvider, PALETTES } from './theme-provider
 import { copyText, downloadText, shareSummary, toCsv, toMarkdown, workspaceSnapshot } from './export-utils.js';
 import { initDialogAccessibility } from './a11y.js';
 import { initOfflineSync } from './offline-sync.js';
-import { initSecurityLock } from './security-lock.js';
 import { waifuVoice } from './waifuVoice.js';
 import { relationshipMemory } from './relationship-memory.js';
 import { characterCardPrompt, downloadCharacterPng, exportCharacterJson, readCharacterCard } from './character-cards.js';
@@ -15,7 +14,6 @@ initGlobalFeedback();
 initThemeProvider();
 initDialogAccessibility();
 initOfflineSync();
-initSecurityLock();
 
 const form = document.querySelector('#chat-form');
 const input = document.querySelector('#message-input');
@@ -34,7 +32,7 @@ const accessDialog = document.querySelector('#access-dialog');
 const accessForm = document.querySelector('#access-form');
 const accessPassword = document.querySelector('#access-password');
 const accessStatus = document.querySelector('#access-status');
-const lockButton = document.querySelector('#lock-app');
+const logoutButton = document.querySelector('#logout-app');
 const hostStatus = document.querySelector('#host-status');
 const hostNote = document.querySelector('#host-note');
 const settingsCopy = document.querySelector('#settings-copy');
@@ -508,8 +506,6 @@ const storedCharacterCard = appStore.get('settings.persona.card', null);
 if (storedCharacterCard && characterCardStatus) characterCardStatus.textContent = 'Loaded ' + storedCharacterCard.name + (storedCharacterCard.character_book ? ' · lorebook ready' : '');
 
 function findLocalWorkspaceContext(query) {
-  const requiresUnlock = Boolean(appStore.get('settings.security.protectInbox', false) || appStore.get('settings.security.pinHash', '') || appStore.get('settings.security.biometricId', ''));
-  if (requiresUnlock && sessionStorage.getItem('vesper-unlocked-v1') !== '1') return { text: '', count: 0 };
   const stopWords = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'have', 'what', 'when', 'where', 'how', 'you', 'your', 'about']);
   const terms = [...new Set((String(query).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []).filter((term) => !stopWords.has(term)))];
   if (!terms.length) return { text: '', count: 0 };
@@ -968,13 +964,13 @@ async function initializeAccess() {
       ? '<b>Need credentials?</b> Add provider keys in the host’s private environment settings. Never paste API keys into chat.'
       : '<b>Need credentials?</b> Edit <code>.env</code> next to <code>Start Vesper.bat</code>, then restart the app. Never paste API keys into chat.';
     if (access.required && !access.authenticated) {
-      lockButton.hidden = true;
+      logoutButton.hidden = true;
       openAccessDialog();
       return;
     }
-    lockButton.hidden = !access.required;
+    logoutButton.hidden = !access.required;
   } catch {
-    lockButton.hidden = true;
+    logoutButton.hidden = true;
     hostStatus.textContent = 'LOCAL / PRIVATE';
     hostNote.textContent = 'RUNNING ON THIS COMPUTER · MODEL STAYS IN YOUR FOLDER';
   }
@@ -999,7 +995,7 @@ accessForm.addEventListener('submit', async (event) => {
     accessStatus.textContent = '';
     if (typeof accessDialog.close === 'function' && accessDialog.open) accessDialog.close();
     else accessDialog.removeAttribute('open');
-    lockButton.hidden = false;
+    logoutButton.hidden = false;
     window.dispatchEvent(new Event('vesper-authenticated'));
     await loadProviderSettings();
     input.focus();
@@ -1009,7 +1005,7 @@ accessForm.addEventListener('submit', async (event) => {
   } finally { submit.disabled = false; }
 });
 
-lockButton.addEventListener('click', async () => {
+logoutButton.addEventListener('click', async () => {
   stopSpeech();
   await safeFetch('/api/logout', { method: 'POST' }, 'Logout request').catch(() => {});
   window.location.reload();
@@ -1064,9 +1060,7 @@ async function sendMessage(text, { appendUser = true } = {}) {
   }
   const localContext = findLocalWorkspaceContext(content);
   if (localContextStatus) localContextStatus.textContent = localContext.count ? `LOCAL NOTES · ${localContext.count}` : 'NO LOCAL NOTE MATCH';
-  const localCredentialEnabled = Boolean(appStore.get('settings.security.pinHash', '') || appStore.get('settings.security.biometricId', ''));
-  const protectedMemory = (localCredentialEnabled || appStore.get('settings.security.protectInbox', false)) && sessionStorage.getItem('vesper-unlocked-v1') !== '1';
-  const memoryContext = protectedMemory ? '' : relationshipMemory.relevantContext(content);
+  const memoryContext = relationshipMemory.relevantContext(content);
 
   const typing = makeMessage('assistant', '···', 'typing');
   messagesEl.append(typing);
@@ -1093,7 +1087,7 @@ async function sendMessage(text, { appendUser = true } = {}) {
     saveMessages();
     reactToAssistantReply(data.reply.trim(), content);
     clearVisionFrame();
-    if (appendUser && !protectedMemory) void relationshipMemory.rememberExchange(content).catch(() => {});
+    if (appendUser) void relationshipMemory.rememberExchange(content).catch(() => {});
     replyToRead = data.reply.trim();
   } catch (error) {
     if (!error.requiresLogin) {
