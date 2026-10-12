@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Preview and choose Vesper's English and Japanese waifu voices." />
+    <meta name="theme-color" content="#130c18" />
+    <title>Voice Lab — Vesper</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/page.js"></script>
+    <script type="module" src="/voices.js"></script>
+  </head>
+  <body data-theme="sakura" class="subpage">
+    <div class="grain" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Vesper home"><span class="brand-emblem" aria-hidden="true"><i></i><b>✦</b></span><span class="brand-name">VESPER<span> / </span>ATELIER</span></a>
+        <nav class="site-nav" aria-label="Pages"><a href="/">💬 Chat</a><a href="/games">🎮 Games</a><a href="/voices">🎙️ Voices</a><a href="/about">📖 README</a></nav>
+      </header>
+
+      <section class="page">
+        <div class="page-hero">
+          <div class="eyebrow"><span class="eyebrow-dash"></span> VOICE LAB / ENGLISH AND 日本語</div>
+          <h1>Pick her <em>voice.</em></h1>
+          <p class="page-lead">Vesper uses the speech voices installed on your computer. These presets find the sweetest female voice you have and raise the pitch for an anime sound. Choices here are used by the chat page and the Arcade.</p>
+        </div>
+
+        <div class="card-grid">
+          <article class="card preset-card" data-lang="en">
+            <h2>Waifu <span class="jp">English</span></h2>
+            <p class="preset-voice" id="preset-en-voice" aria-live="polite">Looking for voices…</p>
+            <div class="button-row"><button class="quiet-button" type="button" data-preview="en">▶ PREVIEW</button><button class="primary-button" type="button" data-use="en">USE FOR VESPER</button></div>
+          </article>
+          <article class="card preset-card" data-lang="ja">
+            <h2>Waifu <span class="jp">日本語</span></h2>
+            <p class="preset-voice" id="preset-ja-voice" aria-live="polite">Looking for voices…</p>
+            <div class="button-row"><button class="quiet-button" type="button" data-preview="ja">▶ PREVIEW</button><button class="primary-button" type="button" data-use="ja">USE FOR VESPER</button></div>
+          </article>
+        </div>
+
+        <div class="card tuner">
+          <h2>Fine tune</h2>
+          <div class="tuner-grid">
+            <label class="voice-field" for="lab-pitch"><span>PITCH <output id="lab-pitch-value">1.30×</output></span><input id="lab-pitch" type="range" min="0.7" max="1.6" step="0.05" value="1.3" /></label>
+            <label class="voice-field" for="lab-rate"><span>PACE <output id="lab-rate-value">1.04×</output></span><input id="lab-rate" type="range" min="0.7" max="1.3" step="0.05" value="1.04" /></label>
+          </div>
+          <label class="field-inline stack" for="lab-sample"><span>SAMPLE LINE</span><input id="lab-sample" type="text" maxlength="200" value="Hmph. I was not waiting for you, senpai. Okay, maybe a little." /></label>
+          <div class="button-row"><button class="quiet-button" id="lab-speak" type="button">▶ SPEAK SAMPLE</button><button class="quiet-button" id="lab-stop" type="button">■ STOP</button></div>
+          <p class="lab-status" id="lab-status" role="status"></p>
+        </div>
+
+        <div class="card">
+          <div class="list-head">
+            <h2>Voices on this computer</h2>
+            <label class="field-inline" for="lang-filter"><span>SHOW</span><select id="lang-filter"><option value="all">All languages</option><option value="en" selected>English</option><option value="ja">日本語 / Japanese</option></select></label>
+          </div>
+          <div class="voice-list" id="voice-list"></div>
+        </div>
+
+        <div class="card help-card">
+          <h2>No Japanese voice yet?</h2>
+          <ol class="steps">
+            <li>Open Windows <b>Settings → Time &amp; language → Language &amp; region</b> and add <b>Japanese</b>.</li>
+            <li>Keep <b>Text-to-speech</b> ticked in the language features, finish the install, then restart your browser.</li>
+            <li>Edge and Chrome usually list more voices (including online “Natural” ones) than LibreWolf or Firefox.</li>
+          </ol>
+          <p class="fine-note">System voices are not trained anime voices, so pitch and a good female voice get you close. A neural anime voice (like the GPT-SoVITS voice in Project Riko) is on the roadmap.</p>
+        </div>
+      </section>
+
+      <footer class="footer"><span>VESPER <i>—</i> A SMALL, PRIVATE UNIVERSE</span><span><a href="/">CHAT</a> <i>·</i> <a href="/games">GAMES</a> <i>·</i> <a href="/about">README</a></span></footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Play Jan-Ken-Pon, Tic-Tac-Toe, Memory Match and draw an omikuji fortune with Vesper." />
+    <meta name="theme-color" content="#130c18" />
+    <title>Arcade — Vesper</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/page.js"></script>
+    <script type="module" src="/games.js"></script>
+  </head>
+  <body data-theme="sakura" class="subpage">
+    <div class="grain" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Vesper home"><span class="brand-emblem" aria-hidden="true"><i></i><b>✦</b></span><span class="brand-name">VESPER<span> / </span>ATELIER</span></a>
+        <nav class="site-nav" aria-label="Pages"><a href="/">💬 Chat</a><a href="/games">🎮 Games</a><a href="/voices">🎙️ Voices</a><a href="/about">📖 README</a></nav>
+      </header>
+
+      <section class="page">
+        <div class="page-hero">
+          <div class="eyebrow"><span class="eyebrow-dash"></span> ARCADE / PLAY WITH VESPER</div>
+          <h1>Play with <em>Vesper.</em></h1>
+          <p class="page-lead">Four quick games, all offline. Vesper reacts to every move, in English or 日本語, and can read her reactions out loud.</p>
+        </div>
+
+        <div class="arcade-tabs" role="tablist" aria-label="Choose a game">
+          <button type="button" role="tab" data-game="jkp" aria-selected="true">✊ Jan-Ken-Pon</button>
+          <button type="button" role="tab" data-game="ttt" aria-selected="false">⭕ Tic-Tac-Toe</button>
+          <button type="button" role="tab" data-game="memory" aria-selected="false">🎴 Memory Match</button>
+          <button type="button" role="tab" data-game="omikuji" aria-selected="false">⛩️ Omikuji</button>
+        </div>
+
+        <div class="arcade-layout">
+          <div class="card game-card">
+            <div class="game-panel" data-panel="jkp">
+              <h2>Jan-Ken-Pon <span class="jp">じゃんけんぽん</span></h2>
+              <p class="game-help">Rock, scissors, paper. Pick a hand and Vesper picks at the same time.</p>
+              <div class="jkp-arena" aria-live="polite">
+                <div class="jkp-side"><span>YOU</span><b id="jkp-you">?</b></div>
+                <span class="jkp-vs">VS</span>
+                <div class="jkp-side"><span>VESPER</span><b id="jkp-her">?</b></div>
+              </div>
+              <p class="game-result" id="jkp-result">Choose your hand!</p>
+              <div class="hand-row">
+                <button class="hand" type="button" data-hand="rock"><span class="hand-icon">✊</span><span>Gu · グー</span></button>
+                <button class="hand" type="button" data-hand="scissors"><span class="hand-icon">✌️</span><span>Choki · チョキ</span></button>
+                <button class="hand" type="button" data-hand="paper"><span class="hand-icon">✋</span><span>Pa · パー</span></button>
+              </div>
+            </div>
+
+            <div class="game-panel" data-panel="ttt" hidden>
+              <h2>Tic-Tac-Toe <span class="jp">まるばつゲーム</span></h2>
+              <p class="game-help">You are X and you go first. Three in a row wins.</p>
+              <div class="game-toolbar">
+                <label class="field-inline" for="ttt-level"><span>VESPER IS</span>
+                  <select id="ttt-level"><option value="easy">Going easy on you</option><option value="hard" selected>Playing seriously</option></select>
+                </label>
+                <button class="quiet-button" id="ttt-reset" type="button">NEW GAME</button>
+              </div>
+              <div class="ttt-board" id="ttt-board" role="grid" aria-label="Tic-Tac-Toe board"></div>
+              <p class="game-result" id="ttt-status" role="status">Your move.</p>
+            </div>
+
+            <div class="game-panel" data-panel="memory" hidden>
+              <h2>Memory Match <span class="jp">神経衰弱</span></h2>
+              <p class="game-help">Flip two cards at a time and find all eight pairs in as few moves as you can.</p>
+              <div class="game-toolbar">
+                <span class="game-counter">MOVES <b id="mem-moves">0</b></span>
+                <button class="quiet-button" id="mem-reset" type="button">SHUFFLE</button>
+              </div>
+              <div class="mem-board" id="mem-board" aria-label="Memory cards"></div>
+              <p class="game-result" id="mem-status" role="status">Find the pairs, senpai.</p>
+            </div>
+
+            <div class="game-panel" data-panel="omikuji" hidden>
+              <h2>Omikuji <span class="jp">おみくじ</span></h2>
+              <p class="game-help">Shake the box for today's fortune. You get one draw per day.</p>
+              <div class="omikuji-card" id="omi-card" aria-live="polite">
+                <span class="omikuji-rank" id="omi-rank">⛩️</span>
+                <span class="omikuji-label" id="omi-label">Your fortune is waiting</span>
+                <p id="omi-text">Press the button to draw.</p>
+              </div>
+              <button class="primary-button" id="omi-draw" type="button">SHAKE THE BOX</button>
+            </div>
+          </div>
+
+          <aside class="card vesper-says">
+            <div class="says-head"><span class="chess-avatar-sigil">V<span>✿</span></span><div><b>Vesper</b><small>watching you play</small></div></div>
+            <p class="says-text" id="says-text" aria-live="polite">Pick a game, senpai.</p>
+            <label class="auto-voice says-voice"><input id="speak-reactions" type="checkbox" /> <span>SPEAK HER REACTIONS</span></label>
+            <div class="scoreboard" id="scoreboard" aria-label="Scores"></div>
+          </aside>
+        </div>
+      </section>
+
+      <footer class="footer"><span>VESPER <i>—</i> A SMALL, PRIVATE UNIVERSE</span><span><a href="/">CHAT</a> <i>·</i> <a href="/voices">VOICES</a> <i>·</i> <a href="/about">README</a></span></footer>
+    </main>
+  </body>
+</html>
