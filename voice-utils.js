@@ -1,5 +1,7 @@
 // Shared voice helpers for Vesper: used by the chat page, the Voices page and the Arcade.
 import { waifuVoice } from './waifuVoice.js';
+import { appStore } from './persistence.js';
+import { findVoiceByLanguageAndUri, migrateLegacyVoiceSettings } from './voice-selection.mjs';
 
 export const VOICE_KEY = 'vesper-voice-v1';
 
@@ -12,26 +14,28 @@ const MALE = /\b(david|mark|guy|ryan|george|james|richard|brian|andrew|eric|stef
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 
 export function loadVoicePrefs() {
+  let saved = appStore.get('settings.voice', {});
   try {
-    const saved = JSON.parse(localStorage.getItem(VOICE_KEY) || '{}');
-    const hasStyle = saved.style === 'waifu' || saved.style === 'custom';
-    const language = ['en', 'ja', 'mix'].includes(saved.language) ? saved.language : 'en';
-    const preset = WAIFU_PRESETS[language === 'ja' ? 'ja' : 'en'];
-    return {
-      auto: saved.auto === true,
-      voiceURI: typeof saved.voiceURI === 'string' ? saved.voiceURI : '',
-      style: saved.style === 'custom' ? 'custom' : 'waifu',
-      language,
-      rate: hasStyle && Number.isFinite(saved.rate) ? clamp(saved.rate, 0.7, 1.3) : preset.rate,
-      pitch: hasStyle && Number.isFinite(saved.pitch) ? clamp(saved.pitch, 0.7, 1.4) : preset.pitch,
-    };
-  } catch {
-    return { auto: false, voiceURI: '', style: 'waifu', language: 'en', rate: 1.1, pitch: 1.4 };
-  }
+    const legacy = JSON.parse(localStorage.getItem(VOICE_KEY) || '{}');
+    const migrated = migrateLegacyVoiceSettings(saved, legacy);
+    if (migrated.voiceURI !== saved.voiceURI) appStore.set('settings.voice', migrated);
+    saved = migrated;
+    localStorage.removeItem(VOICE_KEY);
+  } catch { /* Shared state remains usable when legacy localStorage is unavailable. */ }
+  const language = ['en', 'ja', 'mix'].includes(saved.language) ? saved.language : 'en';
+  const preset = WAIFU_PRESETS[language === 'ja' ? 'ja' : 'en'];
+  return {
+    auto: saved.auto === true,
+    voiceURI: typeof saved.voiceURI === 'string' ? saved.voiceURI : '',
+    style: saved.voiceURI ? 'custom' : 'waifu',
+    language,
+    rate: Number.isFinite(saved.rate) ? clamp(saved.rate, 0.7, 1.3) : preset.rate,
+    pitch: Number.isFinite(saved.pitch) ? clamp(saved.pitch, 0.7, 1.4) : preset.pitch,
+  };
 }
 
 export function saveVoicePrefs(prefs) {
-  try { localStorage.setItem(VOICE_KEY, JSON.stringify(prefs)); } catch { /* Keep the choices for this page only. */ }
+  appStore.set('settings.voice', { ...appStore.get('settings.voice', {}), ...prefs });
 }
 
 export function getVoices() {
@@ -43,6 +47,8 @@ export function pickWaifuVoice(lang) {
   const preset = WAIFU_PRESETS[lang === 'ja' ? 'ja' : 'en'];
   const matching = getVoices().filter((voice) => voice.lang.toLowerCase().replace('_', '-').startsWith(preset.lang));
   if (!matching.length) return null;
+  const saved = findVoiceByLanguageAndUri(matching, lang, appStore.get('settings.voice.voiceURI', ''));
+  if (saved) return saved;
   const notMale = matching.filter((voice) => !MALE.test(voice.name));
   const base = notMale.length ? notMale : matching;
   const natural = base.filter((voice) => /natural|online/i.test(voice.name));
