@@ -7,6 +7,7 @@ import { initOfflineSync } from './offline-sync.js';
 import { waifuVoice } from './waifuVoice.js';
 import { relationshipMemory } from './relationship-memory.js';
 import { canShareLocalContext } from './context-sharing.mjs';
+import { findVoiceByLanguageAndUri } from './voice-selection.mjs';
 import { characterCardPrompt, downloadCharacterPng, exportCharacterJson, readCharacterCard } from './character-cards.js';
 import { renderMarkdown } from './markdown-renderer.js';
 import './arcade-launcher.js';
@@ -237,7 +238,15 @@ function loadVoiceSettings() {
 }
 
 function saveVoiceSettings() {
-  voiceSettings = { auto: autoSpeak.checked, voiceURI: '', language: voiceSelect.value === '__anime_ja__' ? 'ja' : 'en', rate: Number(speechRate.value), pitch: Number(speechPitch.value) };
+  const language = voiceSelect.value === '__anime_ja__' ? 'ja' : 'en';
+  voiceSettings = {
+    ...voiceSettings,
+    auto: autoSpeak.checked,
+    voiceURI: voiceSettings.language === language ? voiceSettings.voiceURI : '',
+    language,
+    rate: Number(speechRate.value),
+    pitch: Number(speechPitch.value),
+  };
   appStore.set('settings.voice', voiceSettings);
 }
 
@@ -253,7 +262,7 @@ function refreshVoiceList() {
     return score(b) - score(a) || a.name.localeCompare(b.name);
   });
   const matching = voices.filter((voice) => voice.lang.toLowerCase().replace('_', '-').startsWith(voiceSettings.language));
-  preferredWaifuVoice = matching[0] || null;
+  preferredWaifuVoice = findVoiceByLanguageAndUri(voices, voiceSettings.language, voiceSettings.voiceURI) || matching[0] || null;
   voiceSelect.replaceChildren(new Option('ANIME DUB · ENGLISH', '__anime_en__'), new Option('ANIME DUB · 日本語', '__anime_ja__'));
   voiceSelect.value = voiceSettings.language === 'ja' ? '__anime_ja__' : '__anime_en__';
   const hasVoices = voices.length > 0;

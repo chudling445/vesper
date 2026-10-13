@@ -203,6 +203,7 @@ const staticFiles = new Map([
   ['/crypto-backup.mjs', ['crypto-backup.mjs', 'text/javascript; charset=utf-8']],
   ['/context-sharing.mjs', ['context-sharing.mjs', 'text/javascript; charset=utf-8']],
   ['/memory-graph.mjs', ['memory-graph.mjs', 'text/javascript; charset=utf-8']],
+  ['/voice-selection.mjs', ['voice-selection.mjs', 'text/javascript; charset=utf-8']],
   ['/feedback.js', ['feedback.js', 'text/javascript; charset=utf-8']],
   ['/theme-provider.js', ['theme-provider.js', 'text/javascript; charset=utf-8']],
   ['/export-utils.js', ['export-utils.js', 'text/javascript; charset=utf-8']],

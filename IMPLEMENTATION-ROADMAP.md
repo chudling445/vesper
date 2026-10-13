@@ -10,6 +10,7 @@ This is a grounded status and delivery order for the larger Vesper architecture 
 - **Focused checks — added in this milestone.** Regression tests cover serialized writes, write-queue recovery, hydration race selection, energy formulas, nutrition validation/aggregation, and fasting elapsed-time validation.
 - **Hosted-context privacy — tightened in this milestone.** Matching workspace notes and long-term memories are now omitted from hosted-provider requests unless an explicit local setting is enabled. Local Ollama can still receive those on-device context snippets. Persona instructions and recent conversation messages remain part of the request to the selected model provider.
 - **Memory relationships — extended in this milestone.** Facts record manual versus conversation origin; users can explicitly link memories, and snapshots expose validated, deduplicated graph nodes and edges. This is not automated fact verification or semantic relationship inference.
+- **Voice selection — fixed in this milestone.** Voice Lab now lists installed system voices and persists the selected voice, language, pitch, and pace through the shared versioned state store. Chat honors the selected voice when it matches the active language profile, otherwise it falls back to the best available voice.
 
 ## Existing capabilities found; wider acceptance still needs verification
 

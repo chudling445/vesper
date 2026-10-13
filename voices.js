@@ -1,3 +1,6 @@
+import { appStore } from './persistence.js';
+import { migrateLegacyVoiceSettings } from './voice-selection.mjs';
+
 const voiceSelect = document.querySelector('#voice-list');
 const filter = document.querySelector('#lang-filter');
 const pitch = document.querySelector('#lab-pitch');
@@ -6,18 +9,35 @@ const pitchValue = document.querySelector('#lab-pitch-value');
 const rateValue = document.querySelector('#lab-rate-value');
 const sample = document.querySelector('#lab-sample');
 const status = document.querySelector('#lab-status');
-const STORAGE_KEY = 'vesper-voice-v1';
+const LEGACY_STORAGE_KEY = 'vesper-voice-v1';
 let voices = [];
 let selectedVoice = '';
 let selectedLanguage = 'en';
 
 function loadSettings() {
-  try { const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); selectedVoice = saved.voiceURI || ''; selectedLanguage = saved.language === 'ja' ? 'ja' : 'en'; pitch.value = saved.pitch || 1.12; rate.value = saved.rate || 0.94; } catch { /* defaults */ }
+  let saved = appStore.get('settings.voice', {});
+  try {
+    const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || '{}');
+    const migrated = migrateLegacyVoiceSettings(saved, legacy);
+    if (migrated.voiceURI !== saved.voiceURI) appStore.set('settings.voice', migrated);
+    saved = migrated;
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch { /* The shared store remains authoritative if legacy data is unreadable. */ }
+  selectedVoice = typeof saved.voiceURI === 'string' ? saved.voiceURI : '';
+  selectedLanguage = saved.language === 'ja' ? 'ja' : 'en';
+  pitch.value = Number.isFinite(saved.pitch) ? Math.min(1.4, Math.max(0.7, saved.pitch)) : 1.12;
+  rate.value = Number.isFinite(saved.rate) ? Math.min(1.3, Math.max(0.7, saved.rate)) : 0.94;
   pitchValue.value = `${Number(pitch.value).toFixed(2)}×`;
   rateValue.value = `${Number(rate.value).toFixed(2)}×`;
 }
 function saveSettings() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ voiceURI: selectedVoice, language: selectedLanguage, pitch: Number(pitch.value), rate: Number(rate.value), auto: false })); } catch { /* optional persistence */ }
+  appStore.set('settings.voice', {
+    ...appStore.get('settings.voice', {}),
+    voiceURI: selectedVoice,
+    language: selectedLanguage,
+    pitch: Number(pitch.value),
+    rate: Number(rate.value),
+  });
 }
 function matches(lang, voice) { return lang === 'all' || voice.lang.toLowerCase().startsWith(lang); }
 function preferred(lang) { return voices.filter((voice) => matches(lang, voice)).sort((a, b) => Number(/female|zira|samantha|aria|nanami|haruka/i.test(b.name)) - Number(/female|zira|samantha|aria|nanami|haruka/i.test(a.name)))[0]; }
@@ -34,11 +54,20 @@ function renderList() {
   if (!voiceSelect) return;
   voiceSelect.replaceChildren();
   const lang = filter.value;
-  const visible = [...new Set([preferred('en'), preferred('ja')].filter(Boolean))].filter((voice) => matches(lang, voice));
+  const visible = voices.filter((voice) => matches(lang, voice) && (voice.lang.toLowerCase().startsWith('en') || voice.lang.toLowerCase().startsWith('ja'))).sort((a, b) => {
+    const preferredVoice = (voice) => /female|zira|samantha|aria|nanami|haruka/i.test(voice.name) ? 1 : 0;
+    return preferredVoice(b) - preferredVoice(a) || a.lang.localeCompare(b.lang) || a.name.localeCompare(b.name);
+  });
   if (!visible.length) { voiceSelect.innerHTML = '<p class="fine-note">No matching system voices were found.</p>'; return; }
   for (const voice of visible) {
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'voice-list-item'; button.dataset.voice = voice.voiceURI; button.innerHTML = `<span><b>${voice.name}</b><small>${voice.lang}${voice.localService ? ' · installed' : ' · online'}</small></span><i>USE</i>`;
-    button.addEventListener('click', () => { selectedVoice = voice.voiceURI; saveSettings(); renderList(); status.textContent = `SELECTED · ${voice.name}`; });
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'voice-list-item'; button.dataset.voice = voice.voiceURI;
+    const details = document.createElement('span');
+    const name = document.createElement('b'); name.textContent = voice.name;
+    const metadata = document.createElement('small'); metadata.textContent = `${voice.lang}${voice.localService ? ' · installed' : ' · online'}`;
+    const action = document.createElement('i'); action.textContent = 'USE';
+    details.append(name, metadata); button.append(details, action);
+    button.addEventListener('click', () => { selectedVoice = voice.voiceURI; selectedLanguage = voice.lang.toLowerCase().startsWith('ja') ? 'ja' : 'en'; saveSettings(); renderList(); status.textContent = `SELECTED · ${voice.name}`; });
     if (voice.voiceURI === selectedVoice) button.classList.add('is-selected'); voiceSelect.append(button);
   }
 }
@@ -50,6 +79,7 @@ function refresh() {
   renderList();
 }
 loadSettings(); refresh();
+appStore.ready.then(() => { loadSettings(); refresh(); });
 if ('speechSynthesis' in window) window.speechSynthesis.addEventListener('voiceschanged', refresh);
 filter.addEventListener('change', renderList);
 pitch.addEventListener('input', () => { pitchValue.value = `${Number(pitch.value).toFixed(2)}×`; saveSettings(); });
