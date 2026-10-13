@@ -3,10 +3,10 @@ import { applyPaletteTheme } from './theme-provider.js';
 
 const OFFICIAL_THEME_IDS = [
   'omarchy-quattro', 'tokyo-night', 'catppuccin-mocha', 'lumon-industries', 'fenrir-cyberpunk',
-  'gruber-darker', 'rose-pine-dark', 'miasma-forest', 'solitude-slate', 'nord-frost',
+  'gruber-darker', 'rose-pine-dark', 'miasma-forest', 'solitude-slate', 'nord-frost', 'lumen-glass',
 ];
 
-/** Mount the ten Omarchy-inspired theme swatch cards into a settings surface. */
+/** Mount the theme swatch cards into a settings surface. */
 export function mountThemeSelector(container) {
   if (!(container instanceof HTMLElement)) return () => {};
   const palettes = OFFICIAL_THEME_IDS.map((id) => THEME_PALETTES.find((theme) => theme.id === id)).filter(Boolean);

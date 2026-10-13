@@ -26,7 +26,7 @@ Project Vesper is an anime-focused LLM companion project. She chats in a snarky-
 - **PC Builds & Money** — offline PC build sheets, component price tracking, Indian index/fund observations, home-loan/LAP term history, transparent calculations, local exports, plus portfolio, ledger, and habit tools
 - **Selectable model backdrops** with Atelier, Sakura, Night, Aurora, and Sunset presets shared by the full studio and Model Only window
 - **First-run welcome flow** with setup steps and a Model Gallery coming-soon preview
-- **Twenty-three shared themes** — the original Vesper palettes plus Omarchy Quattro, Tokyo Night, Catppuccin Mocha, Lumon Industries, Fenrir Cyberpunk, Gruber Darker, Rosé Pine Dark, Miasma Forest, Solitude Slate, and Nord Frost. Press **T** on Chat or **Ctrl/Cmd+Shift+T** on any page to cycle.
+- **Twenty-four shared themes** — including Aurora Glass, a cyan-lit translucent midnight palette, alongside the original Vesper palettes, Omarchy Quattro, Tokyo Night, Catppuccin Mocha, Lumon Industries, Fenrir Cyberpunk, Gruber Darker, Rosé Pine Dark, Miasma Forest, Solitude Slate, and Nord Frost. Choose it from the theme selector to apply across site and desktop windows; press **T** on Chat or **Ctrl/Cmd+Shift+T** on any page to cycle.
 - **Private by default** — the server only listens on `127.0.0.1`
 
 ## Configuration
@@ -147,6 +147,6 @@ The browser UI also has centralized error capture and toast feedback in `feedbac
 - **Workspace** at `/workspace` includes a draggable dashboard, Quick Checklist, Recent Items, Daily Motivation, time tracker, Kanban inbox, due-date calendar, and drag-and-drop status updates.
 - **Project notes** can be grouped and filtered by project in the Inbox Board. Matching notes carry their project label into chat retrieval and workspace exports; data remains local.
 - **Local text import** accepts `.txt`, `.md`, `.markdown`, and `.csv` files by file picker or drop. It stores extracted text as local workspace notes with per-file and total text limits. Binary files are not uploaded or retained.
-- **Customization Studio** supports Warm Sunset, Cyberpunk, Forest Green, and OLED Pitch Black presets, custom accent colors, local background images, and Sans-serif, Serif, Monospace, or dyslexic-friendly display fonts.
+- **Customization Studio** supports Warm Sunset, Cyberpunk, Forest Green, and OLED Pitch Black presets, custom accent colors (or following the selected global theme), local background images, and Sans-serif, Serif, Monospace, or dyslexic-friendly display fonts.
 - Workspace exports include Markdown, CSV, a stylized PNG summary, and print-to-PDF. Share summaries copy clean bullet formatting to the clipboard.
 - **Read-only publishing** creates local Vesper share tokens with 1/7/30-day expiry options and optional password protection. Published links are served by the running Vesper server and are intentionally ephemeral; deploy behind HTTPS and trusted proxy settings before sharing outside the local computer.

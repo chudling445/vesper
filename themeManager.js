@@ -26,6 +26,7 @@ export const THEME_PALETTES = [
   { id: 'miasma-forest', name: 'Miasma Forest', colors: ['#111512', '#788755', '#1f2821'], vars: { bgPrimary: '#111512', bgSecondary: '#181f1b', bgCard: '#1f2821', accent: '#9eae72', accentGlow: 'rgba(120,135,85,.3)', textPrimary: '#e5e9db', textSecondary: '#a6ae98', border: '#384337', badgeBg: '#313d2c' } },
   { id: 'solitude-slate', name: 'Solitude Slate', colors: ['#0f172a', '#f97316', '#1b263a'], vars: { bgPrimary: '#0f172a', bgSecondary: '#162033', bgCard: '#1b263a', accent: '#f97316', accentGlow: 'rgba(249,115,22,.28)', textPrimary: '#f1f5f9', textSecondary: '#aab7c9', border: '#34435a', badgeBg: '#442b24' } },
   { id: 'nord-frost', name: 'Nord Frost', colors: ['#2e3440', '#88c0d0', '#3b4555'], vars: { bgPrimary: '#2e3440', bgSecondary: '#343c4a', bgCard: '#3b4555', accent: '#88c0d0', accentGlow: 'rgba(136,192,208,.28)', textPrimary: '#eceff4', textSecondary: '#c3ccd8', border: '#4c566a', badgeBg: '#3d5866' } },
+  { id: 'lumen-glass', name: 'Aurora Glass', colors: ['#081522', '#54d9ff', '#12314b'], vars: { bgPrimary: '#081522', bgSecondary: '#0c1d30', bgCard: '#122a40', accent: '#54d9ff', accentGlow: 'rgba(84,217,255,.34)', textPrimary: '#edf8ff', textSecondary: '#b3ccdf', border: 'rgba(145,207,238,.2)', badgeBg: '#143852' } },
 ];
 
 export const THEME_STORAGE_KEY = 'vesper_active_theme';

@@ -3,6 +3,16 @@ import { applyTheme, THEME_PALETTES, THEME_STORAGE_KEY } from './themeManager.js
 
 const MODE_KEY = 'vesper-color-mode-v1';
 const MODES = ['dark', 'light', 'system'];
+const SITE_NAVIGATION = [
+  ['/', 'Chat'],
+  ['/workspace', 'Workspace'],
+  ['/lab', 'Code Lab'],
+  ['/quick-capture', 'Capture'],
+  ['/games', 'Arcade'],
+  ['/voices', 'Voice lab'],
+  ['/about', 'Studio guide'],
+  ['/planner', 'Builds & Money'],
+];
 export const PALETTE_KEY = THEME_STORAGE_KEY;
 const LEGACY_PALETTE_KEY = 'vesper-theme-v3';
 export const PALETTES = THEME_PALETTES.map(({ id, name, colors, vars }) => ({ id, name, colors, vars }));
@@ -59,13 +69,21 @@ function ensureGlobalPaletteOptions() {
   }
 }
 
-function ensurePlannerNavigation() {
+function ensureSiteNavigation() {
+  const here = location.pathname === '/index.html' ? '/' : location.pathname.replace(/\/$/, '') || '/';
   document.querySelectorAll('.site-nav').forEach((nav) => {
-    if (nav.querySelector('a[href="/planner"]')) return;
-    const link = document.createElement('a');
-    link.href = '/planner'; link.textContent = 'Builds & Money';
-    if (location.pathname === '/planner' || location.pathname === '/planner.html') link.setAttribute('aria-current', 'page');
-    nav.append(link);
+    for (const [href, label] of SITE_NAVIGATION) {
+      let link = nav.querySelector(`a[href="${href}"]`);
+      if (!link) {
+        link = document.createElement('a');
+        link.href = href;
+        nav.append(link);
+      }
+      link.textContent = label;
+      if (href === here || (href === '/planner' && here === '/planner.html')) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+      nav.append(link);
+    }
   });
 }
 
@@ -88,7 +106,7 @@ export function initThemeProvider() {
   document.documentElement.dataset.vesperThemeProvider = 'ready';
   ensureThemeDock();
   ensureGlobalPaletteOptions();
-  ensurePlannerNavigation();
+  ensureSiteNavigation();
   applyPaletteTheme(savedPalette() || appStore.get('settings.theme', 'omarchy-quattro'), false);
   window.addEventListener('storage', (event) => {
     if ([PALETTE_KEY, LEGACY_PALETTE_KEY].includes(event.key) && event.newValue) applyPaletteTheme(event.newValue, false);

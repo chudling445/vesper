@@ -11,6 +11,18 @@ function applyWelcomeTheme(theme) {
   const selected = themes.includes(theme) ? theme : 'riko';
   applyPaletteTheme(selected);
 }
+const themePicker = document.querySelector('.welcome-theme-picker');
+if (themePicker) {
+  const existingThemes = new Set([...themePicker.querySelectorAll('[data-welcome-theme]')].map((button) => button.dataset.welcomeTheme));
+  for (const { id, name } of PALETTES) {
+    if (existingThemes.has(id)) continue;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.welcomeTheme = id;
+    button.textContent = name.toUpperCase();
+    themePicker.append(button);
+  }
+}
 let storedPalette = '';
 try { storedPalette = localStorage.getItem(themeKey) || ''; } catch { /* Use the durable app setting below. */ }
 const savedSetting = appStore.get('settings.theme', 'riko');
