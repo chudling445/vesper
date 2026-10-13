@@ -1,4 +1,7 @@
 import { appStore } from './persistence.js';
+import { calculateTDEEAndDeficit } from './health-tools.mjs';
+
+export { calculateTDEEAndDeficit };
 
 const finite = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const hasPositiveNumber = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) && Number(value) > 0;
@@ -58,28 +61,6 @@ export function calculatePCPartCompatibility(build = {}) {
   const recommendedRatings = [450, 550, 650, 750, 850, 1000, 1200, 1600];
   const recommendedPsu = recommendedPsuW ? recommendedRatings.find((watts) => watts >= recommendedPsuW) || recommendedPsuW : null;
   return { compatible: errors.length === 0, errors, warnings: [...new Set(warnings)], missing, estimatedDrawW, recommendedPsuW: recommendedPsu, knownPowerW: knownPower || null };
-}
-
-/** Return Mifflin-St Jeor or Katch-McArdle TDEE and a transparent macro estimate. */
-export function calculateTDEEAndDeficit(stats = {}) {
-  const age = finite(stats.age); const weightKg = finite(stats.weightKg); const heightCm = finite(stats.heightCm);
-  const activity = Math.min(1.9, Math.max(1.2, finite(stats.activityFactor, 1.2)));
-  if (age < 13 || age > 100 || weightKg < 25 || weightKg > 350 || heightCm < 100 || heightCm > 250) return { error: 'Enter an age from 13–100, weight from 25–350 kg, and height from 100–250 cm.' };
-  const sexTerm = stats.sex === 'male' ? 5 : stats.sex === 'female' ? -161 : null;
-  const bodyFat = finite(stats.bodyFatPercent, NaN);
-  const leanMassKg = Number.isFinite(bodyFat) && bodyFat > 0 && bodyFat < 75 ? weightKg * (1 - bodyFat / 100) : null;
-  const method = stats.method === 'katch' && leanMassKg ? 'katch' : 'mifflin';
-  if (method === 'mifflin' && sexTerm == null) return { error: 'Choose the equation profile required by Mifflin-St Jeor, or enter body-fat percentage for Katch-McArdle.' };
-  const bmr = Math.round(method === 'katch' ? 370 + 21.6 * leanMassKg : (10 * weightKg) + (6.25 * heightCm) - (5 * age) + sexTerm);
-  const tdee = Math.round(bmr * activity);
-  const requestedDeficit = Math.min(1000, Math.max(0, finite(stats.deficitKcal)));
-  const deficit = Math.min(requestedDeficit, Math.max(0, tdee - 1));
-  const targetCalories = tdee - deficit;
-  const macros = { proteinG: Math.round(targetCalories * 0.3 / 4), carbsG: Math.round(targetCalories * 0.4 / 4), fatG: Math.round(targetCalories * 0.3 / 9) };
-  const targetWeightKg = finite(stats.targetWeightKg);
-  const daysToTarget = targetWeightKg > 0 && targetWeightKg < weightKg && deficit > 0 ? Math.ceil(((weightKg - targetWeightKg) * 7700) / deficit) : null;
-  const targetDate = daysToTarget ? new Date(Date.now() + daysToTarget * 86400000).toISOString().slice(0, 10) : null;
-  return { method, bmr, tdee, deficit, targetCalories, macros, leanMassKg, daysToTarget, targetDate, estimateNote: 'Planning estimate only. Real energy needs vary; discuss diet or weight changes with a qualified clinician.' };
 }
 
 /**

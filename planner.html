@@ -256,7 +256,7 @@
           <label class="planner-field">AGE<input id="health-age" type="number" min="13" max="100" required /></label>
           <label class="planner-field">WEIGHT kg<input id="health-weight" type="number" min="25" max="350" step="0.1" required /></label>
           <label class="planner-field">HEIGHT cm<input id="health-height" type="number" min="100" max="250" step="0.1" required /></label>
-          <label class="planner-field">BODY FAT % <small>optional</small><input id="health-bodyfat" type="number" min="1" max="75" step="0.1" /></label>
+          <label class="planner-field">BODY FAT % <small>optional, under 75 for Katch–McArdle</small><input id="health-bodyfat" type="number" min="0.1" max="74.9" step="0.1" /></label>
           <label class="planner-field">ACTIVITY<select id="health-activity"><option value="1.2">Mostly seated · 1.20</option><option value="1.375">Light movement · 1.375</option><option value="1.55">Moderate exercise · 1.55</option><option value="1.725">High activity · 1.725</option><option value="1.9">Very high activity · 1.90</option></select></label>
           <label class="planner-field">PLANNED DEFICIT kcal/day<input id="health-deficit" type="number" min="0" max="1000" step="50" value="300" /></label>
           <label class="planner-field">TARGET WEIGHT kg <small>optional</small><input id="health-target" type="number" min="25" max="350" step="0.1" /></label>
@@ -264,6 +264,32 @@
         </form></section>
         <section class="planner-card health-results" id="health-results" aria-live="polite"><span class="eyebrow">YOUR ESTIMATE</span><p>Enter values to calculate a resting-energy and daily-energy estimate.</p></section>
       </div>
+      <div class="planner-grid planner-grid-wide health-log-grid">
+        <section class="planner-card">
+          <div class="planner-card-heading"><div><span class="eyebrow">MANUAL FOOD LOG</span><h3>Today’s nutrition notes</h3></div><span class="planner-note">You enter the estimates</span></div>
+          <p class="planner-footnote">Calories and macros are only as accurate as the entries and portions you provide. This is not a diet prescription or a substitute for professional advice.</p>
+          <div id="nutrition-summary" class="nutrition-summary" role="status" aria-live="polite"></div>
+          <form id="nutrition-form" class="health-form">
+            <label class="planner-field">FOOD / MEAL<input id="nutrition-name" maxlength="100" required /></label>
+            <label class="planner-field">DATE<input id="nutrition-date" type="date" required /></label>
+            <label class="planner-field">CALORIES kcal<input id="nutrition-calories" type="number" min="0" max="10000" step="1" required /></label>
+            <label class="planner-field">PROTEIN g<input id="nutrition-protein" type="number" min="0" max="1000" step="0.1" value="0" /></label>
+            <label class="planner-field">CARBOHYDRATES g<input id="nutrition-carbs" type="number" min="0" max="1000" step="0.1" value="0" /></label>
+            <label class="planner-field">FAT g<input id="nutrition-fat" type="number" min="0" max="1000" step="0.1" value="0" /></label>
+            <button class="planner-button" type="submit">ADD FOOD ENTRY</button>
+          </form>
+          <div id="nutrition-entries" class="health-entry-list" aria-label="Food entries for the selected date"></div>
+        </section>
+        <section class="planner-card">
+          <div class="planner-card-heading"><div><span class="eyebrow">OPTIONAL TIMER</span><h3>Fasting session log</h3></div><span class="planner-note">No schedule is prescribed</span></div>
+          <p class="planner-footnote">Fasting is not appropriate for everyone. Do not use this timer as health guidance; consult a qualified clinician, especially if you are under 18, pregnant or nursing, have a medical condition, take medication affected by food, or have a history of disordered eating. Stop if you feel unwell.</p>
+          <label class="planner-field">PERSONAL REMINDER (OPTIONAL)<select id="fasting-target"><option value="0">No target</option><option value="12">12 hours</option><option value="14">14 hours</option><option value="16">16 hours</option><option value="18">18 hours</option><option value="20">20 hours</option></select></label>
+          <div id="fasting-status" class="nutrition-summary" role="status" aria-live="polite"></div>
+          <div class="planner-actions"><button class="planner-button" id="fasting-start" type="button">START TIMER</button><button class="planner-button planner-button-soft" id="fasting-stop" type="button" disabled>END & SAVE SESSION</button><button class="planner-button planner-button-quiet" id="fasting-discard" type="button" hidden>DISCARD INVALID TIMER</button></div>
+          <div id="fasting-entries" class="health-entry-list" aria-label="Recent completed timer sessions"></div>
+        </section>
+      </div>
+      <p class="planner-footnote health-privacy-note">Health entries are optional and stored in this browser’s Vesper state. They are not encrypted at rest; avoid entering information you do not want stored locally.</p>
     </section>
 
     <section class="planner-view" id="planner-ledger" data-planner-view="ledger" role="tabpanel" hidden>

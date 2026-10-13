@@ -1,6 +1,7 @@
 import { appStore } from './persistence.js';
 import { calculatePCPartCompatibility, calculateTDEEAndDeficit, calculateXirr, fetchStockTickers, initVesperDatabase } from './local-tools.js';
 import { BUILD_GUIDES, COMPONENT_TYPES, INDIAN_AND_GLOBAL_BRANDS, PRICE_SOURCES, REFERENCE_PARTS, RETAILERS } from './pc-catalog.js';
+import { fastingElapsedMinutes, normalizeNutritionEntry, summarizeNutritionDay } from './health-tools.mjs';
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -20,13 +21,17 @@ let health = null;
 let habits = null;
 let isHydrated = false;
 let pcSaveTimer = 0;
+let fastingTimer = 0;
 
 function ensureState() {
   pc = clone(appStore.get('workspace.pcBuilder', { savedBuilds: [], customParts: [] }));
   pc.savedBuilds ||= []; pc.customParts ||= []; pc.currentParts ||= []; pc.currentName ||= 'My first build'; pc.currentBudget ??= 100000; pc.currentGoal ||= 'gaming';
   finance = clone(appStore.get('workspace.finance', { assets: [], quotes: {}, accounts: [], ledger: [], budgets: [], quoteEndpoint: '' }));
   finance.assets ||= []; finance.quotes ||= {}; finance.accounts ||= []; finance.ledger ||= []; finance.budgets ||= [];
-  health = clone(appStore.get('workspace.health', null));
+  health = clone(appStore.get('workspace.health', null) || {});
+  health.nutritionEntries = Array.isArray(health.nutritionEntries) ? health.nutritionEntries : [];
+  health.fastingSessions = Array.isArray(health.fastingSessions) ? health.fastingSessions : [];
+  health.activeFast = health.activeFast && typeof health.activeFast === 'object' ? health.activeFast : null;
   habits = clone(appStore.get('workspace.habits', { days: {}, badges: [] }));
   habits.days ||= {}; habits.badges ||= [];
 }
@@ -263,11 +268,124 @@ function renderHealthResult(result) {
 }
 
 function bindHealth() {
+  health ||= {};
+  health.nutritionEntries = Array.isArray(health.nutritionEntries) ? health.nutritionEntries : [];
+  health.fastingSessions = Array.isArray(health.fastingSessions) ? health.fastingSessions : [];
   if (health?.input) for (const [key, id] of Object.entries({ method: 'health-method', sex: 'health-sex', age: 'health-age', weightKg: 'health-weight', heightCm: 'health-height', bodyFatPercent: 'health-bodyfat', activityFactor: 'health-activity', deficitKcal: 'health-deficit', targetWeightKg: 'health-target' })) if (health.input[key] != null) $(id).value = String(health.input[key]);
   if (health?.result) renderHealthResult(health.result);
   $('health-form').addEventListener('submit', (event) => {
     event.preventDefault(); const input = { method: $('health-method').value, sex: $('health-sex').value, age: toNum('health-age'), weightKg: toNum('health-weight'), heightCm: toNum('health-height'), bodyFatPercent: toNum('health-bodyfat'), activityFactor: number($('health-activity').value), deficitKcal: toNum('health-deficit'), targetWeightKg: toNum('health-target') };
-    const result = calculateTDEEAndDeficit(input); renderHealthResult(result); health = { input, result, updatedAt: Date.now() }; savePath('workspace.health', health);
+    const result = calculateTDEEAndDeficit(input); renderHealthResult(result); health = { ...health, input, result, updatedAt: Date.now() }; savePath('workspace.health', health); renderNutritionLog();
+  });
+  $('nutrition-date').value = localDate();
+  $('nutrition-date').addEventListener('change', renderNutritionLog);
+  $('nutrition-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    try {
+      const entry = normalizeNutritionEntry({
+        name: $('nutrition-name').value,
+        date: $('nutrition-date').value,
+        calories: $('nutrition-calories').value,
+        proteinG: $('nutrition-protein').value,
+        carbsG: $('nutrition-carbs').value,
+        fatG: $('nutrition-fat').value,
+      });
+      if (health.nutritionEntries.length >= 5000) throw new Error('This local food log has reached 5,000 entries. Export or remove older records before adding more.');
+      health.nutritionEntries.push({ id: uid(), ...entry, createdAt: Date.now() });
+      saveHealth(); $('nutrition-form').reset(); $('nutrition-date').value = localDate(); renderNutritionLog();
+    } catch (error) { showStatus(error instanceof Error ? error.message : 'Could not save that food entry.', 'error'); }
+  });
+  $('fasting-target').value = String(health.activeFast?.targetHours || 0);
+  $('fasting-target').addEventListener('change', () => {
+    if (!health.activeFast) return;
+    health.activeFast.targetHours = number($('fasting-target').value);
+    saveHealth(); renderFastingLog();
+  });
+  $('fasting-start').addEventListener('click', () => {
+    if (health.activeFast) return;
+    health.activeFast = { startedAt: new Date().toISOString(), targetHours: number($('fasting-target').value) };
+    saveHealth(); renderFastingLog();
+  });
+  $('fasting-stop').addEventListener('click', () => {
+    if (!health.activeFast) return;
+    if (health.fastingSessions.length >= 1000) { showStatus('This local fasting log has reached 1,000 sessions. Remove older records before saving another.', 'error'); return; }
+    const session = { id: uid(), startedAt: health.activeFast.startedAt, endedAt: new Date().toISOString(), targetHours: number(health.activeFast.targetHours) };
+    if (fastingElapsedMinutes(session) == null) { showStatus('The saved timer start is invalid; the session was not changed.', 'error'); return; }
+    health.fastingSessions.unshift(session); health.activeFast = null;
+    saveHealth(); renderFastingLog();
+  });
+  $('fasting-discard').addEventListener('click', () => {
+    if (!health.activeFast || fastingElapsedMinutes(health.activeFast) != null) return;
+    if (!window.confirm('The saved timer start is invalid. Discard this timer without adding a session?')) return;
+    health.activeFast = null; saveHealth(); renderFastingLog();
+  });
+  renderNutritionLog(); renderFastingLog();
+  window.clearInterval(fastingTimer);
+  fastingTimer = window.setInterval(renderFastingLog, 60_000);
+  window.addEventListener('pagehide', () => window.clearInterval(fastingTimer), { once: true });
+}
+
+function saveHealth() {
+  health.updatedAt = Date.now();
+  savePath('workspace.health', health);
+}
+
+function renderNutritionLog() {
+  const date = $('nutrition-date').value || localDate();
+  const summary = summarizeNutritionDay(health.nutritionEntries, date);
+  const target = number(health.result?.targetCalories, 0);
+  const summaryPanel = $('nutrition-summary'); summaryPanel.replaceChildren();
+  const difference = target - summary.calories;
+  const calories = target > 0
+    ? `${summary.calories.toLocaleString()} kcal · ${difference >= 0 ? `${Math.round(difference).toLocaleString()} kcal remaining` : `${Math.round(-difference).toLocaleString()} kcal over`} your estimate`
+    : `${summary.calories.toLocaleString()} kcal · calculate an energy estimate to show a personal reference`;
+  summaryPanel.append(node('b', '', calories));
+  summaryPanel.append(node('p', '', `${summary.entries} entries · Protein ${summary.proteinG} g · Carbohydrates ${summary.carbsG} g · Fat ${summary.fatG} g`));
+  if (target > 0) {
+    const track = node('span', 'allocation-track'); const fill = node('i');
+    fill.style.width = `${Math.min(100, summary.calories / target * 100)}%`; track.append(fill); summaryPanel.append(track);
+  }
+  const list = $('nutrition-entries'); list.replaceChildren();
+  const entries = health.nutritionEntries.filter((entry) => entry?.date === date).slice().sort((a, b) => number(b.createdAt) - number(a.createdAt));
+  if (!entries.length) list.append(node('p', 'empty-state', 'No food entries for this date.'));
+  entries.forEach((entry) => {
+    const row = node('div', 'health-entry-row');
+    row.append(node('span', '', entry.name), node('b', '', `${number(entry.calories).toLocaleString()} kcal`));
+    row.append(node('small', '', `P ${number(entry.proteinG)} g · C ${number(entry.carbsG)} g · F ${number(entry.fatG)} g`));
+    const remove = node('button', 'row-remove', '×'); remove.type = 'button'; remove.setAttribute('aria-label', `Remove ${entry.name}`);
+    remove.addEventListener('click', () => { health.nutritionEntries = health.nutritionEntries.filter((item) => item.id !== entry.id); saveHealth(); renderNutritionLog(); });
+    row.append(remove); list.append(row);
+  });
+}
+
+function renderFastingLog() {
+  const status = $('fasting-status'); status.replaceChildren();
+  const active = health.activeFast;
+  const elapsed = active ? fastingElapsedMinutes(active) : null;
+  $('fasting-start').disabled = Boolean(active);
+  $('fasting-stop').disabled = !active || elapsed == null;
+  $('fasting-discard').hidden = !active || elapsed != null;
+  if (active) {
+    status.append(node('b', '', elapsed == null ? 'Timer start is invalid.' : `In progress · ${Math.floor(elapsed / 60)}h ${elapsed % 60}m`));
+    if (elapsed != null && number(active.targetHours) > 0) {
+      const targetMinutes = number(active.targetHours) * 60;
+      status.append(node('p', '', `${Math.min(100, Math.round(elapsed / targetMinutes * 100))}% of your optional ${active.targetHours}-hour reminder. This is not medical guidance.`));
+    }
+  } else status.append(node('p', '', 'No timer is running. Starting a timer only records its start time; it does not recommend a fasting schedule.'));
+  const list = $('fasting-entries'); list.replaceChildren();
+  const sessions = health.fastingSessions.slice(0, 12);
+  if (!sessions.length) list.append(node('p', 'empty-state', 'Completed sessions will appear here on this device.'));
+  sessions.forEach((session) => {
+    const minutes = fastingElapsedMinutes(session);
+    const row = node('div', 'health-entry-row');
+    const started = Date.parse(session.startedAt);
+    const ended = Date.parse(session.endedAt);
+    row.append(node('span', '', Number.isFinite(started) ? new Date(started).toLocaleString() : 'Unknown start'));
+    row.append(node('b', '', minutes == null ? 'Invalid record' : `${Math.floor(minutes / 60)}h ${minutes % 60}m`));
+    row.append(node('small', '', Number.isFinite(ended) ? `Ended ${new Date(ended).toLocaleString()}` : 'End time unavailable'));
+    const remove = node('button', 'row-remove', '×'); remove.type = 'button'; remove.setAttribute('aria-label', 'Remove fasting timer record');
+    remove.addEventListener('click', () => { health.fastingSessions = health.fastingSessions.filter((item) => item.id !== session.id); saveHealth(); renderFastingLog(); });
+    row.append(remove); list.append(row);
   });
 }
 

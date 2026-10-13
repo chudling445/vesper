@@ -1636,6 +1636,17 @@ html[data-workspace-font="serif"] { --font-ui: Georgia, serif; --font-display: G
 .health-result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
 .health-result-tile { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel) 80%, transparent); }
 .health-result-tile b { color: var(--paper); font: 500 14px var(--mono); }.macro-summary { color: var(--accent) !important; }
+.health-log-grid { margin-top: 16px; }
+.nutrition-summary { display: grid; gap: 7px; margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--panel) 76%, transparent); color: var(--paper); }
+.nutrition-summary > p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.nutrition-summary > b { font: 500 12px var(--mono); }
+.health-entry-list { display: grid; gap: 7px; margin-top: 12px; }
+.health-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 3px 9px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel) 66%, transparent); }
+.health-entry-row > span { min-width: 0; overflow-wrap: anywhere; color: var(--paper); font-size: 10px; }
+.health-entry-row > b { color: var(--accent); font: 9px var(--mono); }
+.health-entry-row > small { grid-column: 1 / span 2; color: var(--muted); font: 8px var(--mono); }
+.health-entry-row > .row-remove { grid-column: 3; grid-row: 1 / span 2; }
+.health-privacy-note { margin: 14px 0; }
 .account-form { grid-template-columns: 1fr 1fr auto; }
 .account-list { margin: 10px 0; }
 .account-row span { color: var(--muted); font-size: 10px; }.account-row b { margin-left: auto; color: var(--paper); font: 10px var(--mono); }

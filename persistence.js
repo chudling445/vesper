@@ -1,3 +1,5 @@
+import { SerializedOperationQueue, shouldAdoptIndexedSnapshot } from './persistence-queue.mjs';
+
 const STORAGE_KEY = 'vesper-state-v2';
 const DB_NAME = 'vesper-local';
 const DB_VERSION = 1;
@@ -115,21 +117,43 @@ function openDatabase() {
   });
 }
 
+const indexedOperations = new SerializedOperationQueue();
+
 async function readIndexed() {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const request = db.transaction(OBJECT_STORE, 'readonly').objectStore(OBJECT_STORE).get('app');
-    request.onsuccess = () => { db.close(); resolve(request.result ? migrateState(request.result) : null); };
-    request.onerror = () => { db.close(); reject(request.error || new Error('Could not read IndexedDB')); };
+    const transaction = db.transaction(OBJECT_STORE, 'readonly');
+    const request = transaction.objectStore(OBJECT_STORE).get('app');
+    transaction.oncomplete = () => { db.close(); resolve(request.result ? migrateState(request.result) : null); };
+    transaction.onerror = () => { db.close(); reject(transaction.error || new Error('Could not read IndexedDB')); };
+    transaction.onabort = () => { db.close(); reject(transaction.error || new Error('IndexedDB state read was aborted')); };
   });
+}
+
+async function deleteIndexed() {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(OBJECT_STORE, 'readwrite');
+    transaction.objectStore(OBJECT_STORE).delete('app');
+    transaction.oncomplete = () => { db.close(); resolve(); };
+    transaction.onerror = () => { db.close(); reject(transaction.error || new Error('Could not clear IndexedDB state')); };
+    transaction.onabort = () => { db.close(); reject(transaction.error || new Error('IndexedDB state clear was aborted')); };
+  });
+}
+
+function queueIndexedWrite(state) {
+  const snapshot = clone(state);
+  return indexedOperations.run(() => writeIndexed(snapshot));
 }
 
 async function writeIndexed(state) {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const request = db.transaction(OBJECT_STORE, 'readwrite').objectStore(OBJECT_STORE).put(clone(state), 'app');
-    request.onsuccess = () => { db.close(); resolve(true); };
-    request.onerror = () => { db.close(); reject(request.error || new Error('Could not save IndexedDB state')); };
+    const transaction = db.transaction(OBJECT_STORE, 'readwrite');
+    transaction.objectStore(OBJECT_STORE).put(clone(state), 'app');
+    transaction.oncomplete = () => { db.close(); resolve(true); };
+    transaction.onerror = () => { db.close(); reject(transaction.error || new Error('Could not save IndexedDB state')); };
+    transaction.onabort = () => { db.close(); reject(transaction.error || new Error('IndexedDB state write was aborted')); };
   });
 }
 
@@ -146,6 +170,7 @@ class VesperStateStore {
   constructor() {
     this.state = readLocal();
     this.listeners = new Set();
+    this.revision = 0;
     this.ready = this.hydrate();
   }
   get(path, fallback) { return getPath(this.state, path, fallback); }
@@ -154,28 +179,36 @@ class VesperStateStore {
   set(path, value) {
     setPath(this.state, path, clone(value));
     this.state.updatedAt = Date.now();
+    this.revision += 1;
     writeLocal(this.state);
-    writeIndexed(this.state).catch((error) => { if (!/unavailable/i.test(error?.message || '')) window.dispatchEvent(new CustomEvent('vesper:error', { detail: { error, context: 'state persistence' } })); });
+    queueIndexedWrite(this.state).catch((error) => { if (!/unavailable/i.test(error?.message || '')) window.dispatchEvent(new CustomEvent('vesper:error', { detail: { error, context: 'state persistence' } })); });
     window.dispatchEvent(new CustomEvent('vesper-state-change', { detail: { path, value: clone(value), updatedAt: this.state.updatedAt } }));
     this.listeners.forEach((listener) => listener(this.state, path));
   }
   async hydrate() {
+    const startingRevision = this.revision;
     try {
       const indexed = await readIndexed();
-      if (indexed && indexed.updatedAt >= this.state.updatedAt) {
+      if (shouldAdoptIndexedSnapshot(indexed, this.state, startingRevision, this.revision)) {
         this.state = indexed;
         writeLocal(this.state);
         this.listeners.forEach((listener) => listener(this.state, '*'));
         window.dispatchEvent(new CustomEvent('vesper-state-hydrated', { detail: this.snapshot() }));
-        await writeIndexed(this.state);
-      } else await writeIndexed(this.state);
-    } catch { /* localStorage remains the guaranteed fallback */ }
+      }
+      await queueIndexedWrite(this.state);
+    } catch (error) {
+      if (!/unavailable/i.test(error?.message || '')) window.dispatchEvent(new CustomEvent('vesper:error', { detail: { error, context: 'state hydration' } }));
+    }
     return this.state;
   }
   async clear() {
+    await this.ready;
     this.state = createFallbackState();
+    this.revision += 1;
     writeLocal(this.state);
-    try { const db = await openDatabase(); await new Promise((resolve, reject) => { const request = db.transaction(OBJECT_STORE, 'readwrite').objectStore(OBJECT_STORE).delete('app'); request.onsuccess = resolve; request.onerror = () => reject(request.error); }); db.close(); } catch { /* local state was already reset */ }
+    try { await indexedOperations.run(deleteIndexed); } catch (error) {
+      if (!/unavailable/i.test(error?.message || '')) window.dispatchEvent(new CustomEvent('vesper:error', { detail: { error, context: 'clear state persistence' } }));
+    }
     this.listeners.forEach((listener) => listener(this.state, '*'));
   }
 }
