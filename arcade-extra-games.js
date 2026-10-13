@@ -384,8 +384,13 @@ export function initializeArcadeExtras(arcade) {
   byId('arcade-idle-dismiss')?.addEventListener('click', dismissIdleSuggestion);
   scheduleIdleSuggestion();
 
-  arcade.register({ id: '2048', tab: byId('g2048-board').closest('.arcade-layout').querySelector('[data-game="2048"]'), panel: document.querySelector('[data-panel="2048"]') });
-  for (const id of Object.keys(GAME_NAMES).filter((game) => game !== '2048')) arcade.register({ id, tab: document.querySelector(`[data-game="${id}"]`), panel: document.querySelector(`[data-panel="${id}"]`) });
+  const registeredIds = new Set(arcade.list().map((game) => game.id));
+  for (const id of Object.keys(GAME_NAMES)) {
+    if (registeredIds.has(id)) continue;
+    const tab = document.querySelector(`[data-game="${id}"]`);
+    const panel = document.querySelector(`[data-panel="${id}"]`);
+    if (tab && panel) arcade.register({ id, tab, panel });
+  }
 
   appStore.ready.then(() => {
     const stored = appStore.get('workspace.arcade', {}) || {};

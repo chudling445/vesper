@@ -22,7 +22,7 @@ Project Vesper is an anime-focused LLM companion project. She chats in a snarky-
 - **Avatar canvas stream hook** — expose a 30 FPS MediaStream to integrations in the same page; this is not an OS virtual camera or VMC/OSC sender
 - **Bright anime-dub voice profiles** in English and 日本語 using installed system voices, 1.1× pace and 1.4× pitch defaults, speech-boundary visemes, and a timer fallback when browser boundary events are unavailable; Voice Lab's exact installed-voice choice now carries into chat
 - **Push-to-talk** speech input when the browser exposes Speech Recognition
-- **Offline Arcade** with seven games: Jan-Ken-Pon, Tic-Tac-Toe, Memory Match, Omikuji, Reflex Test, Star Catch, and High-Low
+- **Offline Arcade** with 53 registered games, puzzles, and creative toys, including chess, Tetris, Wordle, 2048, and original local games; the requested 80-module target remains in progress
 - **PC Builds & Money** — offline PC build sheets, component price tracking, Indian index/fund observations, home-loan/LAP term history, transparent calculations, local exports, portfolio, ledger, and habit tools; the optional Health tab includes energy estimates, manual nutrition entries, and a fasting timer log
 - **Selectable model backdrops** with Atelier, Sakura, Night, Aurora, and Sunset presets shared by the full studio and Model Only window
 - **First-run welcome flow** with setup steps and a Model Gallery coming-soon preview

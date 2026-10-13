@@ -315,11 +315,29 @@ reflexArena.addEventListener('click', () => { if (!reflexWaiting) return; if (!r
 
 // ---- Star Catch --------------------------------------------------------
 const starArena = $('#starcatch-arena'); const starTarget = $('#starcatch-target'); const starCount = $('#starcatch-count'); const starTime = $('#starcatch-time'); const starBest = $('#starcatch-best'); const starStatus = $('#starcatch-status');
-let starActive = false; let starScore = 0; let starSeconds = 20; let starInterval = null;
+let starActive = false; let starScore = 0; let starRemaining = 20_000; let starLastTick = 0; let starInterval = null;
 function moveStar() { starTarget.style.left = `${8 + Math.random() * 80}%`; starTarget.style.top = `${10 + Math.random() * 72}%`; }
-function finishStarCatch() { starActive = false; window.clearInterval(starInterval); starTarget.disabled = true; starStatus.textContent = `${starScore} stars. ${starScore >= 15 ? 'That was dazzling, senpai.' : 'A quiet little night.'}`; if (!stats.starcatch.best || starScore > stats.starcatch.best) { stats.starcatch.best = starScore; saveStats(); } renderScore('starcatch'); say(starScore >= 15 ? ['You caught so many! I am impressed.', 'すごい数だね！感心しちゃった。'] : ['A gentle night, then. Try again?', '穏やかな夜だったね。もう一回する？']); }
-$('#starcatch-start').addEventListener('click', () => { starActive = true; starScore = 0; starSeconds = 20; starCount.textContent = '0'; starTime.textContent = '20'; starTarget.disabled = false; moveStar(); starStatus.textContent = 'Catch, catch, catch!'; window.clearInterval(starInterval); starInterval = window.setInterval(() => { starSeconds -= 1; starTime.textContent = String(starSeconds); if (starSeconds <= 0) finishStarCatch(); }, 1000); say(pick(Q.starcatch)); });
+function syncStarTimer() {
+  const shouldRun = starActive && arcade.activeId === 'starcatch' && !arcade.paused;
+  if (!shouldRun) {
+    window.clearInterval(starInterval);
+    starInterval = null;
+    return;
+  }
+  if (starInterval) return;
+  starLastTick = performance.now();
+  starInterval = window.setInterval(() => {
+    const now = performance.now();
+    starRemaining = Math.max(0, starRemaining - (now - starLastTick));
+    starLastTick = now;
+    starTime.textContent = String(Math.ceil(starRemaining / 1000));
+    if (starRemaining <= 0) finishStarCatch();
+  }, 100);
+}
+function finishStarCatch() { starActive = false; window.clearInterval(starInterval); starInterval = null; starTarget.disabled = true; starStatus.textContent = `${starScore} stars. ${starScore >= 15 ? 'That was dazzling, senpai.' : 'A quiet little night.'}`; if (!stats.starcatch.best || starScore > stats.starcatch.best) { stats.starcatch.best = starScore; saveStats(); } renderScore('starcatch'); say(starScore >= 15 ? ['You caught so many! I am impressed.', 'すごい数だね！感心しちゃった。'] : ['A gentle night, then. Try again?', '穏やかな夜だったね。もう一回する？']); }
+$('#starcatch-start').addEventListener('click', () => { starActive = true; starScore = 0; starRemaining = 20_000; starCount.textContent = '0'; starTime.textContent = '20'; starTarget.disabled = false; moveStar(); starStatus.textContent = 'Catch, catch, catch!'; syncStarTimer(); say(pick(Q.starcatch)); });
 starTarget.addEventListener('click', () => { if (!starActive) return; starScore += 1; starCount.textContent = String(starScore); moveStar(); if (starScore % 5 === 0) say(['Five more! Do not slow down, senpai.', 'あと五つ！スピード落とさないでね。']); });
+window.addEventListener('vesper:arcade-state', syncStarTimer);
 
 // ---- High-Low ----------------------------------------------------------
 const highlowInput = $('#highlow-input'); const highlowGuess = $('#highlow-guess'); const highlowNew = $('#highlow-new'); const highlowStatus = $('#highlow-status'); const highlowBest = $('#highlow-best');
