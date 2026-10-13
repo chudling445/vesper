@@ -1,3 +1,5 @@
+import { buildMemoryGraph, normalizeRelatedFactIds } from './memory-graph.mjs';
+
 const DB_NAME = 'vesper-memory-v1';
 const DB_VERSION = 1;
 const FACTS = 'facts';
@@ -97,7 +99,8 @@ export class RelationshipMemory {
   snapshot() {
     const tier = [...tiers].reverse().find((item) => this.exchanges >= item.at) || tiers[0];
     const facts = [...this.facts].sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (b.updatedAt || 0) - (a.updatedAt || 0));
-    return { facts: facts.map((fact) => ({ ...fact })), exchanges: this.exchanges, milestones: [...this.milestones], tier: tier.name };
+    const savedFacts = facts.map((fact) => ({ ...fact }));
+    return { facts: savedFacts, graph: buildMemoryGraph(savedFacts), exchanges: this.exchanges, milestones: [...this.milestones], tier: tier.name };
   }
 
   async persist() {
@@ -122,8 +125,9 @@ export class RelationshipMemory {
       const id = idFor(item.category, item.value);
       const existing = this.facts.find((fact) => fact.id === id);
       if (existing) { existing.updatedAt = Date.now(); existing.mentions = (existing.mentions || 1) + 1; }
-      else this.facts.push({ id, category: item.category, value: item.value, createdAt: Date.now(), updatedAt: Date.now(), mentions: 1 });
+      else this.facts.push({ id, category: item.category, value: item.value, source: 'conversation', relatedFactIds: [], createdAt: Date.now(), updatedAt: Date.now(), mentions: 1 });
     }
+    this.normalizeLinks();
     for (const milestone of [1, 5, 20, 60]) {
       if (this.exchanges >= milestone && !this.milestones.some((entry) => entry.exchange === milestone)) {
         this.milestones.push({ exchange: milestone, at: Date.now() });
@@ -135,9 +139,17 @@ export class RelationshipMemory {
   }
 
   pruneFacts() {
-    return [...this.facts]
+    const facts = [...this.facts]
       .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) || (b.updatedAt || 0) - (a.updatedAt || 0))
       .slice(0, 100);
+    const ids = new Set(facts.map((fact) => fact.id));
+    facts.forEach((fact) => { fact.relatedFactIds = normalizeRelatedFactIds(fact.relatedFactIds, ids, fact.id); });
+    return facts;
+  }
+
+  normalizeLinks() {
+    const ids = new Set(this.facts.map((fact) => fact.id));
+    this.facts.forEach((fact) => { fact.relatedFactIds = normalizeRelatedFactIds(fact.relatedFactIds, ids, fact.id); });
   }
 
   dispatchChange() {
@@ -152,19 +164,27 @@ export class RelationshipMemory {
     return { category: normalizedCategory, value: normalizedValue };
   }
 
-  async addFact({ category = 'note', value, pinned = false } = {}) {
+  async addFact({ category = 'note', value, pinned = false, relatedFactIds = [] } = {}) {
     await this.ready;
     const normalized = this.validateManualFact(category, value);
     const now = Date.now();
     const id = idFor(normalized.category, normalized.value);
     const existing = this.facts.find((fact) => fact.id === id);
     if (existing) {
+      if (pinned && !existing.pinned && this.facts.filter((fact) => fact.pinned).length >= 6) {
+        throw new Error('You can pin up to six memories. Unpin one before adding another.');
+      }
       existing.updatedAt = now;
       existing.mentions = (existing.mentions || 1) + 1;
       existing.pinned = Boolean(existing.pinned || pinned);
       existing.source = 'manual';
+      existing.relatedFactIds = normalizeRelatedFactIds(relatedFactIds, new Set(this.facts.map((fact) => fact.id)), id);
     } else {
-      this.facts.push({ id, ...normalized, pinned: Boolean(pinned), source: 'manual', createdAt: now, updatedAt: now, mentions: 1 });
+      if (pinned && this.facts.filter((fact) => fact.pinned).length >= 6) {
+        throw new Error('You can pin up to six memories. Unpin one before adding another.');
+      }
+      const knownIds = new Set(this.facts.map((fact) => fact.id));
+      this.facts.push({ id, ...normalized, pinned: Boolean(pinned), source: 'manual', relatedFactIds: normalizeRelatedFactIds(relatedFactIds, knownIds, id), createdAt: now, updatedAt: now, mentions: 1 });
     }
     this.facts = this.pruneFacts();
     await this.persist();
@@ -172,27 +192,45 @@ export class RelationshipMemory {
     return this.snapshot().facts.find((fact) => fact.id === id);
   }
 
-  async updateFact(id, { category = 'note', value, pinned } = {}) {
+  async updateFact(id, { category = 'note', value, pinned, relatedFactIds } = {}) {
     await this.ready;
     const current = this.facts.find((fact) => fact.id === id);
     if (!current) throw new Error('That memory no longer exists.');
     const normalized = this.validateManualFact(category, value);
     const nextId = idFor(normalized.category, normalized.value);
     const duplicate = this.facts.find((fact) => fact.id === nextId && fact.id !== id);
-    this.facts = this.facts.filter((fact) => fact.id !== id && fact.id !== nextId);
+    const remainingFacts = this.facts.filter((fact) => fact.id !== id && fact.id !== nextId);
+    const nextPinned = pinned === undefined ? Boolean(current.pinned || duplicate?.pinned) : Boolean(pinned);
+    if (nextPinned && remainingFacts.filter((fact) => fact.pinned).length >= 6) {
+      throw new Error('You can pin up to six memories. Unpin one before adding another.');
+    }
+    for (const fact of remainingFacts) {
+      fact.relatedFactIds = normalizeRelatedFactIds(
+        (fact.relatedFactIds || []).map((relatedId) => relatedId === id || relatedId === nextId ? nextId : relatedId),
+        new Set([...remainingFacts.map((item) => item.id), nextId]),
+        fact.id,
+      );
+    }
+    const mergedLinks = relatedFactIds === undefined
+      ? [...(current.relatedFactIds || []), ...(duplicate?.relatedFactIds || [])]
+      : relatedFactIds;
+    this.facts = remainingFacts;
+    const knownIds = new Set([...remainingFacts.map((fact) => fact.id), nextId]);
     const now = Date.now();
     this.facts.push({
       ...current,
       ...(duplicate || {}),
       ...normalized,
       id: nextId,
-      pinned: pinned === undefined ? Boolean(current.pinned || duplicate?.pinned) : Boolean(pinned),
+      pinned: nextPinned,
       source: 'manual',
+      relatedFactIds: normalizeRelatedFactIds(mergedLinks, knownIds, nextId),
       createdAt: Math.min(current.createdAt || now, duplicate?.createdAt || now),
       updatedAt: now,
       mentions: Math.max(current.mentions || 1, duplicate?.mentions || 1),
     });
     this.facts = this.pruneFacts();
+    this.normalizeLinks();
     await this.persist();
     this.dispatchChange();
   }
@@ -213,6 +251,7 @@ export class RelationshipMemory {
   async deleteFact(id) {
     await this.ready;
     this.facts = this.facts.filter((fact) => fact.id !== id);
+    this.normalizeLinks();
     await this.persist();
     this.dispatchChange();
   }

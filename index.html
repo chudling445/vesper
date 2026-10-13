@@ -324,13 +324,14 @@
           <form id="memory-form" class="memory-form" hidden>
             <label>MEMORY TYPE<select id="memory-category"><option value="note">Personal note</option><option value="preference">Preference</option><option value="project">Project</option><option value="goal">Goal</option><option value="work">Work</option><option value="name">Name</option></select></label>
             <label>DETAIL<input id="memory-value" maxlength="220" required placeholder="A preference, goal, or important detail" /></label>
+            <label>RELATED MEMORIES <select id="memory-relations" multiple size="4" aria-describedby="memory-relations-help"></select><small id="memory-relations-help">Choose up to 12 links. These explicit links build a private local graph; Vesper does not guess relationships.</small></label>
             <label class="memory-pin-option"><input id="memory-pinned" type="checkbox" /> Keep this near the top of Vesper’s memory</label>
             <div class="card-tools-row"><button class="quiet-button" type="submit">SAVE MEMORY</button><button class="quiet-button" id="memory-cancel" type="button">CANCEL</button></div>
             <small id="memory-form-status" aria-live="polite"></small>
           </form>
           <ul id="memory-facts" aria-label="Saved memory facts"></ul>
           <button class="quiet-button" id="forget-memory" type="button">FORGET SAVED MEMORIES</button>
-          <small>Vesper remembers explicit preferences, goals, and project details in local IndexedDB. Pinned memories always stay near the top. Saved memories are included in hosted prompts only when local-context sharing is enabled. Do not save passwords, API keys, or financial or identity details.</small>
+          <small>Vesper remembers explicit preferences, goals, and project details in local IndexedDB. You can review source, pin, edit, link, or remove each memory. Saved memories are included in hosted prompts only when local-context sharing is enabled. Do not save passwords, API keys, or financial or identity details.</small>
         </section>
         <div class="credentials-note" id="credentials-note"><b>Need credentials?</b> Edit <code>.env</code> next to <code>Start Vesper.bat</code>, then restart the app. Never paste API keys into chat.</div>
         <div class="dialog-actions"><button id="settings-cancel" class="quiet-button" type="button">CANCEL</button><button id="settings-save" class="primary-button" type="button">SAVE MODEL</button></div>

@@ -349,14 +349,14 @@ function compactConversationIfNeeded() {
 
 function renderMemorySummary(snapshot = relationshipMemory.snapshot()) {
   if (!memorySummaryElement) return;
-  memorySummaryElement.textContent = snapshot.facts.length + ' remembered details · ' + snapshot.tier + ' · ' + snapshot.exchanges + ' conversations';
+  memorySummaryElement.textContent = `${snapshot.facts.length} remembered details · ${snapshot.graph?.edges.length || 0} explicit links · ${snapshot.tier} · ${snapshot.exchanges} conversations`;
   if (memoryFactsElement) {
     memoryFactsElement.replaceChildren();
     snapshot.facts.forEach((fact) => {
       const item = document.createElement('li');
       const detail = document.createElement('span');
       detail.className = 'memory-fact-detail';
-      detail.textContent = `${fact.pinned ? 'PINNED · ' : ''}${fact.category.toUpperCase()} · ${fact.value}`;
+      detail.textContent = `${fact.pinned ? 'PINNED · ' : ''}${fact.source === 'manual' ? 'MANUAL' : 'FROM CHAT'} · ${fact.category.toUpperCase()} · ${fact.value}`;
       const actions = document.createElement('span');
       actions.className = 'memory-fact-actions';
       const pin = document.createElement('button');
@@ -381,6 +381,16 @@ function showMemoryForm(fact = null) {
   document.querySelector('#memory-category').value = fact?.category || 'note';
   document.querySelector('#memory-value').value = fact?.value || '';
   document.querySelector('#memory-pinned').checked = Boolean(fact?.pinned);
+  const relations = document.querySelector('#memory-relations');
+  relations.replaceChildren();
+  const linkedIds = new Set(fact?.relatedFactIds || []);
+  relationshipMemory.snapshot().facts
+    .filter((item) => item.id !== editingMemoryId)
+    .forEach((item) => {
+      const option = new Option(`${item.category.toUpperCase()} · ${item.value}`, item.id);
+      option.selected = linkedIds.has(item.id);
+      relations.add(option);
+    });
   memoryFormStatus.textContent = fact ? 'Update this saved detail.' : 'Saved on this device only.';
   memoryForm.hidden = false;
   document.querySelector('#memory-value').focus();
@@ -390,7 +400,9 @@ document.querySelector('#memory-add')?.addEventListener('click', () => showMemor
 document.querySelector('#memory-cancel')?.addEventListener('click', () => { memoryForm.hidden = true; editingMemoryId = null; memoryForm.reset(); });
 memoryForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const fact = { category: document.querySelector('#memory-category').value, value: document.querySelector('#memory-value').value, pinned: document.querySelector('#memory-pinned').checked };
+  const relatedFactIds = [...document.querySelector('#memory-relations').selectedOptions].map((option) => option.value);
+  if (relatedFactIds.length > 12) { memoryFormStatus.textContent = 'Choose no more than 12 related memories.'; return; }
+  const fact = { category: document.querySelector('#memory-category').value, value: document.querySelector('#memory-value').value, pinned: document.querySelector('#memory-pinned').checked, relatedFactIds };
   try {
     if (editingMemoryId) await relationshipMemory.updateFact(editingMemoryId, fact);
     else await relationshipMemory.addFact(fact);

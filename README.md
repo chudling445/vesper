@@ -9,13 +9,13 @@ Project Vesper is an anime-focused LLM companion project. She chats in a snarky-
 ## Features
 
 - **LLM-based dialogue** using Ollama (local), OpenAI, Anthropic Claude, xAI Grok, or any OpenAI-compatible API
-- **Persistent local memory** — explicit preferences, projects, and goals are indexed in local IndexedDB, with relationship milestones and a rolling extractive summary across long conversations. Add, edit, pin, and remove memories in LLM Settings; pinned facts are prioritized in prompt context
+- **Persistent local memory** — preferences, projects, and goals are indexed in local IndexedDB, tagged as manual or learned from chat, and linked into a small explicit relationship graph. Add, edit, link, pin, and remove memories in LLM Settings; pinned facts are prioritized in prompt context
 - **Screen-frame vision** — attach a user-selected screen or app snapshot to a message when the selected model supports images; captures are temporary and are not added to chat history
 - **Character cards** — import/export SillyTavern v2/v3 PNG cards and JSON profiles, including keyword-matched lorebook entries
 - **Persona studio and branching chat** — save custom system instructions locally, edit an earlier prompt, regenerate a reply, and restore saved branches
 - **Safe chat Markdown** — renders headings, lists, links, emphasis, block quotes, and fenced code without allowing model-provided raw HTML; code blocks include one-click copy
 - **Offline Code Lab** — draft and preview HTML/CSS in a script-disabled isolated frame, render Markdown safely, and explicitly run JavaScript in a disposable worker with blocked network access and a five-second limit; drafts stay in local Vesper storage
-- **Offline note context** — relevant Inbox notes are ranked and added to model context on-device, with matched notes clearly shown in the chat toolbar
+- **Offline note context** — relevant Inbox notes are ranked on-device; Ollama can use them locally, while hosted providers receive matching notes and saved memories only after explicit opt-in in LLM Settings
 - **Clean YAML-based config** for personality: `character_config.yaml`
 - **3D VRM avatar** with a cross-fading expression engine, randomized blinking, biomechanically limited gaze, touch hitboxes, optional authored gesture clips with procedural fallbacks, mood lighting, ambient dust, model tint/layer controls, orbit, and zoom
 - **Audio spectrum lip-sync** — Web Audio FFT bands drive breath resonance, jaw/viseme intensity, and consonant emphasis for audio streams and chunks; browser speech synthesis still uses approximate word-boundary cues
