@@ -6,6 +6,7 @@ import { initDialogAccessibility } from './a11y.js';
 import { initOfflineSync } from './offline-sync.js';
 import { waifuVoice } from './waifuVoice.js';
 import { relationshipMemory } from './relationship-memory.js';
+import { canShareLocalContext } from './context-sharing.mjs';
 import { characterCardPrompt, downloadCharacterPng, exportCharacterJson, readCharacterCard } from './character-cards.js';
 import { renderMarkdown } from './markdown-renderer.js';
 import './arcade-launcher.js';
@@ -43,6 +44,7 @@ const modelInput = document.querySelector('#model-input');
 const providerHint = document.querySelector('#provider-hint');
 const providerStatus = document.querySelector('#provider-status');
 const systemPromptInput = document.querySelector('#system-prompt');
+const shareLocalContextInput = document.querySelector('#share-local-context');
 const avatarTintInput = document.querySelector('#avatar-tint');
 const avatarParticlesInput = document.querySelector('#avatar-particles');
 const wardrobeLayersElement = document.querySelector('#wardrobe-layers');
@@ -114,10 +116,10 @@ const PERSONALITY_MODES = {
 const PERSONALITY_EXPRESSIONS = { playful: 'smirk', tender: 'fond', thoughtful: 'thinking' };
 const PROVIDER_COPY = {
   ollama: 'Runs on this computer through Ollama. Attached screen frames require an installed vision model.',
-  openai: 'Uses OpenAI. Attached screen frames, relevant memories, matched notes, and recent messages are sent to OpenAI; the key stays in .env.',
-  anthropic: 'Uses Anthropic Claude. Attached screen frames and the context you enable are sent to Anthropic.',
-  xai: 'Uses xAI Grok. Attached screen frames and the context you enable are sent to xAI.',
-  compatible: 'Uses your compatible endpoint. Attached screen frames require image support; enabled context is sent to that service.',
+  openai: 'Uses OpenAI. Recent messages and persona instructions are sent; local notes and memories are shared only if you opt in below. An attached screen frame is sent with that message.',
+  anthropic: 'Uses Anthropic Claude. Recent messages and persona instructions are sent; local notes and memories are shared only if you opt in below.',
+  xai: 'Uses xAI Grok. Recent messages and persona instructions are sent; local notes and memories are shared only if you opt in below.',
+  compatible: 'Uses your compatible endpoint. Recent messages and persona instructions are sent; local notes and memories are shared only if you opt in below.',
 };
 
 let messages = loadMessages();
@@ -929,6 +931,7 @@ function openSettings() {
   providerSelect.value = llm.provider || serverSettings?.defaultProvider || 'ollama';
   modelInput.value = llm.model || providerModel(providerSelect.value);
   if (systemPromptInput) systemPromptInput.value = loadSystemPrompt();
+  if (shareLocalContextInput) shareLocalContextInput.checked = appStore.get('settings.shareLocalContext', false) === true;
   updateProviderDetail();
   if (typeof dialog.showModal === 'function') dialog.showModal();
   else dialog.setAttribute('open', '');
@@ -1025,6 +1028,7 @@ document.querySelector('#settings-save').addEventListener('click', () => {
   modelInput.setCustomValidity('');
   llm = { provider: providerSelect.value, model };
   saveLlmChoice();
+  if (shareLocalContextInput) appStore.set('settings.shareLocalContext', shareLocalContextInput.checked);
   if (systemPromptInput) appStore.set('settings.persona.systemPrompt', systemPromptInput.value.trim().slice(0, 4000));
   updateProviderBadge();
   updateQuickstart();
@@ -1038,6 +1042,7 @@ providerSelect.addEventListener('change', () => {
 });
 modelInput.addEventListener('input', () => modelInput.setCustomValidity(''));
 dialog.addEventListener('click', (event) => { if (event.target === dialog) closeSettings(); });
+shareLocalContextInput?.addEventListener('change', () => appStore.set('settings.shareLocalContext', shareLocalContextInput.checked));
 
 async function sendMessage(text, { appendUser = true } = {}) {
   const content = appendUser ? String(text || '').trim() : String(messages.at(-1)?.content || '').trim();
@@ -1059,8 +1064,15 @@ async function sendMessage(text, { appendUser = true } = {}) {
     input.style.height = 'auto';
   }
   const localContext = findLocalWorkspaceContext(content);
-  if (localContextStatus) localContextStatus.textContent = localContext.count ? `LOCAL NOTES · ${localContext.count}` : 'NO LOCAL NOTE MATCH';
   const memoryContext = relationshipMemory.relevantContext(content);
+  const includeLocalContext = canShareLocalContext(llm.provider, appStore.get('settings.shareLocalContext', false));
+  if (localContextStatus) {
+    localContextStatus.textContent = !localContext.count
+      ? 'NO LOCAL NOTE MATCH'
+      : includeLocalContext
+        ? `LOCAL NOTES · ${localContext.count} · INCLUDED`
+        : `LOCAL NOTES · ${localContext.count} · KEPT PRIVATE`;
+  }
 
   const typing = makeMessage('assistant', '···', 'typing');
   messagesEl.append(typing);
@@ -1071,7 +1083,7 @@ async function sendMessage(text, { appendUser = true } = {}) {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: messages.slice(-MAX_HISTORY), provider: llm.provider, model: llm.model, personality: personalityMode, systemPrompt: loadPersonaInstructions(content), localContext: localContext.text, memoryContext, conversationSummary, visionFrame: pendingVisionFrame ? { mediaType: pendingVisionFrame.mediaType, data: pendingVisionFrame.data } : null }),
+      body: JSON.stringify({ messages: messages.slice(-MAX_HISTORY), provider: llm.provider, model: llm.model, personality: personalityMode, systemPrompt: loadPersonaInstructions(content), localContext: includeLocalContext ? localContext.text : '', memoryContext: includeLocalContext ? memoryContext : '', conversationSummary, visionFrame: pendingVisionFrame ? { mediaType: pendingVisionFrame.mediaType, data: pendingVisionFrame.data } : null }),
     });
     const data = await response.json().catch(() => ({}));
     if (response.status === 401) {

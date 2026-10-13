@@ -1775,6 +1775,9 @@ html[data-color-mode="light"] .planner-page .planner-tabs { background: #f9f7fbe
 .card-import-button:hover, .card-tools-row .quiet-button:hover, .memory-tools .quiet-button:hover { border-color: #d79ed379; color: #fff; }
 .character-card-tools small, .memory-tools small { color: #877c8d; font: 9px/1.55 'Segoe UI', Arial, sans-serif; letter-spacing: normal; }
 .memory-tools p { margin: 0; color: #e1d2e4; font: 11px 'Segoe UI', Arial, sans-serif; letter-spacing: normal; }
+.context-sharing-setting { padding: 11px 12px; border: 1px solid #e4d8eb18; background: #ffffff04; }
+.context-sharing-control { display: flex; align-items: flex-start; gap: 9px; color: #d7cbdc; font: 11px/1.45 'Segoe UI', Arial, sans-serif; letter-spacing: normal; }
+.context-sharing-control input { flex: 0 0 auto; width: 16px; min-height: 16px; margin: 1px 0 0; accent-color: var(--accent); }
 .memory-tools ul { display: grid; gap: 5px; max-height: 230px; overflow: auto; margin: 0; padding: 0; list-style: none; }
 .memory-tools li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px; border-left: 1px solid #c98abd66; background: #ffffff05; color: #b8a9bb; font: 9px/1.45 'Segoe UI', Arial, sans-serif; letter-spacing: normal; }
 .memory-fact-detail { min-width: 0; overflow-wrap: anywhere; }

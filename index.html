@@ -305,7 +305,12 @@
         <div class="provider-status" id="provider-status"><span class="status-dot"></span><span>Loading provider settings…</span></div>
         <label class="setting-field" for="system-prompt"><span>PERSONA / CORE INSTRUCTIONS</span>
           <textarea id="system-prompt" maxlength="4000" rows="5" placeholder="Define Vesper's backstory, response style, boundaries, and rules. Saved only on this device."></textarea>
-          <small>With a hosted provider, these instructions, matched notes, relevant memories, and recent messages are sent to that provider. Ollama keeps them on this computer.</small>
+          <small>Persona instructions and recent chat messages are sent to the selected provider. Matching Workspace notes and saved memories stay local for hosted models unless you enable sharing below.</small>
+        </label>
+        <label class="setting-field context-sharing-setting" for="share-local-context">
+          <span>HOSTED MODEL / LOCAL CONTEXT SHARING</span>
+          <span class="context-sharing-control"><input id="share-local-context" type="checkbox" /><span>Allow matching Workspace notes and remembered facts to be sent with chat requests to hosted providers.</span></span>
+          <small>Off by default. Ollama runs locally and can use local context regardless of this setting. Screen frames are sent only with the message you attach them to.</small>
         </label>
         <section class="setting-field character-card-tools" aria-label="Character card tools">
           <span>CHARACTER CARD / SILLYTAVERN</span>
@@ -325,7 +330,7 @@
           </form>
           <ul id="memory-facts" aria-label="Saved memory facts"></ul>
           <button class="quiet-button" id="forget-memory" type="button">FORGET SAVED MEMORIES</button>
-          <small>Vesper remembers explicit preferences, goals, and project details in local IndexedDB. Pinned memories always stay near the top. Relevant facts may be included in prompts sent to a hosted model. Do not save passwords, API keys, or financial or identity details.</small>
+          <small>Vesper remembers explicit preferences, goals, and project details in local IndexedDB. Pinned memories always stay near the top. Saved memories are included in hosted prompts only when local-context sharing is enabled. Do not save passwords, API keys, or financial or identity details.</small>
         </section>
         <div class="credentials-note" id="credentials-note"><b>Need credentials?</b> Edit <code>.env</code> next to <code>Start Vesper.bat</code>, then restart the app. Never paste API keys into chat.</div>
         <div class="dialog-actions"><button id="settings-cancel" class="quiet-button" type="button">CANCEL</button><button id="settings-save" class="primary-button" type="button">SAVE MODEL</button></div>

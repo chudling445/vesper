@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesper-atelier-v30';
+const CACHE_NAME = 'vesper-atelier-v31';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -37,6 +37,7 @@ const APP_SHELL = [
   '/persistence-queue.mjs',
   '/health-tools.mjs',
   '/crypto-backup.mjs',
+  '/context-sharing.mjs',
   '/feedback.js',
   '/theme-provider.js',
   '/themeManager.js',
