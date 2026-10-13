@@ -212,8 +212,19 @@ function fillFundSelect() {
   });
   state.selectedFund = [...select.options].some((option) => option.value === previous) ? previous : select.options[0]?.value || '';
   select.value = state.selectedFund;
-  select.onchange = () => { state.selectedFund = select.value; void loadFundHistory(); };
+  select.onchange = () => {
+    state.selectedFund = select.value;
+    syncAmfiHistoryButton();
+    void loadFundHistory();
+  };
+  syncAmfiHistoryButton();
   void loadFundHistory();
+}
+
+function syncAmfiHistoryButton() {
+  const selected = latestFunds().find((record) => instrumentKey(record) === $('fund-tracker-instrument').value);
+  $('fund-import-amfi-history').disabled = !(selected?.source === 'AMFI published daily NAV file'
+    && selected.instrumentType === 'index-fund' && selected.valueType === 'nav');
 }
 
 function trailingReturn(records, days) {
@@ -300,6 +311,36 @@ async function loadFundHistory() {
     state.fundHistory = result.observations || [];
     renderFundHistory();
   } catch (error) { setStatus('fund-tracker-status', error.message, true); }
+}
+
+async function importSelectedAmfiHistory() {
+  const button = $('fund-import-amfi-history');
+  const selected = latestFunds().find((record) => instrumentKey(record) === $('fund-tracker-instrument').value);
+  if (!selected || selected.source !== 'AMFI published daily NAV file' || selected.instrumentType !== 'index-fund') {
+    setStatus('fund-tracker-status', 'Select an index-fund scheme from AMFI before importing its history.', true);
+    return;
+  }
+  button.disabled = true;
+  const oldLabel = button.textContent;
+  button.textContent = 'VERIFYING SOURCES…';
+  try {
+    const result = await api('/api/money-tracker/amfi-history', {
+      method: 'POST',
+      body: JSON.stringify({ instrumentId: selected.instrumentId }),
+    });
+    state.selectedFund = escapeKey([
+      selected.instrumentId, 'nav', 'MFAPI.in historical NAV mirror (latest NAV cross-checked with AMFI)',
+    ]);
+    await loadStatuses();
+    await loadFundHistory();
+    setStatus('fund-tracker-status',
+      `Imported ${result.count} dated observations from ${displayDate(result.firstDate, false)} through the AMFI-verified NAV date ${displayDate(result.verifiedDate, false)}. MFAPI.in history was cross-checked with AMFI’s current file; its separate source series is selected below.`);
+  } catch (error) {
+    setStatus('fund-tracker-status', error.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = oldLabel;
+  }
 }
 
 function selectedLoans() { return state.marketStatus?.latestLoans || []; }
@@ -640,6 +681,7 @@ function bindPC() {
 
 function bindFunds() {
   $('fund-observation-date').value = `${localDate()}T12:00`;
+  $('fund-import-amfi-history').addEventListener('click', () => void importSelectedAmfiHistory());
   onSubmit('fund-tracker-observation-form', async () => {
     const instrumentType = $('fund-observation-type').value;
     const valueType = instrumentType === 'index' ? 'index-level' : 'nav';

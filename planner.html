@@ -123,6 +123,7 @@
         <div class="tracker-headline"><div><span class="eyebrow">INDIA / INDEX LEVELS / FUND NAV</span><h3>Separate the index from its fund</h3><p>Index points, mutual-fund NAV, and calculated returns are different measures and are never combined.</p></div><button type="button" class="planner-button tracker-refresh" data-refresh-tracker="fund">CHECK FUND FEEDS</button></div>
         <div class="tracker-source-status" id="fund-tracker-status" role="status">Loading source status…</div>
         <div class="tracker-control-grid tracker-fund-controls"><label class="planner-field">INSTRUMENT / SOURCE<select id="fund-tracker-instrument"></select></label></div>
+        <div class="tracker-transfer"><button type="button" class="planner-button planner-button-soft" id="fund-import-amfi-history">IMPORT VERIFIED HISTORY FROM 2020</button><span class="planner-note">One selected index scheme · MFAPI.in history cross-checked against the current AMFI NAV file</span></div>
         <div class="tracker-metrics" id="fund-tracker-metrics" aria-live="polite"></div>
         <section id="fund-tracker-comparisons" class="tracker-comparisons" aria-label="Index and fund observations compared"></section>
         <div id="fund-tracker-history" class="tracker-history-list"></div>
@@ -141,7 +142,7 @@
             <button class="planner-button" type="submit">SAVE OBSERVATION</button>
           </form>
           <div class="tracker-transfer"><label class="planner-field">IMPORT JSON<input id="fund-tracker-import" type="file" accept=".json,application/json" /></label><button type="button" class="planner-button planner-button-soft" id="fund-tracker-export">EXPORT SELECTED HISTORY</button></div>
-          <p class="planner-footnote">Fund feeds are checked hourly, but NAV publication is normally once per business day and may be delayed on holidays or by the provider. Each row shows both the source’s observation time and Vesper’s check time. An hourly poll does not mean an hourly NAV.</p>
+          <p class="planner-footnote">Fund feeds are checked hourly, but NAV publication is normally once per business day and may be delayed on holidays or by the provider. Each row shows both the source’s observation time and Vesper’s check time. An hourly poll does not mean an hourly NAV. The optional history import uses the public MFAPI.in mirror, checks its latest NAV against AMFI’s official current file on the same date, and refuses the import when there is no exact-date match or the values disagree. The mirror is not an official AMFI archive; historical rows link to the mirror and show its separate provenance.</p>
         </section>
       </section>
 

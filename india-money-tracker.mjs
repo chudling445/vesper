@@ -18,6 +18,7 @@ const AMFI_NAV_FEED = {
   id: 'amfi-nav', name: 'AMFI published daily NAV file',
   url: 'https://portal.amfiindia.com/spages/NAVAll.txt', tokenEnv: '', type: 'fund', kind: 'amfi',
 };
+const MFAPI_HISTORY_URL = 'https://api.mfapi.in/mf/';
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const slug = (value) => String(value).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
   .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80) || 'item';
@@ -111,6 +112,7 @@ function amfiDate(value) {
 export function parseAMFINavText(text, { checkedAt = Date.now() } = {}) {
   if (typeof text !== 'string') throw new Error('AMFI NAV response must be text.');
   const checked = new Date(checkedAt).toISOString();
+  const checkedTimestamp = Date.parse(checked);
   const observations = [];
   for (const line of text.split(/\r?\n/)) {
     const fields = line.split(';');
@@ -120,6 +122,7 @@ export function parseAMFINavText(text, { checkedAt = Date.now() } = {}) {
     const observedAt = amfiDate(rawDate);
     if (!schemeName || !/\b(index|nifty|sensex|bse\s?\d{2,3})\b/i.test(schemeName)
       || !plan || !option || !Number.isFinite(nav) || nav <= 0 || !observedAt) continue;
+    if (Date.parse(observedAt) < checkedTimestamp - 30 * 86_400_000) continue;
     const instrumentId = `${schemeCode}-${slug(plan)}-${slug(option)}`;
     observations.push(normalizeFundObservation({
       instrumentId,
@@ -135,6 +138,57 @@ export function parseAMFINavText(text, { checkedAt = Date.now() } = {}) {
   }
   if (!observations.length) throw new Error('AMFI NAV file contained no parseable index-scheme observations.');
   return observations;
+}
+
+function parseMFAPIDate(value) {
+  const match = String(value || '').trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!match) throw new Error('Historical NAV source returned an invalid date.');
+  const [, day, month, year] = match;
+  const timestamp = Date.UTC(Number(year), Number(month) - 1, Number(day));
+  const parsed = new Date(timestamp);
+  if (parsed.getUTCFullYear() !== Number(year) || parsed.getUTCMonth() !== Number(month) - 1 || parsed.getUTCDate() !== Number(day)) {
+    throw new Error('Historical NAV source returned an invalid calendar date.');
+  }
+  return parsed.toISOString();
+}
+
+function comparableSchemeName(value) {
+  return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+}
+
+export function parseMFAPIHistoricalNav(body, { schemeCode, instrumentId, name, verifiedDate, checkedAt = Date.now() } = {}) {
+  if (!isObject(body) || !isObject(body.meta) || !Array.isArray(body.data)
+    || String(body.meta.scheme_code) !== String(schemeCode) || body.data.length > MAX_HISTORY
+    || comparableSchemeName(body.meta.scheme_name) !== comparableSchemeName(name)) {
+    throw new Error('Historical NAV response does not match the selected AMFI scheme or exceeds the record limit.');
+  }
+  if (!/^\d{4,9}$/.test(String(schemeCode)) || !instrumentId || !name) throw new Error('A valid AMFI scheme selection is required.');
+  const verifiedTimestamp = Date.parse(verifiedDate);
+  if (!Number.isFinite(verifiedTimestamp)) throw new Error('AMFI verification date is invalid.');
+  const checked = new Date(checkedAt).toISOString();
+  const source = 'MFAPI.in historical NAV mirror (latest NAV cross-checked with AMFI)';
+  const sourceUrl = `${MFAPI_HISTORY_URL}${encodeURIComponent(schemeCode)}`;
+  const observations = [];
+  const seenDates = new Set();
+  for (const row of body.data) {
+    if (!isObject(row)) throw new Error('Historical NAV source returned an invalid record.');
+    const observedAt = parseMFAPIDate(row.date);
+    const timestamp = Date.parse(observedAt);
+    const value = Number(row.nav);
+    if (!Number.isFinite(value) || value <= 0) throw new Error('Historical NAV source returned a non-positive or invalid NAV.');
+    if (timestamp < Date.UTC(2020, 0, 1) || timestamp > verifiedTimestamp) continue;
+    if (seenDates.has(observedAt)) throw new Error('Historical NAV source returned duplicate dates.');
+    seenDates.add(observedAt);
+    observations.push(normalizeFundObservation({
+      instrumentId, name, instrumentType: 'index-fund', valueType: 'nav', value, currency: 'INR',
+      source, sourceUrl, observedAt,
+    }, { checkedAt: checked, allowHistory: true }));
+  }
+  if (!observations.some((record) => record.observedAt === verifiedDate)) {
+    throw new Error('Historical NAV mirror has no observation for the date verified against AMFI.');
+  }
+  return observations.sort((a, b) => a.observedAt.localeCompare(b.observedAt));
 }
 
 function normalizeLoanObservation(raw, { source, checkedAt = Date.now() } = {}) {
@@ -261,6 +315,7 @@ export async function createIndiaMoneyTracker({ dataPath, configPath, fetchImpl 
   const inFlight = new Map();
   const lastManualAt = new Map();
   let timer = null;
+  let lastHistoryImportAt = 0;
 
   async function persist() {
     await mkdir(dirname(dataPath), { recursive: true });
@@ -349,6 +404,61 @@ export async function createIndiaMoneyTracker({ dataPath, configPath, fetchImpl 
     return normalized.length;
   }
 
+  async function importAmfiSchemeHistory(instrumentId) {
+    const selected = state.funds.find((record) => record.instrumentId === instrumentId
+      && record.source === AMFI_NAV_FEED.name && record.instrumentType === 'index-fund' && record.valueType === 'nav');
+    if (!selected) throw new Error('Choose an index-fund scheme currently observed in AMFI’s official NAV file.');
+    if (now() - lastHistoryImportAt < 60_000) throw new Error('Wait one minute before importing another historical scheme.');
+    lastHistoryImportAt = now();
+    const schemeCode = instrumentId.match(/^(\d{4,9})-/)?.[1];
+    if (!schemeCode) throw new Error('The selected AMFI scheme does not have a valid scheme code.');
+
+    const [official, url] = await Promise.all([
+      loadFeed(AMFI_NAV_FEED),
+      validateFeedUrl(`${MFAPI_HISTORY_URL}${encodeURIComponent(schemeCode)}`, resolveHost),
+    ]);
+    const officialRecord = official.normalized.find((record) => record.instrumentId === instrumentId);
+    if (!officialRecord) throw new Error('AMFI’s current NAV file no longer contains the selected scheme.');
+
+    const response = await fetchImpl(url, {
+      headers: { Accept: 'application/json' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (response.status >= 300 && response.status < 400) throw new Error('Historical NAV endpoint redirects; no redirect was followed.');
+    if (!response.ok) throw new Error(`Historical NAV endpoint returned HTTP ${response.status}.`);
+    if (!(response.headers.get('content-type') || '').toLowerCase().includes('json')) {
+      throw new Error('Historical NAV endpoint must return application/json.');
+    }
+    const body = JSON.parse(await responseText(response));
+    const rawRows = body?.data;
+    if (!Array.isArray(rawRows) || rawRows.length > MAX_HISTORY) {
+      throw new Error('Historical NAV response is missing its data array or exceeds the record limit.');
+    }
+    const sameDay = rawRows.find((row) => parseMFAPIDate(row?.date) === officialRecord.observedAt);
+    if (!sameDay || Math.round(Number(sameDay.nav) * 10_000) !== Math.round(officialRecord.value * 10_000)) {
+      throw new Error('Historical NAV was not imported: MFAPI.in has no matching current-date value, or it disagrees with AMFI. Check back after the sources update.');
+    }
+    const checkedAt = new Date(now()).toISOString();
+    const observations = parseMFAPIHistoricalNav(body, {
+      schemeCode, instrumentId, name: selected.name, verifiedDate: officialRecord.observedAt, checkedAt,
+    });
+    state.funds = mergeRecords(state.funds, [...official.normalized, ...observations]);
+    state.feedStatus[AMFI_NAV_FEED.id] = {
+      type: 'fund', name: AMFI_NAV_FEED.name, ok: true, lastAttemptAt: checkedAt, lastSuccessAt: checkedAt,
+      recordCount: official.normalized.length, error: '',
+    };
+    state.lastRefreshAt.fund = checkedAt;
+    await persist();
+    return {
+      count: observations.length,
+      firstDate: observations[0]?.observedAt || null,
+      verifiedDate: officialRecord.observedAt,
+      checkedAt,
+      source: 'MFAPI.in historical NAV mirror, cross-checked with AMFI',
+    };
+  }
+
   async function refreshDue() {
     await Promise.all(['fund', 'loan', 'stress'].map((type) => refresh(type).catch(logError)));
   }
@@ -388,6 +498,7 @@ export async function createIndiaMoneyTracker({ dataPath, configPath, fetchImpl 
     },
     refresh,
     addObservations,
+    importAmfiSchemeHistory,
     getStatus() {
       const latestBy = (records, keyFor, dateField) => [...new Map(records.slice()
         .sort((a, b) => b[dateField].localeCompare(a[dateField]))

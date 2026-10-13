@@ -767,6 +767,23 @@ const server = createServer(async (req, res) => {
       const count = await indiaMoneyTracker.addObservations(body?.type, body?.observations);
       sendJson(res, 201, { ok: true, count });
     } catch (error) { sendJson(res, 400, { error: error.message || 'Could not save the market observations.' }); }
+  } else if (req.method === 'POST' && url.pathname === '/api/money-tracker/amfi-history') {
+    if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Import AMFI scheme history from the Vesper site.' }); return; }
+    try {
+      const body = await readBody(req, 16_384);
+      if (typeof body?.instrumentId !== 'string' || body.instrumentId.length > 140) {
+        sendJson(res, 400, { error: 'Choose one valid AMFI index-fund scheme.' });
+        return;
+      }
+      const result = await indiaMoneyTracker.importAmfiSchemeHistory(body.instrumentId);
+      sendJson(res, 200, { ok: true, ...result });
+    } catch (error) {
+      const message = error.message || 'Could not import historical scheme NAV.';
+      const status = /Wait one minute/.test(message) ? 429
+        : /Choose an index-fund|valid AMFI scheme|was not imported/.test(message) ? 409
+          : 502;
+      sendJson(res, status, { error: message });
+    }
   } else if (req.method === 'POST' && url.pathname === '/api/money-tracker/refresh') {
     if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Refresh market feeds from the Vesper site.' }); return; }
     const type = url.searchParams.get('type');

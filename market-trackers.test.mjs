@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { createIndiaMoneyTracker, normalizeFundObservation, normalizeStressObservation, parseAMFINavText } from './india-money-tracker.mjs';
+import { createIndiaMoneyTracker, normalizeFundObservation, normalizeStressObservation, parseAMFINavText, parseMFAPIHistoricalNav } from './india-money-tracker.mjs';
 import { createPCPriceTracker, normalizePriceObservation, validateFeedUrl } from './pc-price-tracker.mjs';
 import { calculateEmi, forecastObservedPrice, summarizeCurrentPrices, summarizeMarketStress, summarizePriceYears } from './tracker-calculations.mjs';
 
@@ -91,6 +91,7 @@ test('AMFI parser records dated index-scheme NAVs and skips unrelated schemes', 
     `10001;INF000000001;-;Example Nifty 50 Index Fund;Direct Plan;Growth Option;125.1234;${date}`,
     `10002;INF000000002;-;Example Balanced Advantage Fund;Direct Plan;Growth Option;42.5000;${date}`,
     `10003;INF000000003;-;Example Sensex Index Fund;Direct Plan;Growth Option;0;bad-date`,
+    '10004;INF000000004;-;Example Legacy Nifty Index Fund;Direct Plan;Growth Option;42.5000;01-Jan-2019',
   ].join('\n');
   const records = parseAMFINavText(text);
   assert.equal(records.length, 1);
@@ -99,6 +100,73 @@ test('AMFI parser records dated index-scheme NAVs and skips unrelated schemes', 
   assert.equal(records[0].currency, 'INR');
   assert.equal(records[0].source, 'AMFI published daily NAV file');
   assert.ok(records[0].checkedAt);
+});
+
+test('MFAPI history parser keeps dated records only through the AMFI-verified date', () => {
+  const checkedAt = Date.now();
+  const verifiedDate = new Date(checkedAt).toISOString().slice(0, 10) + 'T00:00:00.000Z';
+  const body = {
+    meta: { scheme_code: 10001, scheme_name: 'Example Nifty Index Fund · Direct Plan · Growth Option' },
+    data: [
+      { date: new Date(checkedAt).toLocaleDateString('en-GB', { timeZone: 'UTC' }).replaceAll('/', '-'), nav: '125.1234' },
+      { date: '01-01-2020', nav: '100.2500' },
+      { date: '01-01-2019', nav: '90.0000' },
+    ],
+  };
+  const records = parseMFAPIHistoricalNav(body, {
+    schemeCode: '10001', instrumentId: '10001-direct-plan-growth-option',
+    name: 'Example Nifty Index Fund · Direct Plan · Growth Option', verifiedDate, checkedAt,
+  });
+  assert.equal(records.length, 2);
+  assert.equal(records[0].observedAt, '2020-01-01T00:00:00.000Z');
+  assert.equal(records[1].source, 'MFAPI.in historical NAV mirror (latest NAV cross-checked with AMFI)');
+  assert.match(records[1].sourceUrl, /^https:\/\/api\.mfapi\.in\/mf\/10001$/);
+  assert.throws(() => parseMFAPIHistoricalNav(body, {
+    schemeCode: '10002', instrumentId: '10001-direct-plan-growth-option',
+    name: 'Example Index Fund', verifiedDate, checkedAt,
+  }), /does not match/);
+  assert.throws(() => parseMFAPIHistoricalNav({
+    ...body, meta: { ...body.meta, scheme_name: 'Different Nifty Index Fund' },
+  }, {
+    schemeCode: '10001', instrumentId: '10001-direct-plan-growth-option',
+    name: 'Example Nifty Index Fund · Direct Plan · Growth Option', verifiedDate, checkedAt,
+  }), /does not match/);
+});
+
+test('historical NAV import requires an exact current AMFI value match and persists provenance', async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), 'vesper-amfi-history-'));
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const configPath = join(directory, 'feeds.json');
+  const dataPath = join(directory, 'history.json');
+  await writeFile(configPath, JSON.stringify({ schemaVersion: 1, fundFeeds: [], loanFeeds: [], stressFeeds: [] }));
+  const checkedAt = Date.now();
+  const current = new Date(checkedAt);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const today = `${current.getUTCDate()}-${months[current.getUTCMonth()]}-${current.getUTCFullYear()}`;
+  const apiToday = current.toLocaleDateString('en-GB', { timeZone: 'UTC' }).replaceAll('/', '-');
+  let requests = 0;
+  const tracker = await createIndiaMoneyTracker({
+    configPath, dataPath, resolveHost: publicDns, now: () => checkedAt,
+    fetchImpl: async (url) => {
+      requests += 1;
+      if (String(url).includes('NAVAll.txt')) return new Response([
+        'Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Plan;Option;Net Asset Value;Date',
+        `10001;INF000000001;-;Example Nifty Index Fund;Direct Plan;Growth Option;125.1234;${today}`,
+      ].join('\n'), { status: 200, headers: { 'content-type': 'text/plain' } });
+      return new Response(JSON.stringify({
+        meta: { scheme_code: 10001, scheme_name: 'Example Nifty Index Fund - Direct Plan - Growth Option' },
+        data: [{ date: apiToday, nav: '125.1234' }, { date: '01-01-2020', nav: '100.2500' }],
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    },
+  });
+  await tracker.refresh('fund');
+  const result = await tracker.importAmfiSchemeHistory('10001-direct-plan-growth-option');
+  assert.equal(result.count, 2);
+  assert.equal(requests, 3);
+  const history = tracker.getHistory('fund', '10001-direct-plan-growth-option');
+  assert.equal(history.filter((record) => record.source.includes('MFAPI.in')).length, 2);
+  assert.equal(history.find((record) => record.source.includes('MFAPI.in') && record.observedAt === result.verifiedDate).value, 125.1234);
+  assert.equal(JSON.parse(await readFile(dataPath, 'utf8')).funds.length, 3);
 });
 
 test('fund observations reject mixed index points, NAV currency, and missing source evidence', () => {
@@ -111,6 +179,34 @@ test('fund observations reject mixed index points, NAV currency, and missing sou
   assert.throws(() => normalizeFundObservation({ ...base, valueType: 'nav' }), /never mix/);
   assert.throws(() => normalizeFundObservation({ ...base, sourceUrl: '' }), /source URL/);
   assert.throws(() => normalizeFundObservation({ ...base, returnBasis: 'guess' }), /returnBasis/);
+});
+
+test('historical NAV import refuses a same-day value disagreement with AMFI', async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), 'vesper-amfi-mismatch-'));
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const configPath = join(directory, 'feeds.json');
+  const dataPath = join(directory, 'history.json');
+  await writeFile(configPath, JSON.stringify({ schemaVersion: 1, fundFeeds: [], loanFeeds: [], stressFeeds: [] }));
+  const checkedAt = Date.now();
+  const current = new Date(checkedAt);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const today = `${current.getUTCDate()}-${months[current.getUTCMonth()]}-${current.getUTCFullYear()}`;
+  const apiToday = current.toLocaleDateString('en-GB', { timeZone: 'UTC' }).replaceAll('/', '-');
+  const tracker = await createIndiaMoneyTracker({
+    configPath, dataPath, resolveHost: publicDns,
+    fetchImpl: async (url) => String(url).includes('NAVAll.txt')
+      ? new Response([
+        'Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Plan;Option;Net Asset Value;Date',
+        `10001;INF000000001;-;Example Nifty Index Fund;Direct Plan;Growth Option;125.1234;${today}`,
+      ].join('\n'), { status: 200, headers: { 'content-type': 'text/plain' } })
+      : new Response(JSON.stringify({
+        meta: { scheme_code: 10001 },
+        data: [{ date: apiToday, nav: '126.0000' }, { date: '01-01-2020', nav: '100.2500' }],
+      }), { status: 200, headers: { 'content-type': 'application/json' } }),
+  });
+  await tracker.refresh('fund');
+  await assert.rejects(tracker.importAmfiSchemeHistory('10001-direct-plan-growth-option'), /disagrees with AMFI/);
+  assert.equal(tracker.getHistory('fund', '10001-direct-plan-growth-option').length, 1);
 });
 
 test('EMI calculator validates inputs and discloses unknown versus entered fees', () => {
