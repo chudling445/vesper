@@ -200,6 +200,7 @@ const staticFiles = new Map([
   ['/persistence.js', ['persistence.js', 'text/javascript; charset=utf-8']],
   ['/persistence-queue.mjs', ['persistence-queue.mjs', 'text/javascript; charset=utf-8']],
   ['/health-tools.mjs', ['health-tools.mjs', 'text/javascript; charset=utf-8']],
+  ['/crypto-backup.mjs', ['crypto-backup.mjs', 'text/javascript; charset=utf-8']],
   ['/feedback.js', ['feedback.js', 'text/javascript; charset=utf-8']],
   ['/theme-provider.js', ['theme-provider.js', 'text/javascript; charset=utf-8']],
   ['/export-utils.js', ['export-utils.js', 'text/javascript; charset=utf-8']],

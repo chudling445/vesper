@@ -211,6 +211,40 @@ class VesperStateStore {
     }
     this.listeners.forEach((listener) => listener(this.state, '*'));
   }
+  async replaceSnapshot(input) {
+    await this.ready;
+    if (!input || typeof input !== 'object' || !Number.isInteger(input.schemaVersion)
+      || input.schemaVersion < 1 || input.schemaVersion > STATE_SCHEMA_VERSION) {
+      throw new Error(`Backup state version is not supported (current version: ${STATE_SCHEMA_VERSION}).`);
+    }
+    const next = migrateState(input);
+    next.updatedAt = Date.now();
+    const localSaved = writeLocal(next);
+    if (!localSaved) {
+      try {
+        await indexedOperations.run(() => writeIndexed(next));
+      } catch (error) {
+        window.dispatchEvent(new CustomEvent('vesper:error', { detail: { error, context: 'state restore persistence' } }));
+        throw new Error('Could not safely store the restored state in browser storage.');
+      }
+    }
+    this.state = next;
+    this.revision += 1;
+    this.listeners.forEach((listener) => listener(this.state, '*'));
+    window.dispatchEvent(new CustomEvent('vesper-state-hydrated', { detail: this.snapshot() }));
+    if (localSaved) {
+      try {
+        await queueIndexedWrite(next);
+        return { storage: 'IndexedDB' };
+      } catch (error) {
+        if (!/unavailable/i.test(error?.message || '')) {
+          window.dispatchEvent(new CustomEvent('vesper:error', { detail: { error, context: 'state restore persistence' } }));
+        }
+        return { storage: 'localStorage' };
+      }
+    }
+    return { storage: 'IndexedDB' };
+  }
 }
 
 export const appStore = new VesperStateStore();

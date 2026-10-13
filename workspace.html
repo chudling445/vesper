@@ -47,6 +47,22 @@
           </form>
           <p class="sync-status" id="sync-status">OFFLINE READY · CHANGES STAY ON THIS DEVICE</p>
       </section>
+      <section class="studio-card backup-card" aria-labelledby="backup-title">
+        <span class="eyebrow">LOCAL DATA / PORTABLE BACKUP</span>
+        <h3 id="backup-title">Protect a copy of your workspace.</h3>
+        <p class="dialog-intro">Create a passphrase-encrypted JSON backup of Vesper state on this device. This encrypts only the downloaded backup, not the live app data. Keep the file and passphrase separately; Vesper cannot recover a forgotten passphrase.</p>
+        <form id="backup-export-form" class="backup-form">
+          <label class="studio-field">BACKUP PASSPHRASE<input id="backup-passphrase" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required /><small>Use 12–1,024 characters.</small></label>
+          <label class="studio-field">CONFIRM PASSPHRASE<input id="backup-passphrase-confirm" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required /></label>
+          <button class="primary-button" type="submit">DOWNLOAD ENCRYPTED BACKUP</button>
+        </form>
+        <form id="backup-import-form" class="backup-form backup-restore-form">
+          <label class="studio-field">BACKUP FILE<input id="backup-file" type="file" accept=".json,application/json" required /><small>Encrypted Vesper JSON · maximum 50 MB.</small></label>
+          <label class="studio-field">BACKUP PASSPHRASE<input id="restore-passphrase" type="password" autocomplete="current-password" minlength="12" maxlength="1024" required /></label>
+          <button class="utility-button" type="submit">DECRYPT & RESTORE</button>
+        </form>
+        <p class="sync-status" id="backup-status" role="status" aria-live="polite">Backup files are encrypted locally with Web Crypto before download.</p>
+      </section>
     </section>
 
     <footer class="footer"><span>VESPER <i>â€”</i> YOUR PRIVATE WORKSPACE</span><span>CAPTURE Â· PLAN Â· CUSTOMIZE Â· SHARE</span></footer>

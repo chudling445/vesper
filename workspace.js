@@ -4,6 +4,7 @@ import './arcade-launcher.js';
 import { initGlobalFeedback, safeFetch, showToast } from './feedback.js';
 import { copyText, downloadText, toCsv, toMarkdown, workspaceSnapshot } from './export-utils.js';
 import { initOfflineSync } from './offline-sync.js';
+import { decryptBackup, encryptBackup, MAX_BACKUP_BYTES } from './crypto-backup.mjs';
 
 initGlobalFeedback();
 initOfflineSync();
@@ -132,6 +133,63 @@ documentDropzone?.addEventListener('dragover', (event) => { event.preventDefault
 documentDropzone?.addEventListener('dragleave', (event) => { if (!documentDropzone.contains(event.relatedTarget)) documentDropzone.classList.remove('is-over'); });
 documentDropzone?.addEventListener('drop', async (event) => { event.preventDefault(); documentDropzone.classList.remove('is-over'); await importTextFiles(event.dataTransfer?.files || []); });
 const cloudSync = appStore.get('settings.cloudSync', { endpoint: '', token: '', enabled: false }); $('#sync-endpoint').value = cloudSync.endpoint || ''; $('#sync-token').value = cloudSync.token || ''; $('#sync-enabled').checked = cloudSync.enabled === true; $('#sync-settings-form')?.addEventListener('submit', (event) => { event.preventDefault(); appStore.set('settings.cloudSync', { endpoint: $('#sync-endpoint').value.trim(), token: $('#sync-token').value.trim(), enabled: $('#sync-enabled').checked }); $('#sync-status').textContent = $('#sync-enabled').checked ? 'SYNC CONFIGURED · LOCAL QUEUE WILL FLUSH WHEN ONLINE' : 'OFFLINE READY · CHANGES STAY ON THIS DEVICE'; showToast('Sync settings saved locally.', 'success'); }); trackActivity('checkins');
+
+$('#backup-export-form')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const passphrase = $('#backup-passphrase').value;
+  const confirmation = $('#backup-passphrase-confirm').value;
+  const status = $('#backup-status');
+  if (passphrase !== confirmation) { status.textContent = 'Passphrases do not match. No backup was created.'; showToast(status.textContent, 'warning'); return; }
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  status.textContent = 'Encrypting a snapshot on this device…';
+  try {
+    await appStore.ready;
+    const envelope = await encryptBackup(appStore.snapshot(), passphrase);
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadText(`vesper-encrypted-backup-${stamp}.json`, JSON.stringify(envelope, null, 2), 'application/json;charset=utf-8');
+    status.textContent = 'Encrypted backup downloaded. Store the passphrase separately from the file.';
+    showToast('Encrypted backup downloaded.', 'success');
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : 'Could not create an encrypted backup.';
+    showToast(status.textContent, 'error');
+  } finally {
+    button.disabled = false;
+    $('#backup-passphrase').value = '';
+    $('#backup-passphrase-confirm').value = '';
+  }
+});
+
+$('#backup-import-form')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const file = $('#backup-file').files?.[0];
+  const passphrase = $('#restore-passphrase').value;
+  const status = $('#backup-status');
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  if (!file) { status.textContent = 'Choose an encrypted backup file first.'; return; }
+  if (file.size > MAX_BACKUP_BYTES) { status.textContent = 'Backup file exceeds the 50 MB limit.'; return; }
+  button.disabled = true;
+  status.textContent = 'Reading and decrypting the backup on this device…';
+  try {
+    const envelope = JSON.parse(await file.text());
+    const restoredState = await decryptBackup(envelope, passphrase);
+    if (!window.confirm('Restore this backup? This replaces all current Vesper state on this device, including chats, settings, workspace items, finance records, and health logs. This cannot be undone.')) {
+      status.textContent = 'Restore cancelled. Current Vesper data was not changed.';
+      return;
+    }
+    const result = await appStore.replaceSnapshot(restoredState);
+    status.textContent = `Backup restored to ${result.storage}. Reloading Vesper…`;
+    showToast(`Backup restored to ${result.storage}.`, 'success');
+    window.setTimeout(() => window.location.reload(), 900);
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : 'Could not restore this backup.';
+    showToast(status.textContent, 'error');
+  } finally {
+    button.disabled = false;
+    $('#restore-passphrase').value = '';
+    $('#backup-file').value = '';
+  }
+});
 
 initCustomization(); renderDashboard(); renderBoard(); renderCalendar();
 appStore.ready.then(() => { items = appStore.get('workspace.items', items); widgets = appStore.get('workspace.widgets', widgets); customization = { ...customization, ...appStore.get('workspace.customization', {}) }; applyCustomization(); renderDashboard(); renderBoard(); renderCalendar(); }).catch(() => {});
