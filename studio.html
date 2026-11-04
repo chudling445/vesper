@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en" data-theme="omarchy-quattro">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Vesper Studio — one tiling workspace for chat, avatar, builds, markets, health, and arcade." />
+    <meta name="theme-color" content="#12151c" />
+    <meta name="application-name" content="Vesper" />
+    <title>Vesper — Studio</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <!-- Single design-token registry + shared component kit, loaded after styles.css. -->
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/ui-kit/vesper-ui.css" />
+    <link rel="stylesheet" href="/studio.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/vendor/three/build/three.module.js",
+          "three/addons/": "/vendor/three/examples/jsm/",
+          "@pixiv/three-vrm": "/vendor/three-vrm/lib/three-vrm.module.min.js"
+        }
+      }
+    </script>
+  </head>
+  <body data-theme="omarchy-quattro">
+    <div class="grain" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/studio" aria-label="Vesper Studio">
+          <span class="brand-emblem" aria-hidden="true"><i></i><b>✦</b></span>
+          <span class="brand-name">VESPER<span> / </span>STUDIO</span>
+        </a>
+        <nav class="site-nav main-nav" aria-label="Pages"></nav>
+        <div class="topbar-right">
+          <span class="edition">UNIFIED BUILD <b>OMARCHY</b></span>
+          <button class="settings-trigger" id="studio-theme-cycle" type="button" title="Cycle themes · Ctrl/Cmd+Shift+T">
+            <span aria-hidden="true">◑</span> <span>THEME</span>
+          </button>
+          <div class="local-status"><span class="status-dot"></span> <span>LOCAL / PRIVATE</span></div>
+        </div>
+      </header>
+
+      <section class="studio-hero" aria-label="Studio overview">
+        <div class="studio-hero-copy">
+          <div class="eyebrow"><span class="eyebrow-dash"></span> ONE WORKSPACE / EVERY MODULE</div>
+          <h1>Every tool, <em>one surface.</em></h1>
+          <p>Chat, the 3D companion, PC builds, markets &amp; finance, health, and the arcade render inside the same glassmorphic tiles, the same tokens, and the same keyboard flow.</p>
+        </div>
+        <div class="studio-hero-actions">
+          <button class="vt-btn" id="studio-reset-layout" type="button">RESET LAYOUT</button>
+          <button class="vt-btn vt-btn--primary" id="studio-add-tile" type="button">ADD TILE</button>
+        </div>
+      </section>
+
+      <section id="tile-wall" class="tile-wall" aria-label="Studio tiles"></section>
+
+      <footer class="studio-foot">
+        <span>DRAG A TILE HEADER TO REORDER · CLICK ⌗ TO RESIZE · DOUBLE-CLICK A TILE TO COLLAPSE</span>
+      </footer>
+    </main>
+
+    <script type="module" src="/page.js"></script>
+    <script type="module" src="/studio.js"></script>
+  </body>
+</html>

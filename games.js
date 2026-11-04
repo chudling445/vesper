@@ -4,6 +4,7 @@ import { createArcadeFramework } from './arcade-framework.js';
 import { initializeArcadeExtras } from './arcade-extra-games.js';
 import { initializeArcadeToys } from './arcade-toys.js';
 import { initializeArcadeUtilityPack } from './arcade-utility-pack.js';
+import { initializeArcadeExpansion } from './arcade-expansion-pack.js';
 
 await appStore.ready;
 
@@ -354,4 +355,5 @@ const start = location.hash.replace('#', '');
 initializeArcadeExtras(arcade);
 initializeArcadeToys(arcade);
 initializeArcadeUtilityPack(arcade);
+initializeArcadeExpansion(arcade);
 show(arcade.list().some((game) => game.id === start) ? start : 'jkp');

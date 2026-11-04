@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#12151c" />
   <title>Vesper · Builds & Money</title>
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/tokens.css" />
 </head>
 <body class="planner-page" data-theme="omarchy-quattro">
   <main class="app-shell page-shell planner-shell">
@@ -265,6 +266,18 @@
         <section class="planner-card health-results" id="health-results" aria-live="polite"><span class="eyebrow">YOUR ESTIMATE</span><p>Enter values to calculate a resting-energy and daily-energy estimate.</p></section>
       </div>
       <div class="planner-grid planner-grid-wide health-log-grid">
+        <section class="planner-card">
+          <div class="planner-card-heading"><div><span class="eyebrow">MANUAL HYDRATION LOG</span><h3>Water notes</h3></div><span class="planner-note">No target is set by default</span></div>
+          <p class="planner-footnote">Record amounts if useful. Any daily reference is optional and personal; this log does not prescribe fluid intake.</p>
+          <label class="planner-field">DATE<input id="hydration-date" type="date" required /></label>
+          <label class="planner-field">OPTIONAL DAILY REFERENCE ml<input id="hydration-goal" type="number" min="1" max="20000" step="1" placeholder="Leave blank for none" /></label>
+          <div id="hydration-summary" class="nutrition-summary" role="status" aria-live="polite"></div>
+          <form id="hydration-form" class="health-form">
+            <label class="planner-field">AMOUNT ml<input id="hydration-amount" type="number" min="1" max="5000" step="1" required /></label>
+            <button class="planner-button" type="submit">ADD WATER ENTRY</button>
+          </form>
+          <div id="hydration-entries" class="health-entry-list" aria-label="Hydration entries for the selected date"></div>
+        </section>
         <section class="planner-card">
           <div class="planner-card-heading"><div><span class="eyebrow">MANUAL FOOD LOG</span><h3>Today’s nutrition notes</h3></div><span class="planner-note">You enter the estimates</span></div>
           <p class="planner-footnote">Calories and macros are only as accurate as the entries and portions you provide. This is not a diet prescription or a substitute for professional advice.</p>

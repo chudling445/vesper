@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { calculateTDEEAndDeficit, fastingElapsedMinutes, normalizeNutritionEntry, summarizeNutritionDay } from './health-tools.mjs';
+import { calculateTDEEAndDeficit, fastingElapsedMinutes, normalizeHydrationEntry, normalizeHydrationGoal, normalizeNutritionEntry, summarizeHydrationDay, summarizeNutritionDay } from './health-tools.mjs';
 
 test('TDEE estimate uses the selected Mifflin equation and clamps deficit below zero intake', () => {
   const estimate = calculateTDEEAndDeficit({
@@ -53,4 +53,19 @@ test('fasting timer reports elapsed whole minutes and rejects malformed interval
   assert.equal(fastingElapsedMinutes({ startedAt: new Date(start).toISOString() }, start + 90 * 60_000), 90);
   assert.equal(fastingElapsedMinutes({ startedAt: 'invalid' }, start), null);
   assert.equal(fastingElapsedMinutes({ startedAt: new Date(start).toISOString(), endedAt: new Date(start - 1).toISOString() }), null);
+});
+
+test('hydration log validates manual amounts and optional personal references without medical defaults', () => {
+  assert.deepEqual(normalizeHydrationEntry({ date: '2026-10-13', milliliters: '350' }), { date: '2026-10-13', milliliters: 350 });
+  assert.equal(normalizeHydrationGoal(''), null);
+  assert.equal(normalizeHydrationGoal('2000'), 2000);
+  assert.throws(() => normalizeHydrationEntry({ date: '2026-02-30', milliliters: 250 }), /valid hydration date/);
+  assert.throws(() => normalizeHydrationEntry({ date: '2026-10-13', milliliters: 0 }), /1 to 5,000 ml/);
+  assert.throws(() => normalizeHydrationEntry({ date: '2026-10-13', milliliters: 1.5 }), /whole number/);
+  assert.throws(() => normalizeHydrationGoal('20001'), /1 to 20,000 ml/);
+  assert.deepEqual(summarizeHydrationDay([
+    { date: '2026-10-13', milliliters: 350 },
+    { date: '2026-10-13', milliliters: 500 },
+    { date: '2026-10-12', milliliters: 900 },
+  ], '2026-10-13'), { entries: 2, milliliters: 850 });
 });

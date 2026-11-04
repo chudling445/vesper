@@ -2169,3 +2169,176 @@ body[data-theme="lumen-glass"] ::-webkit-scrollbar-thumb:hover { background: rgb
   body[data-theme="lumen-glass"] :is(.topbar, .site-header) { backdrop-filter: blur(14px) saturate(120%); }
   body[data-theme="lumen-glass"] .theme-menu { max-width: calc(100vw - 24px); }
 }
+
+/* ── Arcade expansion pack (arcade-expansion-pack.js) ─────────────────────── *
+ * Layout chrome for the 30 added modules. Uses the arcade palette variables  *
+ * already in scope so the new games read as one collection.                  */
+
+.exp-body { display: flex; flex-direction: column; gap: 10px; }
+.exp-grid { display: grid; gap: 6px; max-width: 420px; }
+.exp-cell {
+  aspect-ratio: 1 / 1;
+  min-height: 34px;
+  border: 1px solid #ffffff1c;
+  border-radius: 8px;
+  background: #ffffff08;
+  color: #f4e7f2;
+  font: 600 13px var(--font-mono);
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, transform .12s ease;
+}
+.exp-cell:hover { border-color: var(--arcade-accent); }
+.exp-cell:active { transform: scale(.94); }
+.exp-cell.is-empty { opacity: .18; cursor: default; pointer-events: none; }
+.exp-cell.is-on { background: color-mix(in srgb, var(--arcade-accent) 30%, transparent); border-color: var(--arcade-accent); }
+.exp-cell.is-picked { outline: 2px solid var(--arcade-accent); }
+.exp-cell.is-fixed { opacity: .55; cursor: default; }
+.exp-cell.is-wrong { border-color: #e06c75; color: #e06c75; }
+
+.exp-pads { display: flex; gap: 10px; flex-wrap: wrap; }
+.exp-pad {
+  width: 74px;
+  height: 74px;
+  border: 1px solid #ffffff22;
+  border-radius: 12px;
+  background: hsl(var(--pad-hue, 210) 62% 42%);
+  color: #12101a;
+  font: 700 15px var(--font-mono);
+  cursor: pointer;
+  transition: filter .12s ease, transform .12s ease;
+}
+.exp-pad.is-lit { filter: brightness(1.7); transform: scale(1.05); }
+
+.exp-question { font: 600 30px var(--font-mono); color: #f6e9f4; }
+.exp-answers { display: flex; gap: 8px; flex-wrap: wrap; }
+.exp-stroop { font: 700 38px var(--font-mono); letter-spacing: .04em; }
+
+.exp-word { font: 600 22px var(--font-mono); letter-spacing: .35em; color: #f3e6f1; }
+.exp-drawing { font: 600 13px/1.35 var(--font-mono); color: #e9d6e6; }
+.exp-keys { display: flex; gap: 5px; flex-wrap: wrap; max-width: 560px; }
+.exp-keys button { width: 34px; min-height: 30px; padding: 0; }
+
+.exp-wordlist { display: flex; gap: 6px; flex-wrap: wrap; }
+.exp-word-chip {
+  padding: 4px 9px;
+  border: 1px solid #ffffff1f;
+  border-radius: 999px;
+  background: #ffffff08;
+  color: #e2d4e0;
+  font: 600 10px var(--font-mono);
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.exp-word-chip.is-found { opacity: .45; text-decoration: line-through; }
+
+.exp-field { position: relative; height: 220px; border: 1px dashed #ffffff1f; border-radius: 10px; overflow: hidden; }
+.exp-field .exp-word-chip { position: absolute; top: 0; }
+.exp-input { width: min(100%, 320px); padding: 9px 11px; border: 1px solid #ffffff1f; border-radius: 8px; background: #0f0c16; color: #f2e7f1; font: 12px var(--font-mono); }
+
+.exp-history { display: flex; flex-direction: column; gap: 5px; max-height: 190px; overflow: auto; }
+.exp-history-row { display: flex; align-items: center; gap: 6px; }
+.exp-feedback { margin-left: auto; color: #b6a7b8; font: 10px var(--font-mono); }
+.exp-peg { display: inline-block; width: 18px; height: 18px; border: 1px solid #ffffff26; border-radius: 50%; background: #ffffff10; cursor: pointer; }
+.exp-pile { display: flex; gap: 6px; flex-wrap: wrap; max-width: 420px; }
+.exp-pile .exp-peg { width: 22px; height: 22px; background: #e5c07b; cursor: default; }
+
+.exp-clues { display: flex; flex-direction: column; gap: 4px; }
+.exp-clue-row { color: #c3b6c6; font: 11px var(--font-mono); }
+.exp-dice { display: flex; gap: 8px; }
+.exp-dice .exp-cell { width: 52px; }
+
+.arcade-layout .game-panel button.primary-button,
+.arcade-layout .game-panel button.quiet-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font: 700 8px var(--font-mono);
+  letter-spacing: .07em;
+  cursor: pointer;
+}
+.arcade-layout .game-panel button.primary-button {
+  border: 1px solid color-mix(in srgb, var(--arcade-accent) 65%, transparent);
+  background: linear-gradient(130deg, var(--arcade-accent), color-mix(in srgb, var(--arcade-accent) 48%, #9b9cff));
+  color: #17121a;
+}
+.arcade-layout .game-panel button.quiet-button { border: 1px solid #ffffff1a; background: #ffffff08; color: #d7cbdc; }
+.arcade-layout .game-panel button.quiet-button:hover { border-color: var(--arcade-accent); color: #fff; }
+.arcade-layout .game-panel button.quiet-button.is-on { border-color: var(--arcade-accent); background: color-mix(in srgb, var(--arcade-accent) 22%, transparent); }
+
+/* Riko Live: a clean, stage-first companion presentation that keeps Vesper's
+   existing controls and model while matching the calm viewer composition. */
+body[data-theme="riko-live"] {
+  background: radial-gradient(circle at 50% -10%, #ffffff 0, #f8f4f8 52%, #eee7ee 100%);
+  color: var(--text-primary);
+}
+body[data-theme="riko-live"] .scene {
+  border-color: rgba(86, 57, 79, .14);
+  background: radial-gradient(circle at 50% 18%, #ffffff 0, #fbf8fb 42%, #f1eaf1 100%);
+  box-shadow: 0 24px 70px rgba(113, 72, 104, .14), inset 0 0 70px rgba(201, 120, 167, .07);
+}
+body[data-theme="riko-live"] :is(.topbar, .chat-panel, .welcome-card, .message, .composer, .stage-toolbar, .scene-controls, .background-dock, .theme-menu, .settings-dialog) {
+  border-color: var(--border);
+  background-color: rgba(255, 255, 255, .78);
+  color: var(--text-primary);
+  box-shadow: 0 12px 34px rgba(83, 52, 76, .08);
+}
+body[data-theme="riko-live"] :is(.stage-toolbar, .scene-controls, .background-dock) button,
+body[data-theme="riko-live"] :is(.section-title, .stage-state, .scene-meta, .connection-chip, .composer-foot, .fine-print) { color: var(--text-secondary); }
+body[data-theme="riko-live"] :is(.stage-tool:hover, .stage-tool[aria-pressed="true"], .expression-button:hover, .expression-button[aria-pressed="true"], .suggestion:hover) {
+  border-color: rgba(201, 120, 167, .48);
+  background: rgba(201, 120, 167, .11);
+  color: #6f3658;
+}
+body[data-theme="riko-live"] #avatar-canvas { filter: drop-shadow(0 18px 20px rgba(110, 68, 101, .16)); }
+body[data-theme="riko-live"] :is(.brand, .section-index, .live-pip) { color: var(--accent); }
+body[data-theme="riko-live"] :is(.composer textarea, .composer input, .chat-search, select) {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, .86);
+  color: var(--text-primary);
+}
+body[data-theme="riko-live"] .message.assistant { border-left-color: var(--accent); }
+body[data-theme="riko-live"] .model-only-stage { background: transparent; }
+
+/* Android/PWA companion layout. Keep the full avatar prominent, but make the
+   controls thumb-friendly and prevent desktop navigation from crowding phones. */
+@media (max-width: 520px) {
+  body { min-width: 0; }
+  .app-shell { padding-inline: 10px; }
+  .topbar { align-items: center; padding-block: 8px; }
+  .brand-name { font-size: 10px; letter-spacing: .12em; }
+  .main-nav { order: 3; width: 100%; margin-inline: -2px; padding: 3px 0 1px; overflow-x: auto; scrollbar-width: none; }
+  .main-nav::-webkit-scrollbar { display: none; }
+  .main-nav a { flex: 0 0 auto; min-height: 32px; padding: 8px 9px; font-size: 8px; white-space: nowrap; }
+  .topbar-right { margin-left: auto; }
+  .theme-toggle, .settings-trigger { min-height: 36px; }
+  .workspace { display: flex; flex-direction: column; gap: 14px; padding-block: 14px 24px; min-height: 0; }
+  .character-panel { order: 0; }
+  .chat-panel { order: 1; min-height: 0; }
+  .stage-heading { height: 28px; }
+  .scene { flex: 0 0 auto; min-height: 54vh; max-height: 68vh; border-radius: 14px; }
+  .stage-toolbar { left: 7px; width: 94px; padding: 3px; }
+  .stage-tool { min-height: 31px; padding-inline: 6px; font-size: 7px; }
+  .scene-meta { top: 10px; left: 10px; right: 10px; }
+  .background-dock { gap: 3px; padding: 4px; }
+  .background-dock button { min-height: 30px; padding-inline: 8px; }
+  .scene-controls { right: 9px; bottom: 9px; }
+  .expression-bar, .personality-dock, .voice-dock, .performance-dock, .profile-card { border-radius: 12px; }
+  .expression-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .expression-button { min-height: 32px; padding: 6px 3px; font-size: 8px; }
+  .performance-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+  .performance-button { min-height: 58px; padding: 6px 3px; }
+  .performance-button b { font-size: 9px; }
+  .voice-controls { grid-template-columns: 1fr 1fr; }
+  .voice-choice { grid-column: 1 / -1; }
+  .voice-stop { min-height: 36px; }
+  .chat-heading { display: block; }
+  .chat-heading h1 { font-size: clamp(32px, 11vw, 48px); }
+  .heading-actions { margin-top: 12px; gap: 5px; }
+  .heading-actions > * { min-height: 34px; }
+  .messages { min-height: 280px; max-height: 52vh; }
+  .composer { position: sticky; bottom: 8px; z-index: 8; border-radius: 13px; }
+  .composer textarea { min-height: 44px; font-size: 16px; }
+  .composer-foot { padding-inline: 3px; font-size: 7px; }
+  .quickstart-actions { flex-direction: column; align-items: stretch; }
+  .quickstart-actions button, .quickstart-actions a { min-height: 38px; text-align: center; }
+}

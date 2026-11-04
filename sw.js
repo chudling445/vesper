@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vesper-atelier-v34';
+const CACHE_NAME = 'vesper-atelier-v38';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -30,6 +30,7 @@ const APP_SHELL = [
   '/arcade-extra-games.js',
   '/arcade-toys.js',
   '/arcade-utility-pack.js',
+  '/arcade-expansion-pack.js',
   '/arcade-launcher.js',
   '/voices.js',
   '/voice-utils.js',
@@ -70,6 +71,18 @@ const APP_SHELL = [
   '/code-worker.js',
   '/quick-capture.js',
   '/share.js',
+  '/studio.html',
+  '/studio.js',
+  '/studio.css',
+  '/tokens.css',
+  '/markets.html',
+  '/markets.js',
+  '/market-archive.mjs',
+  '/delinquency-tracker.mjs',
+  '/vesper-core.mjs',
+  '/proceduralAnimations.js',
+  '/ui-kit/vesper-ui.css',
+  '/ui-kit/vesper-ui.js',
   '/favicon.svg',
   '/assets/vesper-banner.png',
   '/manifest.webmanifest',

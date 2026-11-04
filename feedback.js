@@ -32,7 +32,13 @@ export function logError(error, context = 'Vesper') {
 export function initGlobalFeedback() {
   if (window.__vesperFeedbackInitialized) return;
   window.__vesperFeedbackInitialized = true;
-  window.addEventListener('error', (event) => { logError(event.error || event.message, 'Uncaught error'); showToast('Something unexpected happened. Vesper is still here; try that action again.', 'error'); });
+  // Browsers fire these two ResizeObserver notices whenever a layout settles over several frames.
+  // They are harmless and not real errors, so they must not raise the error toast (seen in Koalas and Planetarium).
+  const BENIGN_BROWSER_NOTICE = /^ResizeObserver loop (limit exceeded|completed with undelivered notifications)/;
+  window.addEventListener('error', (event) => {
+    if (BENIGN_BROWSER_NOTICE.test(String(event.message || ''))) { event.stopImmediatePropagation(); return; }
+    logError(event.error || event.message, 'Uncaught error'); showToast('Something unexpected happened. Vesper is still here; try that action again.', 'error');
+  });
   window.addEventListener('unhandledrejection', (event) => { logError(event.reason, 'Unhandled promise rejection'); showToast('That action could not finish. Please try again.', 'error'); });
   window.addEventListener('vesper:error', (event) => { const detail = event.detail || {}; logError(detail.error || detail, detail.context || 'Application error'); if (detail.notify !== false) showToast(detail.message || 'Vesper could not save that change.', 'warning'); });
 }

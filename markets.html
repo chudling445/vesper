@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en" data-theme="omarchy-quattro">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Vesper Market Terminal — a professional, offline PC-component price tracker with per-year verified data, cross-market boards, and an hourly loan-delinquency terminal. Every figure credited to its source." />
+    <meta name="theme-color" content="#12151c" />
+    <meta name="application-name" content="Vesper" />
+    <title>Vesper — Market Terminal</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <!-- Single design-token registry + shared component kit, loaded after styles.css. -->
+    <link rel="stylesheet" href="/tokens.css" />
+    <link rel="stylesheet" href="/ui-kit/vesper-ui.css" />
+    <link rel="stylesheet" href="/studio.css" />
+  </head>
+  <body data-theme="omarchy-quattro">
+    <div class="grain" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="/studio" aria-label="Vesper Studio">
+          <span class="brand-emblem" aria-hidden="true"><i></i><b>✦</b></span>
+          <span class="brand-name">VESPER<span> / </span>MARKETS</span>
+        </a>
+        <nav class="site-nav main-nav" aria-label="Pages"></nav>
+        <div class="topbar-right">
+          <span class="edition">TERMINAL <b>LOCAL-FIRST</b></span>
+          <button class="settings-trigger" id="markets-theme-cycle" type="button" title="Cycle themes · Ctrl/Cmd+Shift+T">
+            <span aria-hidden="true">◑</span> <span>THEME</span>
+          </button>
+          <div class="local-status"><span class="status-dot"></span> <span>NO TELEMETRY</span></div>
+        </div>
+      </header>
+
+      <section class="studio-hero" aria-label="Market terminal overview">
+        <div class="studio-hero-copy">
+          <div class="eyebrow"><span class="eyebrow-dash"></span> VERIFIED ARCHIVE / HOURLY CREDIT CHECK</div>
+          <h1>Component prices, <em>audited line by line.</em></h1>
+          <p>
+            A stock-tracker built for PC parts: per-year price rows for 20 components across 11 markets, every cell
+            carrying the page it came from, and every gap printed as <b>NOT AVAILABLE</b> rather than estimated.
+            Below it, an hourly-refreshed board of retail and EMI delinquency rates with the full source list credited.
+          </p>
+        </div>
+        <div class="studio-hero-actions">
+          <a class="vt-btn" href="/planner">BUILDS &amp; MONEY →</a>
+          <a class="vt-btn vt-btn--primary" href="/studio">OPEN STUDIO</a>
+        </div>
+      </section>
+
+      <section id="tile-wall" class="tile-wall" aria-label="Market terminal tiles"></section>
+
+      <footer class="studio-foot">
+        <span>EVERY FIGURE CITES ITS SOURCE · GAPS PRINT AS NOT AVAILABLE · DELINQUENCY RE-CHECKS HOURLY</span>
+      </footer>
+    </main>
+
+    <script type="module" src="/page.js"></script>
+    <script type="module" src="/markets.js"></script>
+  </body>
+</html>

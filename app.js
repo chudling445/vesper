@@ -1145,20 +1145,23 @@ async function sendMessage(text, { appendUser = true } = {}) {
 
 function reactToAssistantReply(reply, userText = '') {
   const text = `${userText} ${reply}`.toLowerCase();
-  let mood = 'neutral';
-  let expression = 'neutral';
-  let gesture = '';
-  if (/\b(hello|hi there|hey there|welcome back)\b/.test(text)) gesture = 'wave';
-  else if (/\b(thank you|thanks|appreciate|congratulations|congrats|proud of you)\b/.test(text)) { mood = 'joy'; expression = 'joy'; gesture = 'bow'; }
-  else if (/\b(let's dance|dance with me|celebrate|we did it)\b/.test(text)) { mood = 'joy'; expression = 'fun'; gesture = 'dance'; }
-  else if (/\b(i agree|exactly|you're right|yes, that is right)\b/.test(text)) gesture = 'nod';
-  else if (/\b(i don't know|maybe|not sure|it depends)\b/.test(text)) gesture = 'shrug';
-  else if (/\b(i care about you|i'm here for you|you matter|that sounds painful|i'm sorry)\b/.test(text)) { mood = 'tender'; expression = 'soft'; }
-  else if (/\b(let me think|thinking through|on reflection|considering this)\b/.test(text)) { mood = 'thinking'; expression = 'thinking'; gesture = 'thinking'; }
-  else if (/\b(that's difficult|that sounds hard|grief|i understand this hurts)\b/.test(text)) { mood = 'sad'; expression = 'soft'; }
-  window.setAvatarMood?.(mood);
-  window.setAvatarExpression?.(expression);
-  if (gesture) window.playAvatarGesture?.(gesture, 1800);
+  const score = (patterns) => patterns.reduce((total, pattern) => total + (pattern.test(text) ? 1 : 0), 0);
+  const candidates = [
+    { score: score([/\b(hello|hi there|hey there|welcome back|good morning|good evening)\b/]), mood: 'joy', expression: 'amused', gesture: 'wave' },
+    { score: score([/\b(thank you|thanks|appreciate|congratulations|congrats|proud of you|well done)\b/]), mood: 'joy', expression: 'proud', gesture: 'bow' },
+    { score: score([/\b(let's dance|dance with me|celebrate|we did it|victory)\b/]), mood: 'joy', expression: 'excited', gesture: 'dance' },
+    { score: score([/\b(i agree|exactly|you're right|yes, that is right|correct)\b/]), mood: 'neutral', expression: 'attentive', gesture: 'nod' },
+    { score: score([/\b(i don't know|maybe|not sure|it depends|uncertain|unclear)\b/]), mood: 'thinking', expression: 'skeptical', gesture: 'shrug' },
+    { score: score([/\b(i care about you|i'm here for you|you matter|that sounds painful|i'm sorry|you are not alone)\b/]), mood: 'tender', expression: 'gentle', gesture: 'reassure' },
+    { score: score([/\b(let me think|thinking through|on reflection|considering this|philosoph|history|historical|linux|kernel|command)\b/]), mood: 'thinking', expression: 'focused', gesture: 'historian' },
+    { score: score([/\b(that's difficult|that sounds hard|grief|i understand this hurts|sad|painful|loss)\b/]), mood: 'sad', expression: 'concerned', gesture: 'reassure' },
+    { score: score([/\b(ha ha|haha|funny|joke|tease|clever|nice one)\b/]), mood: 'joy', expression: 'amused', gesture: 'tilt' },
+  ].filter((candidate) => candidate.score > 0).sort((a, b) => b.score - a.score);
+  const chosen = candidates[0] || { mood: 'neutral', expression: personalityMode === 'thoughtful' ? 'attentive' : personalityMode === 'tender' ? 'gentle' : 'amused', gesture: '' };
+  window.setAvatarMood?.(chosen.mood);
+  window.setAvatarExpression?.(chosen.expression);
+  if (chosen.gesture === 'historian' || chosen.gesture === 'reassure') window.playAvatarSequence?.(chosen.gesture);
+  else if (chosen.gesture) window.playAvatarGesture?.(chosen.gesture, 1800);
 }
 
 window.addEventListener('avatar-touch', (event) => {
@@ -1287,6 +1290,13 @@ document.querySelectorAll('[data-pose]').forEach((button) => button.addEventList
   window.playAvatarGesture?.(button.dataset.pose, 2400);
   performanceStatus.textContent = `${button.dataset.pose.toUpperCase()} / NATURAL POSE`;
   window.setTimeout(() => { button.classList.remove('is-active'); performanceStatus.textContent = 'IDLE / READY'; }, 2200);
+}));
+document.querySelectorAll('[data-sequence]').forEach((button) => button.addEventListener('click', () => {
+  const sequence = button.dataset.sequence;
+  document.querySelectorAll('[data-sequence]').forEach((option) => option.classList.toggle('is-active', option === button));
+  window.playAvatarSequence?.(sequence);
+  performanceStatus.textContent = `${sequence.toUpperCase()} / NATURAL PERFORMANCE`;
+  window.setTimeout(() => { button.classList.remove('is-active'); performanceStatus.textContent = 'IDLE / READY'; }, 4200);
 }));
 
 window.addEventListener('avatar-ready', (event) => {

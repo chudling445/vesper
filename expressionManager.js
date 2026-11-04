@@ -13,6 +13,10 @@ const PRESETS = {
   curious: { surprised: 0.36, relaxed: 0.2 }, thinking: { relaxed: 0.54, sad: 0.12 },
   soft: { relaxed: 0.69, sad: 0.18 }, embarrassed: { relaxed: 0.48, happy: 0.2, sad: 0.16 },
   excited: { happy: 0.58, surprised: 0.4 }, teasing: { happy: 0.48, angry: 0.22 },
+  amused: { happy: 0.46, relaxed: 0.22 }, concerned: { sad: 0.42, relaxed: 0.24 },
+  skeptical: { angry: 0.28, relaxed: 0.2 }, proud: { happy: 0.52, relaxed: 0.18 },
+  focused: { relaxed: 0.42, angry: 0.1 }, sleepy: { relaxed: 0.55, sad: 0.12 },
+  attentive: { surprised: 0.18, relaxed: 0.34 }, gentle: { relaxed: 0.78, happy: 0.12 },
 };
 
 const FALLBACKS = {

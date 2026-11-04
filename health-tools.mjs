@@ -62,6 +62,30 @@ export function summarizeNutritionDay(entries, date) {
   return totals;
 }
 
+export function normalizeHydrationEntry(input = {}) {
+  const date = String(input.date || '');
+  const milliliters = Number(input.milliliters);
+  if (!validDateKey(date)) throw new Error('Choose a valid hydration date.');
+  if (!Number.isInteger(milliliters) || milliliters < 1 || milliliters > 5000) throw new Error('Hydration amount must be a whole number from 1 to 5,000 ml.');
+  return { date, milliliters };
+}
+
+export function normalizeHydrationGoal(value) {
+  if (value == null || String(value).trim() === '') return null;
+  const milliliters = Number(value);
+  if (!Number.isInteger(milliliters) || milliliters < 1 || milliliters > 20_000) throw new Error('Your optional daily reference must be a whole number from 1 to 20,000 ml.');
+  return milliliters;
+}
+
+export function summarizeHydrationDay(entries, date) {
+  if (!validDateKey(date)) throw new Error('Choose a valid day to summarize.');
+  const dayEntries = (Array.isArray(entries) ? entries : []).filter((entry) => entry?.date === date);
+  return {
+    entries: dayEntries.length,
+    milliliters: dayEntries.reduce((total, entry) => total + finite(entry.milliliters), 0),
+  };
+}
+
 export function fastingElapsedMinutes(session, now = Date.now()) {
   const startedAt = Date.parse(session?.startedAt || '');
   const endedAt = session?.endedAt ? Date.parse(session.endedAt) : Number(now);

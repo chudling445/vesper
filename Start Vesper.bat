@@ -23,6 +23,12 @@ if /I "%NODE_EXE%"=="node" (
 
 if not exist ".env" copy /y ".env.example" ".env" >nul
 
+rem This launcher is always the local-only app. A stray NODE_ENV=production (set by some dev tools)
+rem would otherwise switch the server into password-protected online mode and stop it from starting.
+set "NODE_ENV="
+set "VESPER_PUBLIC_MODE="
+set "VESPER_TRUST_PROXY="
+
 set "URL=http://127.0.0.1:3174"
 set "OLLAMA_MODELS=%~dp0llm-models"
 set "OLLAMA_EXE=%LOCALAPPDATA%\Programs\Ollama\ollama.exe"
@@ -37,6 +43,9 @@ if defined OLLAMA_EXE if exist "%OLLAMA_EXE%" (
     powershell -NoProfile -Command "for ($i=0; $i -lt 20; $i++) { try { Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:11434/api/tags' -TimeoutSec 1 | Out-Null; exit 0 } catch { Start-Sleep -Seconds 1 } }; exit 1" >nul 2>nul
   )
 )
+
+rem Replace a server that predates the current code (otherwise new pages return "Not found").
+if exist "%~dp0Stop-StaleVesper.ps1" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Stop-StaleVesper.ps1" >nul 2>nul
 
 set "READY="
 powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing '%URL%/api/health' -TimeoutSec 1 | Out-Null; exit 0 } catch { exit 1 }" >nul 2>nul

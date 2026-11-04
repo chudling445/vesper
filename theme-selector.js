@@ -4,6 +4,7 @@ import { applyPaletteTheme } from './theme-provider.js';
 const OFFICIAL_THEME_IDS = [
   'omarchy-quattro', 'tokyo-night', 'catppuccin-mocha', 'lumon-industries', 'fenrir-cyberpunk',
   'gruber-darker', 'rose-pine-dark', 'miasma-forest', 'solitude-slate', 'nord-frost', 'lumen-glass',
+  'transparent',
 ];
 
 /** Mount the theme swatch cards into a settings surface. */

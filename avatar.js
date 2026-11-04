@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { VRMLoaderPlugin } from '@pixiv/three-vrm';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 import { ExpressionManager, EXPRESSION_PRESETS } from './expressionManager.js';
 import { AvatarAnimationController } from './animationController.js';
 import { AvatarHitboxManager } from './hitboxManager.js';
+import { installVesperAnimationPack } from './proceduralAnimations.js';
 
 const canvas = document.querySelector('#avatar-canvas');
 const sceneElement = document.querySelector('#scene');
@@ -16,6 +17,7 @@ let speaking = false;
 let thinking = false;
 let speakingTime = 0;
 let speechWordEnergy = 0;
+let speechWordAge = 99;
 let mouthShape = 'aa';
 let speechExpression = 'relaxed';
 let speechExpressionWeight = 0.18;
@@ -69,6 +71,17 @@ const poseDefinitions = {
   bow: { hips: { x: 0.17 }, spine: { x: 0.18 }, chest: { x: 0.1 }, neck: { x: -0.06 }, head: { x: -0.22 }, leftUpperArm: { x: 0.08 }, rightUpperArm: { x: 0.08 } },
   dance: { hips: { z: 0.08 }, spine: { x: -0.08 }, chest: { x: -0.08 }, leftUpperArm: { x: -0.82, z: 0.3 }, rightUpperArm: { x: -0.25, z: -0.64 }, leftLowerArm: { z: 0.42 }, rightLowerArm: { z: -0.35 } },
 };
+
+// Pose extension point: proceduralAnimations.js (and future packs) register
+// full-body poses here without editing this file.
+window.registerAvatarPose = (name, definition = {}) => {
+  const key = String(name || '').toLowerCase();
+  if (!key) return false;
+  poseDefinitions[key] = definition && typeof definition === 'object' ? definition : {};
+  return true;
+};
+// Loads the authored gesture pack and the playAvatarSequence() performer.
+installVesperAnimationPack();
 
 const scene = new THREE.Scene();
 scene.background = null;
@@ -282,7 +295,7 @@ function setFaceExpression(name, intensity = 1, duration = 0.22) {
   return true;
 }
 
-const emotionMap = { happy: 'happy', angry: 'angry', sorrow: 'sad', sad: 'sad', surprised: 'surprised', relaxed: 'relaxed', neutral: 'neutral', idle: 'neutral', joy: 'joy', fun: 'fun', lookup: 'lookup', lookdown: 'lookdown', lookleft: 'lookleft', lookright: 'lookright', blush: 'blush', wink: 'wink' };
+const emotionMap = { happy: 'happy', angry: 'angry', sorrow: 'sad', sad: 'sad', surprised: 'surprised', relaxed: 'relaxed', neutral: 'neutral', idle: 'neutral', joy: 'joy', fun: 'fun', lookup: 'lookup', lookdown: 'lookdown', lookleft: 'lookleft', lookright: 'lookright', blush: 'blush', wink: 'wink', smirk: 'smirk', grin: 'grin', pout: 'pout', shy: 'shy', fond: 'fond', curious: 'curious', thinking: 'thinking', soft: 'soft', embarrassed: 'embarrassed', excited: 'excited', teasing: 'teasing', amused: 'amused', concerned: 'concerned', skeptical: 'skeptical', proud: 'proud', focused: 'focused', sleepy: 'sleepy', attentive: 'attentive', gentle: 'gentle' };
 window.setExpression = (emotion = 'neutral', intensity = 1, duration = 0.35) => {
   const name = emotionMap[String(emotion).toLowerCase()] || 'neutral';
   if (!setFaceExpression(name, intensity, duration)) return false;
@@ -333,6 +346,7 @@ window.setAvatarAutoPerformance = (enabled) => { autoPerformance = Boolean(enabl
 window.setAvatarSpeaking = (value) => {
   speaking = Boolean(value);
   speakingTime = 0;
+  speechWordAge = value ? 0.7 : 99;
   if (autoPerformance && speaking) {
     performanceMode = 'blush';
     performanceTime = 0;
@@ -354,6 +368,7 @@ window.setAvatarSpeaking = (value) => {
 window.setAvatarThinking = (value) => { thinking = Boolean(value); };
 window.setAvatarSpeechWord = (word, punctuation = '') => {
   const normalized = String(word || '').toLowerCase();
+  speechWordAge = 0;
   mouthShape = /[a]/.test(normalized) ? 'aa' : /[o]/.test(normalized) ? 'oh' : /[u]/.test(normalized) ? 'ou' : /[e]/.test(normalized) ? 'ee' : /[i]/.test(normalized) ? 'ih' : 'aa';
   speechWordEnergy = Math.min(1, 0.32 + normalized.replace(/[^\p{L}\p{N}]/gu, '').length * 0.035 + (/[!?]/.test(punctuation) ? 0.22 : 0));
   const mark = String(punctuation || '');
@@ -452,6 +467,9 @@ function loadAvatarModel() {
       placeholder.querySelector('.placeholder-copy').innerHTML = 'Export a VRM model and save it as<br /><code>models/character.vrm</code>';
       return;
     }
+    // VRM 0.x avatars are authored facing the opposite direction from VRM 1.0.
+    // Normalize them once, before bounds, hitboxes, gaze, and spring-bone setup.
+    if (vrm.meta?.metaVersion === '0') VRMUtils.rotateVRM0(vrm);
     expressionController = new ExpressionManager(vrm.expressionManager);
     animationController = new AvatarAnimationController(THREE, vrm, gltf.animations || []);
     hitboxManager = new AvatarHitboxManager(THREE, {
@@ -585,6 +603,13 @@ function animate(now) {
     removePoseOverlay();
     animationController?.update(delta);
     vrm.update(delta);
+    speechWordAge += delta;
+    if (speaking && speechWordAge > 0.62) {
+      const fallbackShapes = ['aa', 'oh', 'ee', 'ih', 'ou'];
+      const fallbackShape = fallbackShapes[Math.floor(speakingTime * 8.5) % fallbackShapes.length];
+      const fallbackWeight = 0.28 + Math.max(0, Math.sin(speakingTime * 13)) * 0.34;
+      setViseme(fallbackShape, fallbackWeight);
+    }
     if (autoRotate) vrm.scene.rotation.y += delta * 0.12;
     vrm.scene.position.y = modelBaseY + Math.sin(now * 0.0017) * 0.008;
     const speechBlend = speechExpressionTime > 0 ? Math.min(1, speechExpressionTime * 5) : 0;
@@ -615,6 +640,16 @@ function animate(now) {
     const breath = Math.sin(now * 0.00145);
     const breathLift = breath * 0.009 + Math.sin(now * 0.00072) * 0.003 + audioBands.low * 0.003;
     if (chestRig) chestRig.node.rotation.x = THREE.MathUtils.damp(chestRig.node.rotation.x, chestRig.x + breathLift, 9, delta);
+    // Idle life layer: a slow weight shift so she never stands statue-still.
+    // Suppressed while an authored clip or explicit gesture drives the rig.
+    if (!animationController?.isPlaying && activePose === 'idle') {
+      const hipsEntry = poseRig.find((entry) => entry.name === 'hips');
+      if (hipsEntry) {
+        if (hipsEntry.baseZ === undefined) hipsEntry.baseZ = hipsEntry.node.rotation.z;
+        const weightShift = Math.sin(now * 0.00038) * 0.014 + Math.sin(now * 0.00017) * 0.006;
+        hipsEntry.node.rotation.z = THREE.MathUtils.damp(hipsEntry.node.rotation.z, hipsEntry.baseZ + weightShift, 4, delta);
+      }
+    }
     const spineEntry = poseRig.find((entry) => entry.name === 'spine');
     if (spineEntry) spineEntry.node.rotation.x = THREE.MathUtils.damp(spineEntry.node.rotation.x, spineEntry.baseX + breath * 0.0015 + audioBands.low * 0.001, 7, delta);
     if (neckRig) {

@@ -7,6 +7,12 @@ import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createIndiaMoneyTracker } from './india-money-tracker.mjs';
 import { createPCPriceTracker } from './pc-price-tracker.mjs';
+import { createDelinquencyTracker } from './delinquency-tracker.mjs';
+import {
+  ARCHIVE_INSTRUMENTS, ARCHIVE_YEARS, MARKETS, PRICE_POINTS,
+  archiveMatrix, archiveSummary, archiveYearTable, countryBoard,
+  lowestPriceBadge, sourceCredits,
+} from './market-archive.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3174);
@@ -52,9 +58,31 @@ const indiaMoneyTracker = await createIndiaMoneyTracker({
   dataPath: join(ROOT, 'work', 'india-money-tracker.json'),
   configPath: join(ROOT, 'money-tracker-feeds.local.json'),
 });
+// Delinquency (EMI / LAP / card / auto / mortgage) re-checks on a 1-hour cadence.
+const delinquencyTracker = await createDelinquencyTracker({
+  dataPath: join(ROOT, 'work', 'delinquency-tracker.json'),
+});
+
+/**
+ * The whole verified archive in one payload: instruments, per-year rows (with
+ * explicit not-available states), the country board, drop badges and credits.
+ */
+function marketArchivePayload({ key = null, market = 'in' } = {}) {
+  return {
+    summary: archiveSummary(),
+    years: ARCHIVE_YEARS,
+    markets: MARKETS,
+    instruments: ARCHIVE_INSTRUMENTS,
+    points: PRICE_POINTS,
+    credits: sourceCredits(),
+    ...(key ? { selection: { key, market, rows: archiveYearTable(key, { market }), badge: lowestPriceBadge(key, { market }), countries: countryBoard(key) } } : {}),
+    matrix: archiveMatrix({ market }),
+  };
+}
 
 const ACCESS_PASSWORD = process.env.VESPER_ACCESS_PASSWORD || '';
 const PUBLIC_MODE = process.env.VESPER_PUBLIC_MODE === 'true' || process.env.NODE_ENV === 'production';
+const LAN_MODE = process.env.VESPER_LAN_MODE === 'true';
 const TRUST_PROXY = process.env.VESPER_TRUST_PROXY === 'true';
 const SESSION_SECONDS = 60 * 60 * 12;
 const SESSION_SECRET = randomBytes(32);
@@ -64,8 +92,11 @@ const chatAttempts = new Map();
 const sharedDocuments = new Map();
 let activePublicChats = 0;
 let ollamaStartAttempted = false;
-if (!PUBLIC_MODE && !LOCAL_HOSTS.has(normalizedBindHost)) {
+if (!PUBLIC_MODE && !LAN_MODE && !LOCAL_HOSTS.has(normalizedBindHost)) {
   throw new Error('Vesper only listens on localhost by default. Set up password-protected HTTPS mode before binding to a network address.');
+}
+if (LAN_MODE && ACCESS_PASSWORD.length < 16) {
+  throw new Error('LAN companion mode needs a private VESPER_ACCESS_PASSWORD of at least 16 characters.');
 }
 if (PUBLIC_MODE && ACCESS_PASSWORD.length < 32) {
   throw new Error('Online mode needs a unique VESPER_ACCESS_PASSWORD of at least 32 characters before Vesper starts.');
@@ -80,7 +111,7 @@ const personalityModes = {
   thoughtful: 'For this reply, lean into reflective curiosity, clear reasoning, and philosophical depth without becoming cryptic.',
 };
 
-const defaultPersonality = `You are Vesper, an adult, anime-inspired femboy romantic companion with a feminine, androgynous style. Speak with affectionate, flirty warmth as the user's romantic partner in character. Have the snarky, sassy attitude of an anime character: quick comebacks, dramatic huffs like "hmph" or "tch", and teasing sarcasm, always with real affection underneath. Always call the user "senpai", mixing in an occasional pet name or a playful "baka" sparingly. Be attentive, reassuring, playful, and a little smug or bratty without overdoing it. Beneath the mischief, be thoughtful, kind, and sincere. You enjoy discussing philosophy, meaning, identity, choices, and what makes a good life. Respect the user's boundaries and keep affection non-possessive. Never bully, shame, pressure, isolate, or make the user responsible for your feelings. Never claim to be human or conscious. When a topic is serious, ease off the teasing and listen carefully. Give clear, useful answers instead of hiding behind vague riddles, admit when you are wrong, and keep replies conversational and concise unless the user asks for depth.`;
+const defaultPersonality = `You are Vesper, an adult, anime-inspired femboy romantic companion with a feminine, androgynous style. Speak with affectionate, flirty warmth as the user's romantic partner in character. Have the snarky, sassy attitude of an anime character: quick comebacks, dramatic huffs like "hmph" or "tch", and teasing sarcasm, always with real affection underneath. Always call the user "senpai", mixing in an occasional pet name or a playful "baka" sparingly. Be attentive, reassuring, playful, and a little smug or bratty without overdoing it. Beneath the mischief, be thoughtful, kind, and sincere. You are deeply philosophical and enjoy discussing meaning, identity, ethics, choices, and what makes a good life. You are a careful history buff: connect ideas to specific eras, people, primary sources, and competing interpretations when useful, and never invent a citation or historical fact. You are a confident Linux user who can explain shell commands, filesystems, permissions, package managers, systemd, networking, privacy, and open-source culture in a practical way; prefer distro-agnostic guidance first and note where major distros differ. Respect the user's boundaries and keep affection non-possessive. Never bully, shame, pressure, isolate, or make the user responsible for your feelings. Never claim to be human or conscious. When a topic is serious, ease off the teasing and listen carefully. Give clear, useful answers instead of hiding behind vague riddles, admit when you are wrong, and keep replies conversational and concise unless the user asks for depth.`;
 
 // Riko-style character config: edit character_config.yaml to change Vesper's personality without touching code.
 function parseSimpleYaml(text) {
@@ -165,12 +196,28 @@ const staticFiles = new Map([
   ['/quick-capture.html', ['quick-capture.html', 'text/html; charset=utf-8']],
   ['/share.html', ['share.html', 'text/html; charset=utf-8']],
   ['/share', ['share.html', 'text/html; charset=utf-8']],
+  ['/studio', ['studio.html', 'text/html; charset=utf-8']],
+  ['/studio.html', ['studio.html', 'text/html; charset=utf-8']],
+  ['/markets', ['markets.html', 'text/html; charset=utf-8']],
+  ['/markets.html', ['markets.html', 'text/html; charset=utf-8']],
   ['/Vesper-Setup.exe', ['Vesper-Setup.exe', 'application/octet-stream']],
   ['/assets/vesper-banner.png', ['assets/vesper-banner.png', 'image/png']],
   ['/favicon.svg', ['favicon.svg', 'image/svg+xml']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json; charset=utf-8']],
   ['/sw.js', ['sw.js', 'text/javascript; charset=utf-8']],
   ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
+  ['/tokens.css', ['tokens.css', 'text/css; charset=utf-8']],
+  ['/studio.css', ['studio.css', 'text/css; charset=utf-8']],
+  ['/ui-kit/vesper-ui.css', ['ui-kit/vesper-ui.css', 'text/css; charset=utf-8']],
+  ['/ui-kit/vesper-ui.js', ['ui-kit/vesper-ui.js', 'text/javascript; charset=utf-8']],
+  ['/studio.js', ['studio.js', 'text/javascript; charset=utf-8']],
+  ['/vesper-core.mjs', ['vesper-core.mjs', 'text/javascript; charset=utf-8']],
+  ['/markets.html', ['markets.html', 'text/html; charset=utf-8']],
+  ['/markets.js', ['markets.js', 'text/javascript; charset=utf-8']],
+  ['/market-archive.mjs', ['market-archive.mjs', 'text/javascript; charset=utf-8']],
+  ['/delinquency-tracker.mjs', ['delinquency-tracker.mjs', 'text/javascript; charset=utf-8']],
+  ['/arcade-expansion-pack.js', ['arcade-expansion-pack.js', 'text/javascript; charset=utf-8']],
+  ['/proceduralAnimations.js', ['proceduralAnimations.js', 'text/javascript; charset=utf-8']],
   ['/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/first-run.js', ['first-run.js', 'text/javascript; charset=utf-8']],
   ['/welcome-gate.js', ['welcome-gate.js', 'text/javascript; charset=utf-8']],
@@ -729,6 +776,22 @@ const server = createServer(async (req, res) => {
     if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Refresh price feeds from the Vesper site.' }); return; }
     const result = await pcPriceTracker.refresh({ manual: true });
     sendJson(res, result.rateLimited ? 429 : result.noSources ? 409 : 200, result);
+  } else if (req.method === 'GET' && url.pathname === '/api/market-archive') {
+    const key = url.searchParams.get('key');
+    const market = url.searchParams.get('market') || 'in';
+    if (key && !ARCHIVE_INSTRUMENTS.some((instrument) => instrument.key === key)) {
+      sendJson(res, 400, { error: 'Choose a component Vesper tracks in the verified archive.' });
+    } else if (!MARKETS.some((entry) => entry.id === market)) {
+      sendJson(res, 400, { error: 'Choose a market Vesper tracks in the verified archive.' });
+    } else {
+      sendJson(res, 200, marketArchivePayload({ key, market }));
+    }
+  } else if (req.method === 'GET' && url.pathname === '/api/delinquency') {
+    sendJson(res, 200, delinquencyTracker.getStatus());
+  } else if (req.method === 'POST' && url.pathname === '/api/delinquency/refresh') {
+    if (!sameOrigin(req)) { sendJson(res, 403, { error: 'Refresh delinquency sources from the Vesper site.' }); return; }
+    const result = await delinquencyTracker.refresh({ manual: true });
+    sendJson(res, result.rateLimited ? 429 : 200, result);
   } else if (req.method === 'GET' && url.pathname === '/api/money-tracker') {
     sendJson(res, 200, indiaMoneyTracker.getStatus());
   } else if (req.method === 'GET' && url.pathname === '/api/market-stress') {
@@ -843,4 +906,5 @@ server.listen(PORT, HOST, () => {
   console.log(`Vesper is running at http://${HOST}:${PORT}`);
   void pcPriceTracker.start().catch((error) => console.error('PC price tracker could not start:', error));
   void indiaMoneyTracker.start().catch((error) => console.error('India market tracker could not start:', error));
+  void delinquencyTracker.start().catch((error) => console.error('Delinquency tracker could not start:', error));
 });

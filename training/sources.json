@@ -1,0 +1,42 @@
+{
+  "project": "Vesper Scholar-Linux persona",
+  "purpose": "Retrieval and future fine-tuning sources for a philosophical, historically careful, Linux-literate Vesper profile.",
+  "policy": "Only ingest text whose source terms permit the intended use. Store URL, title, access date, license or permission note, and a content hash for every downloaded artifact. Do not scrape arbitrary copyrighted web pages.",
+  "sources": [
+    {
+      "id": "gutenberg-philosophy-history",
+      "url": "https://www.gutenberg.org/ebooks/bookshelf/57",
+      "title": "Project Gutenberg Philosophy collection",
+      "domain": "philosophy",
+      "license_note": "Project Gutenberg hosts many public-domain works, but each ebook's header and Project Gutenberg license terms must be checked individually before redistribution or training use."
+    },
+    {
+      "id": "fordham-ihsp",
+      "url": "https://sourcebooks.web.fordham.edu/",
+      "title": "Internet History Sourcebooks Project",
+      "domain": "history",
+      "license_note": "The site describes its collection as public-domain and copy-permitted material, while also warning that some translations are not necessarily copyright-free. Ingest only entries whose page-level permission is clear."
+    },
+    {
+      "id": "gnu-home",
+      "url": "https://www.gnu.org/",
+      "title": "GNU Operating System and Free Software Movement",
+      "domain": "linux-and-free-software",
+      "license_note": "GNU pages identify their page-level licenses; preserve attribution and license notices. The homepage is CC BY-ND 4.0, so do not create modified redistributions of those page texts without checking the license implications."
+    },
+    {
+      "id": "linux-kernel-docs",
+      "url": "https://www.kernel.org/doc/html/latest/",
+      "title": "Linux kernel documentation",
+      "domain": "linux",
+      "license_note": "Kernel materials carry file-specific SPDX identifiers and GPL-2.0 or compatible terms. Preserve SPDX metadata and do not assume every file has identical terms."
+    },
+    {
+      "id": "spdx-license-list",
+      "url": "https://spdx.org/licenses/",
+      "title": "SPDX License List",
+      "domain": "license-validation",
+      "license_note": "Use SPDX identifiers to validate and record source licenses during ingestion."
+    }
+  ]
+}

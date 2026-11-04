@@ -1,0 +1,178 @@
+/*!
+ * vesper-ui.css — styles for the shared Vesper component kit.
+ *
+ * Every rule consumes only tokens from tokens.css. If you find yourself
+ * typing a hex value here, add the token there instead.
+ */
+
+/* ---- TileCard ---------------------------------------------------- */
+.vt-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-glass-strong);
+  box-shadow: var(--shadow-panel), var(--shadow-inset);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  transition: border-color var(--dur-med) var(--ease-out),
+              box-shadow var(--dur-med) var(--ease-out),
+              transform var(--dur-med) var(--ease-out);
+}
+.vt-tile:hover { border-color: var(--border-strong); box-shadow: var(--shadow-raise), var(--shadow-inset); }
+.vt-tile--interactive { cursor: grab; }
+.vt-tile--dragging { opacity: .55; transform: scale(.985); cursor: grabbing; }
+.vt-tile--drop-target { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow), var(--shadow-panel); }
+
+.vt-tile__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--panel-pad);
+  border-bottom: 1px solid var(--border);
+}
+.vt-tile__grip { color: var(--text-secondary); font: 12px var(--font-mono); letter-spacing: .1em; opacity: .6; }
+.vt-tile__head-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vt-tile__kicker { color: var(--accent); font: 9px var(--font-mono); letter-spacing: .16em; text-transform: uppercase; }
+.vt-tile__title { color: var(--text-primary); font: 600 var(--space-4, 16px) var(--font-display); }
+.vt-tile__actions { display: flex; gap: var(--space-2); margin-left: auto; align-items: center; }
+.vt-tile__body { flex: 1; min-height: 0; padding: var(--panel-pad); }
+.vt-tile--flush .vt-tile__body { padding: 0; }
+
+/* ---- MetricBadge ------------------------------------------------- */
+.vt-metric {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
+  min-width: 84px;
+}
+.vt-metric__label { color: var(--text-secondary); font: 8px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.vt-metric__value { display: flex; align-items: baseline; gap: 3px; color: var(--text-primary); font: 600 16px var(--font-ui); font-variant-numeric: tabular-nums; }
+.vt-metric__unit { color: var(--text-secondary); font: 9px var(--font-mono); }
+.vt-metric__delta { font: 10px var(--font-mono); }
+.vt-metric--good .vt-metric__delta, .vt-metric--good .vt-metric__value { color: var(--tone-good); }
+.vt-metric--bad .vt-metric__delta, .vt-metric--bad .vt-metric__value { color: var(--tone-bad); }
+.vt-metric--warn .vt-metric__delta { color: var(--tone-warn); }
+
+/* ---- DataChart --------------------------------------------------- */
+.vt-chart { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.vt-chart__canvas { width: 100%; display: block; border: 1px solid var(--border); border-radius: var(--radius-control); background: color-mix(in srgb, var(--bg-primary) 60%, transparent); }
+.vt-chart__legend { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.vt-chart__key { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); font: 9px var(--font-mono); letter-spacing: .08em; }
+.vt-chart__swatch { width: 10px; height: 10px; border-radius: 3px; }
+
+/* ---- TerminalBox ------------------------------------------------- */
+.vt-term {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--bg-primary) 78%, transparent);
+  font: 11px/1.65 var(--font-mono);
+  overflow: hidden;
+}
+.vt-term__bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); color: var(--text-secondary); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.vt-term__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+.vt-term__scroll { padding: var(--space-3); max-height: 260px; overflow: auto; }
+.vt-term__line { display: flex; gap: var(--space-2); color: var(--text-secondary); white-space: pre-wrap; word-break: break-word; }
+.vt-term__prompt { color: var(--accent); user-select: none; }
+.vt-term__line--accent { color: var(--text-primary); }
+.vt-term__line--good { color: var(--tone-good); }
+.vt-term__line--warn { color: var(--tone-warn); }
+.vt-term__line--bad { color: var(--tone-bad); }
+
+/* ---- Tiny shared bits ------------------------------------------- */
+.vt-row { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.vt-stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.vt-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); }
+.vt-muted { color: var(--text-secondary); font-size: 12px; }
+.vt-pill { display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-2); border-radius: var(--radius-pill); border: 1px solid var(--border); color: var(--text-secondary); font: 9px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.vt-pill--accent { color: var(--accent); border-color: var(--border-strong); }
+.vt-btn {
+  min-height: 30px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--bg-secondary) 80%, transparent);
+  color: var(--text-primary);
+  font: 10px var(--font-mono);
+  letter-spacing: .08em;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast), color var(--dur-fast);
+}
+.vt-btn:hover { border-color: var(--border-strong); color: var(--accent); }
+.vt-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.vt-btn--primary:hover { color: var(--accent-contrast); filter: brightness(1.08); }
+
+/* ── Market terminal primitives ─────────────────────────────────────────────
+ * Tables, status tags, and field chrome for the Market Terminal. Tokens only,
+ * same borders, radii and mono type as every other kit primitive.            */
+
+.vt-controls { align-items: flex-end; }
+.vt-field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 150px; }
+.vt-field > span { color: var(--text-secondary); font: 9px var(--font-mono); letter-spacing: .12em; }
+.vt-select,
+.vt-input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font: 12px var(--font-mono);
+}
+.vt-select:focus,
+.vt-input:focus { outline: none; border-color: var(--accent); }
+.vt-link { color: var(--accent); text-decoration: none; border-bottom: 1px dotted color-mix(in srgb, var(--accent) 55%, transparent); }
+.vt-link:hover { color: var(--text-primary); }
+.vt-mono { font-family: var(--font-mono); }
+.vt-subhead { margin: var(--space-2) 0 0; font: 600 11px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); }
+.vt-scroll { max-height: 620px; overflow: auto; }
+.vt-note { margin: 0; padding: 8px 10px; border-left: 2px solid var(--border-strong); background: var(--bg-secondary); color: var(--text-secondary); font-size: 11px; line-height: 1.6; border-radius: 0 var(--radius-card) var(--radius-card) 0; }
+.vt-note--warn { border-left-color: var(--tone-warn); }
+.vt-figure { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
+.vt-figure b { font-family: var(--font-mono); color: var(--text-primary); }
+
+.vt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.vt-table th,
+.vt-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.vt-table thead th { position: sticky; top: 0; z-index: 1; background: var(--bg-card); color: var(--text-secondary); font: 600 9px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.vt-table tbody th { font: 500 12px var(--font-ui); color: var(--text-primary); }
+.vt-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.vt-table tbody tr:last-child th,
+.vt-table tbody tr:last-child td { border-bottom: 0; }
+.vt-table--dense th,
+.vt-table--dense td { padding: 5px 8px; font-size: 11px; }
+.vt-table--dense tbody th { font-size: 11px; font-weight: 400; }
+.vt-cell--verified { font-family: var(--font-mono); color: var(--text-primary); cursor: help; }
+.vt-cell--verified b { font-weight: 600; }
+.vt-cell--muted { font-family: var(--font-mono); color: var(--text-secondary); opacity: .75; }
+.vt-table .is-good { color: var(--tone-good); }
+.vt-table .is-bad { color: var(--tone-bad); }
+
+.vt-tag { display: inline-flex; align-items: center; padding: 2px 6px; border: 1px solid var(--border); border-radius: var(--radius-pill); font: 600 8px var(--font-mono); letter-spacing: .1em; white-space: nowrap; }
+.vt-tag--verified { color: var(--tone-good); border-color: color-mix(in srgb, var(--tone-good) 45%, transparent); background: color-mix(in srgb, var(--tone-good) 10%, transparent); }
+.vt-tag--not-available { color: var(--tone-warn); border-color: color-mix(in srgb, var(--tone-warn) 45%, transparent); background: color-mix(in srgb, var(--tone-warn) 10%, transparent); }
+.vt-tag--not-released { color: var(--text-secondary); }
+.vt-tag--excerpt { color: var(--tone-warn); border-style: dashed; background: transparent; }
+
+.vt-term__line--ok { color: var(--tone-good); }
+
+/* ── Overflow containment ──────────────────────────────────────────────────
+ * Tiles are grid children, so without a min-width of 0 a wide table or a long
+ * source URL can push its text outside the panel. These rules keep every
+ * character inside the tile it belongs to.                                  */
+
+.tile-wall > .vt-tile { min-width: 0; }
+.vt-tile__body { min-width: 0; overflow-wrap: anywhere; }
+.vt-scroll-x { max-width: 100%; overflow-x: auto; }
+.vt-table { min-width: 520px; }
+.vt-table--dense { min-width: 380px; }
+.vt-note,
+.vt-muted { overflow-wrap: anywhere; }
+.vt-link { word-break: break-word; }
+.vt-metric__value { overflow-wrap: anywhere; }

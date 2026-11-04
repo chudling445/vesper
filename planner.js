@@ -1,7 +1,7 @@
 import { appStore } from './persistence.js';
 import { calculatePCPartCompatibility, calculateTDEEAndDeficit, calculateXirr, fetchStockTickers, initVesperDatabase } from './local-tools.js';
 import { BUILD_GUIDES, COMPONENT_TYPES, INDIAN_AND_GLOBAL_BRANDS, PRICE_SOURCES, REFERENCE_PARTS, RETAILERS } from './pc-catalog.js';
-import { fastingElapsedMinutes, normalizeNutritionEntry, summarizeNutritionDay } from './health-tools.mjs';
+import { fastingElapsedMinutes, normalizeHydrationEntry, normalizeHydrationGoal, normalizeNutritionEntry, summarizeHydrationDay, summarizeNutritionDay } from './health-tools.mjs';
 
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -30,6 +30,7 @@ function ensureState() {
   finance.assets ||= []; finance.quotes ||= {}; finance.accounts ||= []; finance.ledger ||= []; finance.budgets ||= [];
   health = clone(appStore.get('workspace.health', null) || {});
   health.nutritionEntries = Array.isArray(health.nutritionEntries) ? health.nutritionEntries : [];
+  health.hydrationEntries = Array.isArray(health.hydrationEntries) ? health.hydrationEntries : [];
   health.fastingSessions = Array.isArray(health.fastingSessions) ? health.fastingSessions : [];
   health.activeFast = health.activeFast && typeof health.activeFast === 'object' ? health.activeFast : null;
   habits = clone(appStore.get('workspace.habits', { days: {}, badges: [] }));
@@ -277,6 +278,24 @@ function bindHealth() {
     event.preventDefault(); const input = { method: $('health-method').value, sex: $('health-sex').value, age: toNum('health-age'), weightKg: toNum('health-weight'), heightCm: toNum('health-height'), bodyFatPercent: toNum('health-bodyfat'), activityFactor: number($('health-activity').value), deficitKcal: toNum('health-deficit'), targetWeightKg: toNum('health-target') };
     const result = calculateTDEEAndDeficit(input); renderHealthResult(result); health = { ...health, input, result, updatedAt: Date.now() }; savePath('workspace.health', health); renderNutritionLog();
   });
+  $('hydration-date').value = localDate();
+  $('hydration-goal').value = health.hydrationGoalMl == null ? '' : String(health.hydrationGoalMl);
+  $('hydration-date').addEventListener('change', renderHydrationLog);
+  $('hydration-goal').addEventListener('change', () => {
+    try {
+      health.hydrationGoalMl = normalizeHydrationGoal($('hydration-goal').value);
+      saveHealth(); renderHydrationLog();
+    } catch (error) { showStatus(error instanceof Error ? error.message : 'Could not save that optional daily reference.', 'error'); }
+  });
+  $('hydration-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    try {
+      const entry = normalizeHydrationEntry({ date: $('hydration-date').value, milliliters: $('hydration-amount').value });
+      if (health.hydrationEntries.length >= 10_000) throw new Error('This local hydration log has reached 10,000 entries. Remove older records before adding more.');
+      health.hydrationEntries.push({ id: uid(), ...entry, createdAt: Date.now() });
+      saveHealth(); $('hydration-form').reset(); renderHydrationLog();
+    } catch (error) { showStatus(error instanceof Error ? error.message : 'Could not save that hydration entry.', 'error'); }
+  });
   $('nutrition-date').value = localDate();
   $('nutrition-date').addEventListener('change', renderNutritionLog);
   $('nutrition-form').addEventListener('submit', (event) => {
@@ -319,7 +338,7 @@ function bindHealth() {
     if (!window.confirm('The saved timer start is invalid. Discard this timer without adding a session?')) return;
     health.activeFast = null; saveHealth(); renderFastingLog();
   });
-  renderNutritionLog(); renderFastingLog();
+  renderHydrationLog(); renderNutritionLog(); renderFastingLog();
   window.clearInterval(fastingTimer);
   fastingTimer = window.setInterval(renderFastingLog, 60_000);
   window.addEventListener('pagehide', () => window.clearInterval(fastingTimer), { once: true });
@@ -354,6 +373,33 @@ function renderNutritionLog() {
     row.append(node('small', '', `P ${number(entry.proteinG)} g · C ${number(entry.carbsG)} g · F ${number(entry.fatG)} g`));
     const remove = node('button', 'row-remove', '×'); remove.type = 'button'; remove.setAttribute('aria-label', `Remove ${entry.name}`);
     remove.addEventListener('click', () => { health.nutritionEntries = health.nutritionEntries.filter((item) => item.id !== entry.id); saveHealth(); renderNutritionLog(); });
+    row.append(remove); list.append(row);
+  });
+}
+
+function renderHydrationLog() {
+  const date = $('hydration-date').value || localDate();
+  const summary = summarizeHydrationDay(health.hydrationEntries, date);
+  const target = (() => {
+    try { return normalizeHydrationGoal(health.hydrationGoalMl); } catch { return null; }
+  })();
+  const panel = $('hydration-summary'); panel.replaceChildren();
+  panel.append(node('b', '', target
+    ? `${summary.milliliters.toLocaleString()} ml · ${summary.entries} entries · ${Math.round(summary.milliliters / target * 100)}% of your optional reference`
+    : `${summary.milliliters.toLocaleString()} ml · ${summary.entries} entries · no personal reference set`));
+  if (target) {
+    const track = node('span', 'allocation-track'); const fill = node('i');
+    fill.style.width = `${Math.min(100, summary.milliliters / target * 100)}%`; track.append(fill); panel.append(track);
+  }
+  const list = $('hydration-entries'); list.replaceChildren();
+  const entries = health.hydrationEntries.filter((entry) => entry?.date === date).slice().sort((a, b) => number(b.createdAt) - number(a.createdAt));
+  if (!entries.length) list.append(node('p', 'empty-state', 'No water entries for this date.'));
+  entries.forEach((entry) => {
+    const row = node('div', 'health-entry-row');
+    row.append(node('span', '', Number.isFinite(Number(entry.createdAt)) ? new Date(Number(entry.createdAt)).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Recorded'));
+    row.append(node('b', '', `${number(entry.milliliters).toLocaleString()} ml`));
+    const remove = node('button', 'row-remove', '×'); remove.type = 'button'; remove.setAttribute('aria-label', 'Remove hydration entry');
+    remove.addEventListener('click', () => { health.hydrationEntries = health.hydrationEntries.filter((item) => item.id !== entry.id); saveHealth(); renderHydrationLog(); });
     row.append(remove); list.append(row);
   });
 }

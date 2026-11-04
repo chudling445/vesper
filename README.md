@@ -22,11 +22,15 @@ Project Vesper is an anime-focused LLM companion project. She chats in a snarky-
 - **Avatar canvas stream hook** — expose a 30 FPS MediaStream to integrations in the same page; this is not an OS virtual camera or VMC/OSC sender
 - **Bright anime-dub voice profiles** in English and 日本語 using installed system voices, 1.1× pace and 1.4× pitch defaults, speech-boundary visemes, and a timer fallback when browser boundary events are unavailable; Voice Lab's exact installed-voice choice now carries into chat and Arcade reactions
 - **Push-to-talk** speech input when the browser exposes Speech Recognition
-- **Offline Arcade** with 53 registered games, puzzles, and creative toys, including chess, Tetris, Wordle, 2048, and original local games; the requested 80-module target remains in progress
-- **PC Builds & Money** — offline PC build sheets, component price tracking, Indian index/fund observations, home-loan/LAP term history, transparent calculations, local exports, portfolio, ledger, and habit tools; the optional Health tab includes energy estimates, manual nutrition entries, and a fasting timer log
+- **Offline Arcade** with 83 registered games, puzzles, and creative toys — the original set (chess, Tetris, Wordle, 2048 and friends) plus 30 original offline games from `arcade-expansion-pack.js`, all implemented locally with no network and no third-party embeds
+- **PC Builds & Money** — offline PC build sheets, component price tracking, Indian index/fund observations, home-loan/LAP term history, transparent calculations, local exports, portfolio, ledger, and habit tools; the optional Health tab includes energy estimates, manual nutrition/hydration entries, and an optional fasting timer log
 - **Selectable model backdrops** with Atelier, Sakura, Night, Aurora, and Sunset presets shared by the full studio and Model Only window
 - **First-run welcome flow** with setup steps and a Model Gallery coming-soon preview
-- **Twenty-four shared themes** — including Aurora Glass, a cyan-lit translucent midnight palette, alongside the original Vesper palettes, Omarchy Quattro, Tokyo Night, Catppuccin Mocha, Lumon Industries, Fenrir Cyberpunk, Gruber Darker, Rosé Pine Dark, Miasma Forest, Solitude Slate, and Nord Frost. Choose it from the theme selector to apply across site and desktop windows; press **T** on Chat or **Ctrl/Cmd+Shift+T** on any page to cycle.
+- **Market Terminal** at `/markets` — a stock-tracker-style board for PC components and credit risk. `market-archive.mjs` holds 20 instruments across 11 markets for 2020–2026, and every cell is either verified with its source link, **NOT AVAILABLE**, or **NOT RELEASED** — gaps are printed, never estimated or currency-converted. Multi-source records lead with the source holding the most records, ties breaking to the dated retailer record, while every other source stays credited (63 sources listed). `delinquency-tracker.mjs` carries 15 retail-loan stress series (US NY Fed flow-into-90+, student-loan stock, UK FCA mortgage arrears, ECB household NPL, India retail and unsecured GNPA) with verified figures separated from search-index excerpts, 27 publishers credited, and an hourly refresh loop. LAP and microfinance delinquency are reported as NOT AVAILABLE with a reason because no product-level series was verifiable.
+- **Unified Omarchy Studio** — a tiling workspace at `/studio` that renders Dashboard, Chat Hub, 3D Studio, PC Builder, India Price Sync, Markets & Finance, Health & TDEE, Arcade, and Settings as identical glassmorphic tiles. Drag a tile header to reorder, click ⌗ to resize, double-click to collapse; the layout is remembered locally.
+- **One design-token registry** — `tokens.css` is the single source of every colour, radius, shadow, font, and motion value. Every page loads it, and the shared component kit (`ui-kit/vesper-ui.js`: `TileCard`, `MetricBadge`, `DataChart`, `TerminalBox`) is the only way modules draw a panel, which is what stops the app reading as a bundle of separately styled pages.
+- **Twenty-five shared themes** — including Aurora Glass, a cyan-lit translucent midnight palette, and **Transparent**, which paints no page background so floating desktop windows and overlays show only Vesper and her panels. Plus Omarchy Quattro, Tokyo Night, Catppuccin Mocha, Lumon Industries, Fenrir Cyberpunk, Gruber Darker, Rosé Pine Dark, Miasma Forest, Solitude Slate, and Nord Frost. Choose it from the theme selector to apply across site and desktop windows; press **T** on Chat or **Ctrl/Cmd+Shift+T** on any page to cycle.
+- **Authored gesture pack** — 14 full-body procedural poses (peace, salute, heart, shy-hide, hair-flip, clap, stretch, and more) and six scripted sequences (greeting, celebrate, affection, thinking, apologetic, showoff) layered with a slow idle weight shift, so a VRM with no baked clips still performs with detail.
 - **Private by default** — the server only listens on `127.0.0.1`
 
 ## Configuration
@@ -128,6 +132,18 @@ For a concise setup guide, see [GETTING-STARTED.md](GETTING-STARTED.md). For a p
 - 3D viewer: [three.js](https://threejs.org) and [@pixiv/three-vrm](https://github.com/pixiv/three-vrm)
 - Avatar made in [VRoid Studio](https://vroid.com/en/studio)
 - Local language models via [Ollama](https://ollama.com)
+
+## Core methods
+
+`vesper-core.mjs` is the single import point for the platform-level operations, and every function is unit-tested in `vesper-core.test.mjs`:
+
+- `initVesperDatabase()` — opens the IndexedDB schema for messages, memories, memory edges, PC price history, price-sync log, ledger, accounts, health logs, arcade scores, character cards, and settings. Falls back to an in-memory store when IndexedDB is unavailable.
+- `calculatePCPartCompatibility(build)` — validates CPU/board sockets, DDR4/DDR5 alignment, RAM slot count, GPU length, cooler height, case form factor, and total TDP against PSU headroom.
+- `calculateAllSectorFinancials(portfolioData)` — aggregates Indian equities, mutual funds (with XIRR), commodities, forex, fixed income, crypto, and real estate into one INR view plus an inflation-adjusted return.
+- `syncIndianPCPrices(config)` — pulls one normalized snapshot from each configured vendor, hands it to your persistence hook, and sets the recurring two-hour timer. Vesper ships no scraper: readings come only from `fetchers` you supply for sources you are permitted to read.
+- `updateExpressionBlendshapes(emotion, weight, delta)` — the delta-time lerp behind the 14-channel VRM expression cross-fader.
+- `loadVRMModel(modelUrl)` — browser VRM 1.0/2.0 loader with strict texture/geometry disposal.
+- `calculateTDEEAndDeficit()` and `applyTheme()` are re-exported from `health-tools.mjs` and `themeManager.js`.
 
 ## Core platform layer
 

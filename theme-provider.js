@@ -4,11 +4,13 @@ import { applyTheme, THEME_PALETTES, THEME_STORAGE_KEY } from './themeManager.js
 const MODE_KEY = 'vesper-color-mode-v1';
 const MODES = ['dark', 'light', 'system'];
 const SITE_NAVIGATION = [
+  ['/studio', 'Studio'],
   ['/', 'Chat'],
   ['/workspace', 'Workspace'],
   ['/lab', 'Code Lab'],
   ['/quick-capture', 'Capture'],
   ['/games', 'Arcade'],
+  ['/markets', 'Markets'],
   ['/voices', 'Voice lab'],
   ['/about', 'Studio guide'],
   ['/planner', 'Builds & Money'],
