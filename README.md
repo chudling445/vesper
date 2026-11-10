@@ -1,8 +1,4 @@
-<picture>
-  <source width="100%" srcset="./docs/banner-dark.png" media="(prefers-color-scheme: dark)" />
-  <source width="100%" srcset="./docs/banner-light.png" media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)" />
-  <img width="100%" src="./docs/banner-light.png" alt="Project Vesper" />
-</picture>
+![Project Vesper](./assets/vesper-banner.png)
 
 <h1 align="center">Project Vesper</h1>
 
