@@ -1,3 +1,0 @@
-Export your editable .vroid project as a VRM file in VRoid Studio.
-Save the export in this folder as character.vrm.
-Keep the .vroid source project in the main project folder; Vesper does not edit it.
