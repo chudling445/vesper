@@ -1,23 +1,18 @@
+# your API keys
 .env
-/.env.*
-!/.env.example
-*.log
-/llm-models/
-/desktop-profile/
-/pc-price-feeds.local.json
-money-tracker-feeds.local.json
-backup-before-*/
-/work/
-/Vesper-Setup.exe
-/node_modules/
-/.idea/
-/.vscode/
-/.vs/
-*.iml
-/models/*
-!/models/PUT-YOUR-VRM-HERE.txt
-*.vrm
-*.vroid
-*.vroidcustomitem
-/dist/
-/build/
+
+# runtime files
+chat_history.json
+client/audio/
+.venv/
+__pycache__/
+
+# local Ollama models (OLLAMA_MODELS points here; these are gigabytes)
+llm-models/
+
+# Personal character assets stay local; they are not part of the app release.
+/models/*.vrm
+/model.vroid
+
+# local dev workspace
+/.work/
