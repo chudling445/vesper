@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.1.2 — 2026-11-11
+
+Idle motion that reads as human, plus the fixes found in the same pass.
+
+### Avatar
+
+- Breathing has a quicker inhale and a softer exhale instead of a plain sine wave, her weight shifts on two unrelated periods, and her chest counter-leans against her hips.
+- Her head eases toward the cursor with a little lag instead of tracking it exactly, and breath now moves her arms and shoulders too.
+- Lip sync and mouth shapes are smoothed with the frame delta, so her mouth moves the same at 30, 60 or 144 Hz.
+
+### Fixes
+
+- Screen readers no longer hear each caption twice: the visible line stays hidden from assistive tech while the live region announces it once.
+- Link pages that are not UTF-8 (Shift-JIS, Latin-1) are decoded from their own `<meta charset>` instead of coming back as mojibake.
+- A missing avatar file returns a clear 404 instead of a server error.
+- Spoken-word counting no longer treats a stray `*` (as in "5 * 3") as the start of a stage direction.
+
+### Packaging
+
+- Project version bumped to 1.1.2.
+
 ## 1.1.1 — 2026-11-11
 
 Links, fuller replies, and a wave that faces you.
