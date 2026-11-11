@@ -115,6 +115,14 @@ def reply(user_text, cfg, status=None):
         answer = _ask(client, cfg, [*messages[:-1], {"role": "user", "content": nudge}]) or answer
 
     history.append({"role": "assistant", "content": answer})
+    # If the chat was cleared while she was answering, keep just this exchange
+    # instead of writing the wiped conversation back over the cleared file.
+    try:
+        on_disk = json.loads(history_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        on_disk = None
+    if isinstance(on_disk, list) and len(on_disk) < len(history) - 2:
+        history = history[-2:]
     history_path.write_text(json.dumps(history, indent=2, ensure_ascii=False), encoding="utf-8")
     return answer
 

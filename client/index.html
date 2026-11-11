@@ -58,6 +58,7 @@
     .composer-row { display: flex; gap: 7px; align-items: center; margin-top: 8px; }
     .composer-hint { flex: 1; color: #a99ab6; font-size: 8px; }
     .mic-button, .stop-button { width: 36px; height: 34px; font-size: 14px; }
+    .mic-button { width: 46px; font-size: 10px; letter-spacing: .06em; }
     .mic-button.recording { color: #ff7c9f; border-color: #ff7c9f; animation: pulse 1s infinite; }
     .send-button { min-height: 34px; padding: 0 13px; border-color: rgba(192,154,255,.38); background: linear-gradient(135deg, rgba(145,91,201,.48), rgba(224,104,148,.24)); font-size: 10px; }
     #send { margin-left: auto; }
@@ -169,8 +170,8 @@
     <div class="toolbar">
       <button id="caption-toggle" class="tool-button" type="button" aria-label="Toggle subtitles" aria-pressed="true" title="Toggle subtitles">CC</button>
       <button id="chat-toggle" class="tool-button" type="button" aria-pressed="true"><span id="chat-toggle-label">Chat</span> ◫</button>
-      <button id="settings-open" class="icon-button" type="button" aria-label="Open settings" title="Settings">⚙</button>
-      <button id="fullscreen" class="icon-button" type="button" aria-label="Toggle full screen" title="Full screen">⛶</button>
+      <button id="settings-open" class="tool-button" type="button" aria-label="Open settings" title="Settings">Settings</button>
+      <button id="fullscreen" class="tool-button" type="button" aria-label="Toggle full screen" title="Full screen">Full screen</button>
     </div>
   </header>
   <p id="status-detail" class="status-detail" aria-live="polite"></p>
@@ -188,7 +189,7 @@
     <form id="composer">
       <textarea id="message-input" maxlength="4000" placeholder="Write something… (Enter sends)" aria-label="Message to Vesper"></textarea>
       <div class="composer-meta"><span id="composer-hint" class="composer-hint">Enter sends · Shift + Enter for a new line</span><span id="message-count" aria-live="polite">0 / 4,000</span><button id="draft-clear" type="button" aria-label="Clear saved draft">Clear draft</button></div>
-      <div class="composer-row"><button id="mic" class="mic-button" type="button" aria-label="Record a voice message" title="Record voice">♩</button><button id="stop" class="stop-button" type="button" aria-label="Stop Vesper speaking" title="Interrupt">■</button><button id="send" class="send-button" type="submit" disabled>Send ↗</button></div>
+      <div class="composer-row"><button id="mic" class="mic-button" type="button" aria-label="Record a voice message" title="Record voice">Mic</button><button id="stop" class="stop-button" type="button" aria-label="Stop Vesper speaking" title="Interrupt">■</button><button id="send" class="send-button" type="submit" disabled>Send ↗</button></div>
     </form>
   </aside>
   <button id="chat-toggle-float" class="tool-button" type="button">Open chat</button>
@@ -212,6 +213,7 @@
       <label class="settings-row"><span>Reduced motion<small>Limit decorative movement</small></span><input id="reduced-motion" type="checkbox"></label>
       <label class="settings-row"><span>Render quality<small>Choose detail or smoother performance</small></span><select id="quality"><option value="1">Performance</option><option value="1.4">Balanced</option><option value="2">High detail</option></select></label>
       <label class="settings-row"><span>Chat text size<small>Make conversation easier to read</small></span><select id="chat-size"><option value="11px">Comfortable</option><option value="13px">Large</option><option value="15px">Extra large</option></select></label>
+      <div class="settings-row"><span>Conversation<small>Clear the saved chat and start fresh. She keeps her name for you and her turn count.</small></span><button id="clear-chat" type="button">Clear chat</button></div>
       <label class="settings-row"><span>Message times<small>Show when a message was saved</small></span><input id="timestamps" type="checkbox" checked></label>
       <div class="settings-row"><span>Keyboard shortcuts<small>Quick actions on this page</small></span><button id="show-shortcuts" type="button">View</button></div>
       <p id="settings-note">Voice recording uses your selected speech provider. The avatar and controls run in this browser; provider settings remain in your local config.</p>
@@ -1027,6 +1029,21 @@
       if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
       return data;
     }
+    async function clearChat() {
+      try {
+        await postJson('/api/clear', {});
+        savedHistory = [];
+        pendingMessages = [];
+        historyCount = 0;
+        historySearch.value = '';
+        storage.set('history-search', '');
+        renderHistory();
+        window.vesperCaptions?.hide(true);
+        toast('Conversation cleared');
+      } catch (error) {
+        toast(error.message || 'Could not clear the conversation');
+      }
+    }
     async function submitText(text) {
       const value = text.trim();
       if (!value || sending) return;
@@ -1039,11 +1056,12 @@
           if (command === '/dance') { avatar?.gesture('wave'); setTimeout(() => avatar?.gesture('hips'), 500); setTimeout(() => avatar?.gesture('bow'), 1100); }
           else avatar?.gesture(gestures[command]);
           consumeCommand();
-          toast(command === '/dance' ? 'Secret dance unlocked ✨' : `${command.slice(1)}!`);
+          toast(command === '/dance' ? 'Secret dance unlocked' : `${command.slice(1)}!`);
           return;
         }
-        if (command === '/help') { consumeCommand(); toast('Try /wave, /bow, /pose, /dance, /surprise, /shake, /spin, /recenter or /fullscreen'); return; }
-        if (command === '/secret') { consumeCommand(); toast('You found the tiny violet star ✦'); window.__v?.gesture('flinch'); return; }
+        if (command === '/clear') { consumeCommand(); clearChat(); return; }
+        if (command === '/help') { consumeCommand(); toast('Try /clear, /wave, /bow, /pose, /dance, /surprise, /shake, /spin, /recenter or /fullscreen'); return; }
+        if (command === '/secret') { consumeCommand(); toast('You found the tiny violet star'); window.__v?.gesture('flinch'); return; }
         if (command === '/spin') { consumeCommand(); if (window.__v) window.__v.controls.autoRotate = !window.__v.controls.autoRotate; toast(window.__v?.controls.autoRotate ? 'Slow orbit on' : 'Slow orbit off'); return; }
         if (command === '/recenter') { consumeCommand(); window.__v?.controls.reset(); toast('View recentered'); return; }
         if (command === '/fullscreen') { consumeCommand(); $('fullscreen').click(); return; }
@@ -1147,6 +1165,20 @@
     $('reduced-motion').addEventListener('change', event => { document.body.classList.toggle('reduce-motion', event.target.checked); window.__v?.setMotionScale(event.target.checked); storage.set('reduced-motion', String(event.target.checked)); });
     $('quality').value = storage.get('quality', '1.4');
     $('quality').addEventListener('change', event => { window.__v?.setQuality(Number(event.target.value)); storage.set('quality', event.target.value); });
+    let clearArmed = false, clearTimer = 0;
+    $('clear-chat').addEventListener('click', () => {
+      if (!clearArmed) {
+        clearArmed = true;
+        $('clear-chat').textContent = 'Sure? Click again';
+        toast('This clears the saved conversation. Click again to confirm.');
+        clearTimer = setTimeout(() => { clearArmed = false; $('clear-chat').textContent = 'Clear chat'; }, 4000);
+        return;
+      }
+      clearTimeout(clearTimer);
+      clearArmed = false;
+      $('clear-chat').textContent = 'Clear chat';
+      clearChat();
+    });
     $('export-chat').addEventListener('click', async () => {
       try {
         const response = await fetch('/api/history');
@@ -1224,7 +1256,7 @@
     let brandClicks = 0;
     $('brand').addEventListener('click', () => {
       brandClicks++;
-      if (brandClicks === 7) { brandClicks = 0; toast('Seven stars for Vesper ✦'); window.__v?.gesture('wave'); }
+      if (brandClicks === 7) { brandClicks = 0; toast('Seven stars for Vesper'); window.__v?.gesture('wave'); }
     });
     window.addEventListener('keydown', event => {
       if (event.key === 'Escape' && dialog.open) dialog.close();
@@ -1233,7 +1265,7 @@
       if (key === '?' && !['TEXTAREA', 'INPUT'].includes(document.activeElement?.tagName)) toast('Enter sends · Shift+Enter adds a line · Ctrl+J toggles chat · C toggles captions');
       if (key === 'c' && !event.ctrlKey && !event.metaKey && !event.altKey && !['TEXTAREA', 'INPUT'].includes(document.activeElement?.tagName)) setCaptionsEnabled(!$('subtitles').checked);
       secretProgress = key === konami[secretProgress] ? secretProgress + 1 : (key === konami[0] ? 1 : 0);
-      if (secretProgress === konami.length) { secretProgress = 0; toast('Moonlit mode unlocked ✨'); document.body.classList.toggle('moonlit'); window.__v?.gesture('wave'); }
+      if (secretProgress === konami.length) { secretProgress = 0; toast('Moonlit mode unlocked'); document.body.classList.toggle('moonlit'); window.__v?.gesture('wave'); }
       if (!['TEXTAREA', 'INPUT'].includes(document.activeElement?.tagName) && /^[1-5]$/.test(event.key)) {
         const gestureNames = ['wave', 'bow', 'hips', 'shake', 'flinch'];
         window.__v?.gesture(gestureNames[Number(event.key) - 1]);

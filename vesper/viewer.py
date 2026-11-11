@@ -157,6 +157,8 @@ class _Handler(SimpleHTTPRequestHandler):
             except Exception as error:
                 update_status("error", "Speech recognition failed.")
                 return self._json({"error": f"Speech recognition failed: {type(error).__name__}."}, 500)
+        if self.path == "/api/clear":
+            return self._clear()
         if self.path == "/done":
             _finished.set()
             return self._send(b"{}", "application/json; charset=utf-8")
@@ -178,6 +180,18 @@ class _Handler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def _clear(self):
+        """Empty the saved conversation, so the next turn starts fresh."""
+        try:
+            path = (ROOT / (_cfg or {}).get("history_file", "chat_history.json")).resolve()
+            path.relative_to(ROOT.resolve())
+            path.write_text("[]\n", encoding="utf-8")
+        except (OSError, ValueError):
+            return self._json({"error": "The conversation could not be cleared."}, 500)
+        stop()  # cut off anything she is saying right now
+        update_status("ready", "Chat cleared.")
+        return self._json({"cleared": True})
 
     def log_message(self, *args):
         pass  # keep the terminal readable

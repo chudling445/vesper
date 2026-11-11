@@ -1,6 +1,6 @@
 # Vesper's model in the Vesper app
 
-The app itself is called Vesper. Its code is the public Project Riko GitHub snapshot (MIT, commit `3ac7a9253e5da2fc525d98c3ca942c8042b95410`), not the separately described Patreon Desktop App or private full-source edition. The original Riko license is retained in `LICENSE`.
+The app itself is called Vesper. Its code is the public Project Riko GitHub snapshot (MIT, commit `3ac7a9253e5da2fc525d98c3ca942c8042b95410`), not the private full-source edition or the separate desktop app. The original Riko license is retained in `LICENSE`.
 
 Vesper's exported model remains at `models/character.vrm`; its editable VRoid source remains at `model.vroid`. `character_config.yaml` points the viewer to the exported VRM. The original sample avatar was not retained; the public sample voice and other repository files were copied as requested.
 

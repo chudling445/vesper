@@ -13,7 +13,6 @@
 
 <p align="center">
   <a href="https://www.youtube.com/@JustRayen"><img src="https://img.shields.io/badge/YouTube-Just_Rayen-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube: Just Rayen" /></a>
-  <a href="https://patreon.com/RayenAI"><img src="https://img.shields.io/badge/Patreon-RayenAI-FF424D?style=for-the-badge&logo=patreon&logoColor=white" alt="Patreon: RayenAI" /></a>
   <a href="https://discord.gg/rayenai"><img src="https://img.shields.io/discord/1278117138909102170?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=5865F2" alt="Discord" /></a>
 </p>
 <p align="center">
@@ -27,11 +26,9 @@
 > [!IMPORTANT]
 > **This is the 50K snapshot: a complete Vesper, open source and yours to keep.** It's frozen at this release, so it stays a stable base to build on.
 >
-> Vesper keeps growing on **[Patreon](https://patreon.com/RayenAI)**, home of the Full Source and the Desktop App. [See how they compare.](#three-ways)
->
 > GitHub issues aren't monitored, so there's no support here.
 
-## 🦊 Meet Vesper
+## Meet Vesper
 
 Vesper is a voice companion you set up yourself. Press Enter and talk. She hears you, comes up with a reply (usually a snarky one), and says it out loud while her lips move along on screen.
 
@@ -39,44 +36,45 @@ This repo is the open-source core of Project Vesper: the whole loop from your vo
 
 Her personality, her avatar and her voice all live in one config file. Making her yours takes a few minutes.
 
-## ✨ What she can do
+## What she can do
 
 | | |
 |---|---|
-| 🎙️ **Listens** | Push-to-talk, or type instead. Press Enter, speak, press Enter — or type a line and press Enter. |
-| 👂 **Understands** | Speech to text with [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper) on your own PC, or [Groq](https://console.groq.com)'s fast online Whisper. |
-| 🧠 **Thinks** | Replies come from a local model through Ollama, or OpenAI GPT, in whatever personality you write for her. |
-| 📝 **Keeps the conversation** | The chat is saved to `chat_history.json`, so she picks up where you left off. |
-| 🗣️ **Speaks** | Clones a voice from a short clip with [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS), or uses any voice on [Fish Audio](https://fish.audio/?fpr=rayen10). |
-| 💃 **Shows up** | A VRM avatar in your browser that lip-syncs her vowel shapes, blinks, breathes and shifts her weight while idle. Her expression follows the line she is saying — a smile, a pout, a blush — and her eyes follow your cursor. Drag to spin her around, right-drag to move her, scroll to zoom. She also waves, bows, flinches when poked, and her body shifts with mood-driven gestures. |
-| 🎭 **Becomes anyone** | Personality, avatar and voice are all set in one file. |
-| 💬 **Browser chat** | Send messages in the avatar page, see saved conversation history, queue messages, or interrupt a reply. |
-| 🎙️ **Browser voice** | Record a push-to-talk clip in the page, see its transcript, and send it to the configured speech recognizer. |
-| 🧰 **Companion studio** | Style readable live captions, preview them, set size, contrast, position and hold time, and adjust chat text, timestamps, reduced motion and render quality. Captions light up word by word in time with her voice and also show what she heard you say. Search or copy replies, recover a local draft, reconnect the server, and control full screen, camera framing and avatar gestures. |
-| ✨ **Shortcuts + secrets** | Use slash commands, keyboard shortcuts, a hidden dance, and the Konami moonlit theme. |
-| 📤 **Take your work with you** | Export the conversation as JSON or save an avatar snapshot as PNG. |
-| ✅ **Tells you what's missing** | Before she starts, a quick check catches a missing key, server or file and tells you how to fix it. |
+| **Listens** | Push-to-talk, or type instead. Press Enter, speak, press Enter — or type a line and press Enter. |
+| **Understands** | Speech to text with [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper) on your own PC, or [Groq](https://console.groq.com)'s fast online Whisper. |
+| **Thinks** | Replies come from a local model through Ollama, or OpenAI GPT, in whatever personality you write for her. |
+| **Keeps the conversation** | The chat is saved to `chat_history.json`, so she picks up where you left off. |
+| **Clear chat** | Wipe the saved conversation from Settings → Conversation, or type `/clear`, and start fresh. She keeps her name for you and how many times you've talked. |
+| **Speaks** | Clones a voice from a short clip with [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS), or uses any voice on [Fish Audio](https://fish.audio/?fpr=rayen10). |
+| **Shows up** | A VRM avatar in your browser that lip-syncs her vowel shapes, blinks, breathes and shifts her weight while idle. Her expression follows the line she is saying — a smile, a pout, a blush — and her eyes follow your cursor. Drag to spin her around, right-drag to move her, scroll to zoom. She also waves, bows, flinches when poked, and her body shifts with mood-driven gestures. |
+| **Becomes anyone** | Personality, avatar and voice are all set in one file. |
+| **Browser chat** | Send messages in the avatar page, see saved conversation history, queue messages, or interrupt a reply. |
+| **Browser voice** | Record a push-to-talk clip in the page, see its transcript, and send it to the configured speech recognizer. |
+| **Companion studio** | Style readable live captions, preview them, set size, contrast, position and hold time, and adjust chat text, timestamps, reduced motion and render quality. Captions light up word by word in time with her voice and also show what she heard you say. Search or copy replies, recover a local draft, reconnect the server, and control full screen, camera framing and avatar gestures. |
+| **Shortcuts + secrets** | Use slash commands, keyboard shortcuts, a hidden dance, and the Konami moonlit theme. |
+| **Take your work with you** | Export the conversation as JSON or save an avatar snapshot as PNG. |
+| **Tells you what's missing** | Before she starts, a quick check catches a missing key, server or file and tells you how to fix it. |
 
-## ⚙️ How it works
+## How it works
 
 ```mermaid
 flowchart LR
-    you(["🎙️ You talk"]) --> ears["👂 Ears<br/>Faster-Whisper or Groq"]
-    ears --> brain["🧠 Brain<br/>OpenAI GPT"]
-    brain --> voice["🗣️ Voice<br/>GPT-SoVITS or Fish Audio"]
-    voice --> face(["💃 Face<br/>VRM avatar + lip sync"])
+    you(["You talk"]) --> ears["Ears<br/>Faster-Whisper or Groq"]
+    ears --> brain["Brain<br/>OpenAI GPT"]
+    brain --> voice["Voice<br/>GPT-SoVITS or Fish Audio"]
+    voice --> face(["Face<br/>VRM avatar + lip sync"])
 ```
 
 Each step is one file, and `main.py` runs them in a loop:
 
 | Step | File | What it does |
 |---|---|---|
-| 👂 Ears | `vesper/asr.py` | Records you between the two Enters, turns it into text |
-| 🧠 Brain | `vesper/llm.py` | Sends the chat to OpenAI, saves her answer to the history |
-| 🗣️ Voice | `vesper/tts.py` | Turns her answer into a voice clip |
-| 💃 Face | `vesper/viewer.py` + `client/index.html` | Plays the clip on the avatar page and moves her mouth with it |
+| Ears | `vesper/asr.py` | Records you between the two Enters, turns it into text |
+| Brain | `vesper/llm.py` | Sends the chat to OpenAI, saves her answer to the history |
+| Voice | `vesper/tts.py` | Turns her answer into a voice clip |
+| Face | `vesper/viewer.py` + `client/index.html` | Plays the clip on the avatar page and moves her mouth with it |
 
-## 🚀 Quick start
+## Quick start
 
 The easiest way in uses Fish Audio for her voice: no GPU and nothing extra to install. If you'd rather generate her voice on your own PC, do this first and then see [Local voice](#local-voice).
 
@@ -143,7 +141,7 @@ The first launch takes a minute while it downloads the speech recognition model.
 > [!NOTE]
 > Her brain defaults to a local model: install [Ollama](https://ollama.com), run `ollama pull llama3.2` once, and leave the Ollama app running. No OpenAI key needed. Switch to `brain: openai` in `character_config.yaml` (plus `OPENAI_API_KEY` in `.env`) to use OpenAI instead.
 
-## 🎨 Make her yours
+## Make her yours
 
 Everything about her lives in `character_config.yaml`. Put her files (avatar, voice clip) in `character_files/`.
 
@@ -174,7 +172,7 @@ uv run main.py --brain openai  # or ollama
 ```
 
 <a id="local-voice"></a>
-## 🎤 Local voice with GPT-SoVITS
+## Local voice with GPT-SoVITS
 
 Want her voice generated on your own machine, cloned from any clip you like? That's what GPT-SoVITS does. It runs best on an NVIDIA GPU and is installed separately.
 
@@ -187,33 +185,8 @@ Want her voice generated on your own machine, cloned from any clip you like? Tha
 
 She starts with the sample voice in `character_files/main_sample.wav`. Swap in your own clip (see the table above) to change it.
 
-<a id="three-ways"></a>
-## 💎 Three ways to have Vesper
 
-Same Vesper, three ways to have her. Each one is made for a different kind of person, so pick the one that matches how you like to work.
-
-| | 🛠️ Open Source<br /><sub>this repo</sub> | 🧪 [Full Source](https://patreon.com/RayenAI)<br /><sub>on Patreon</sub> | 🖥️ [Desktop App](https://patreon.com/RayenAI)<br /><sub>on Patreon</sub> |
-|---|---|---|---|
-| **Made for** | Builders who want a clean base to make their own | Tinkerers who want every new feature and the code behind it | Anyone who wants her up and running, no code involved |
-| **What you get** | This repo: open source, under 500 lines | The full source of the newest build | A Windows app with an installer and a desktop icon |
-| Talks with a lip-synced VRM avatar | ✅ | ✅ | ✅ |
-| Hears you | Faster-Whisper on your PC, or Groq | Groq Whisper | Groq Whisper |
-| Her voice | GPT-SoVITS voice clone or Fish Audio | GPT-SoVITS voice clone or Fish Audio | Both, switched in Settings, with automatic fallback |
-| Conversation | Push-to-talk or typing, easy to rewire | Hands-free: she can tell when you've finished | Hands-free, or type to her |
-| Face and body | Lip sync with vowel shapes, mood-driven expressions with blush, blinking, breathing and idle body motion, ready for your own animation system | Expressions and animations she picks herself | Expressions and animations she picks herself |
-| Memory | Chat history in a file you control | Long-term memory across sessions | Long-term memory you can browse, edit and reset |
-| Doing things | Plug in your own tools | Tool calling with tools you write | Looks things up online when you ask |
-| Backgrounds and anime scenes | A clean stage for your own | Drop in any 3D room, with lighting presets and a light editor | A clean stage, all eyes on her |
-| Your own character | Edit one config file: avatar, voice, personality | Edit the config files: avatar, voice, personality, room | Guided in the app: drop in a VRM, pick a voice, write her personality |
-| VR and desktop window | Yours to add | Quest VR and a transparent floating window | Transparent floating window |
-| Setup | `uv` and a terminal, with a setup checker | `setup.bat`, with a setup checker | One installer; keys tested on screen as you paste them |
-| Runs on | Windows and Linux | Windows | Windows 10 / 11 |
-| License | [MIT](LICENSE): fork it, change it, ship what you build | Personal use, full source included | Personal use; your videos and streams are yours |
-| Updates | Stays at the 50K snapshot | New features as they land | Supported updates and bug fixes for version 1 |
-
-<p align="center"><a href="https://patreon.com/RayenAI"><b>Get the Full Source or the Desktop App on Patreon →</b></a></p>
-
-## 📋 Requirements
+## Requirements
 
 | | With Fish Audio (easiest) | With GPT-SoVITS (local voice) |
 |---|---|---|
@@ -233,20 +206,20 @@ Tested on Windows 11 and Ubuntu 22.04 (WSL2) with an RTX 3060 12 GB. Faster-Whis
 | `FISH_API_KEY` | `tts: fish` | [fish.audio](https://fish.audio/?fpr=rayen10) |
 | `GROQ_API_KEY` | `asr: groq` | [console.groq.com](https://console.groq.com/keys) (free tier) |
 
-## 🆕 New in this release
+## New in this release
 
 | | |
 |---|---|
-| 🗣️ **Subtitles** | Her spoken lines appear as subtitles on the avatar page, with each word lighting up as the audio reaches it. Stage directions are stripped, pipelined sentences keep the caption steady, and your own voice messages get a caption while she listens. |
-| 🔗 **Reads links** | Send her a URL and she opens the page, reads its text, and answers about it, or tells you plainly when it can't be read. Local and private addresses are refused. |
-| ⏱️ **Bounded replies** | Only the recent conversation is sent to the model and each reply is capped, so a long chat or a rambling model can't spiral into an endless answer. |
-| ⏸️ **Interrupt** | Press **Enter** while she talks to cut her off mid-sentence, then freely type a new message or press Enter again to talk hands-free. |
-| 👂 **Hands-free listening** | She listens continuously; a pause in your speech auto-stops recording, so you don't need to press Enter each time. |
-| 💾 **Memory** | She remembers your name and how many times you've talked together, and grows warmer over time. |
-| 🎭 **Gestures** | She waves when she says hello, shakes when angry, bows when shy, flinches when poked, and her body shifts with mood (angry, smug, excited). |
-| ❓ **Question prosody** | Her brows lift when her line contains a question mark. |
+| **Subtitles** | Her spoken lines appear as subtitles on the avatar page, with each word lighting up as the audio reaches it. Stage directions are stripped, pipelined sentences keep the caption steady, and your own voice messages get a caption while she listens. |
+| **Reads links** | Send her a URL and she opens the page, reads its text, and answers about it, or tells you plainly when it can't be read. Local and private addresses are refused. |
+| **Bounded replies** | Only the recent conversation is sent to the model and each reply is capped, so a long chat or a rambling model can't spiral into an endless answer. |
+| **Interrupt** | Press **Enter** while she talks to cut her off mid-sentence, then freely type a new message or press Enter again to talk hands-free. |
+| **Hands-free listening** | She listens continuously; a pause in your speech auto-stops recording, so you don't need to press Enter each time. |
+| **Memory** | She remembers your name and how many times you've talked together, and grows warmer over time. |
+| **Gestures** | She waves when she says hello, shakes when angry, bows when shy, flinches when poked, and her body shifts with mood (angry, smug, excited). |
+| **Question prosody** | Her brows lift when her line contains a question mark. |
 
-## 🩹 Troubleshooting
+## Troubleshooting
 
 | You see | Try this |
 |---|---|
@@ -262,7 +235,7 @@ Tested on Windows 11 and Ubuntu 22.04 (WSL2) with an RTX 3060 12 GB. Faster-Whis
 | She says a link couldn't be read | Some sites need JavaScript, a login, or block automated readers. Try the article's reader/print view or paste the text instead. |
 | `(heard nothing, try again)` | Make sure your mic is the default recording device, and talk a little longer. |
 
-## 🔧 Under the hood
+## Under the hood
 
 ```
 main.py                the loop: record → transcribe → reply → speak → play
@@ -292,7 +265,7 @@ uv run python -m vesper.asr      # record, then print what she heard
 - **Emotions.** `vesper/llm.py` picks a mood from her reply (`mood()`), and `MOODS` in `client/index.html` turns it into expression weights — add a row to both and she has a new feeling. `client/index.html` drives her mouth with `vrm.expressionManager.setValue('aa' | 'ih' | 'ou', ...)` too. Add motion in `animate(dt)` — it runs every frame with her bone rig, and anything a model does not have is skipped.
 - **Gestures.** `vesper/tts.py` knows when she is talking; a line in `viewer.py` could tell the page to wave instead of just nod.
 
-## 🙏 Credits
+## Credits
 
 - Voice by [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) and [Fish Audio](https://fish.audio/?fpr=rayen10)
 - Speech recognition by [Faster-Whisper](https://github.com/SYSTRAN/faster-whisper) and [Groq](https://groq.com)
@@ -300,6 +273,6 @@ uv run python -m vesper.asr      # record, then print what she heard
 - Avatar rendering by [three.js](https://threejs.org) and [three-vrm](https://github.com/pixiv/three-vrm)
 - Sample avatar by [pixiv Inc.](https://github.com/pixiv/three-vrm) (VRM1_Constraint_Twist_Sample)
 
-## 📄 License
+## License
 
 [MIT](LICENSE). Feel free to clone, modify, and build your own waifu voice companion.
