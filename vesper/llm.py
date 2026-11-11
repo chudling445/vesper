@@ -151,7 +151,7 @@ def _ask(client, cfg, messages):
     return (response.choices[0].message.content or "").strip()
 
 
-_STAGE = re.compile(r"\*[^*]{0,80}\*|\([^)]{0,80}\)")  # *giggles*, (softly), etc.
+_STAGE = re.compile(r"(?<![\w*])\*[^*\n]{1,80}\*(?![\w*])|\([^)\n]{0,80}\)")  # *giggles*, (softly)
 
 
 def _spoken_words(text):

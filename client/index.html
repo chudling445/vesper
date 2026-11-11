@@ -376,6 +376,7 @@
 
     // Where the cursor is, -1..1 on each axis, so she can follow it with her head.
     const pointer = { x: 0, y: 0 };
+    const look = { x: 0, y: 0 };  // eased copy of the pointer: her head turns a beat late, like a person
     addEventListener('pointermove', (e) => {
       pointer.x = (e.clientX / innerWidth) * 2 - 1;
       pointer.y = (e.clientY / innerHeight) * 2 - 1;
@@ -584,7 +585,7 @@
       subtitleText.append(fragment);
       captionLine = { words, total: words.reduce((sum, word) => sum + word.weight, 0), index: -1 };
       subtitle.classList.add('show');
-      subtitle.setAttribute('aria-hidden', 'false');
+      // The visible line stays aria-hidden: #subtitle-live announces it once.
       subtitleLive.textContent = `${speaker}: ${text}`;
       captionPinned = hold > 0;
       if (karaoke) {
@@ -603,7 +604,6 @@
       stopCaptionSync();
       captionLine = null;
       subtitle.classList.remove('show');
-      subtitle.setAttribute('aria-hidden', 'true');
       subtitleLive.textContent = '';
       captionPinned = false;
       const clear = () => {
@@ -742,12 +742,14 @@
 
       // ── Voice: loudness opens her mouth, the tone decides its shape ──
       const level = loudness();
-      loudest = Math.max(0.05, loudest * 0.995, level);
-      mouth += (Math.min(1, level / loudest) - mouth) * 0.4;  // smoothed so it does not flicker
+      // Frame-rate independent smoothing: the same softness at 30, 60 or 144 Hz.
+      loudest = Math.max(0.05, loudest * Math.exp(-dt * 0.3), level);
+      mouth += (Math.min(1, level / loudest) - mouth) * (1 - Math.exp(-dt * 24));
       const bright = brightness();
       const targets = { aa: mouth * (1 - 0.55 * bright), ih: mouth * bright * 0.75, ou: mouth * (1 - bright) * 0.3 };
+      const shapeEase = 1 - Math.exp(-dt * 22);
       for (const name of mouthShapes) {
-        shape[name] += (targets[name] - shape[name]) * 0.35;
+        shape[name] += (targets[name] - shape[name]) * shapeEase;
         face.setValue(name, shape[name]);
       }
 
@@ -804,35 +806,53 @@
       }
 
       // ── Body: breathing, a slow weight shift, small gestures while she talks ──
-      const breathe = Math.sin(time * 1.7);   // ~3.7s per breath
-      const sway = Math.sin(time * 0.42);     // very slow weight shift hip to hip
-      pose(rig.chest, (r) => { r.x += breathe * 0.014 + g.chest.x; r.y += g.chest.y; r.z += g.chest.z; });
-      pose(rig.spine, (r) => { r.x += breathe * 0.009 + g.spine.x; });
+      // People do not breathe on a sine wave: the inhale is quicker than the
+      // exhale. The weight shift drifts on two unrelated periods, so it never
+      // settles into an obvious loop.
+      const cycle = (time * 0.27) % 1;                        // ~3.7s per breath
+      const inhale = cycle < 0.42
+        ? Math.sin((cycle / 0.42) * Math.PI / 2)              // in, a little quicker
+        : Math.cos(((cycle - 0.42) / 0.58) * Math.PI / 2);    // out, softer
+      const breathe = inhale * 2 - 1;                         // -1 exhaled .. 1 full
+      const sway = Math.sin(time * 0.33) * 0.65 + Math.sin(time * 0.17 + 1.9) * 0.35;
+      const drift = Math.sin(time * 0.29) * 0.6 + Math.sin(time * 0.11 + 2.4) * 0.4;
+
+      // Her head eases toward the cursor instead of tracking it exactly.
+      look.x += (pointer.x - look.x) * Math.min(1, dt * 2.2);
+      look.y += (pointer.y - look.y) * Math.min(1, dt * 2.2);
+
+      pose(rig.chest, (r) => {
+        r.x += breathe * 0.011 + g.chest.x;
+        r.y += g.chest.y;
+        r.z += g.chest.z - sway * 0.012;                      // counter-lean against her hips
+      });
+      pose(rig.spine, (r) => { r.x += breathe * 0.008 + g.spine.x; r.z -= sway * 0.006; });
       pose(rig.hips, (r) => {
-        r.y += sway * 0.03 + g.hips.y; r.z += Math.sin(time * 0.66) * 0.014 + g.hips.z;
-        r.x += g.hips.x;
+        r.y += sway * 0.028 + g.hips.y;
+        r.z += sway * 0.02 + g.hips.z;                        // resting on one hip, then the other
+        r.x += breathe * 0.004 + g.hips.x;
       });
       pose(rig.neck, (r) => {
-        r.y += Math.sin(time * 0.29) * 0.04 + pointer.x * 0.06;
-        r.x += Math.sin(time * 0.47 + 1) * 0.018 - mouth * 0.02;
+        r.y += drift * 0.035 + look.x * 0.05;
+        r.x += Math.sin(time * 0.47 + 1) * 0.016 - mouth * 0.02;
       });
       pose(rig.head, (r) => {
-        r.y += Math.sin(time * 0.33) * 0.05 + pointer.x * 0.1;            // follows your cursor
-        r.x += Math.sin(time * 0.53 + 1) * 0.02 - mouth * 0.05;           // nods along with her voice
-        r.z += Math.sin(time * 0.37 + 2) * 0.02 + mouth * Math.sin(time * 5) * 0.02;
+        r.y += drift * 0.045 + look.x * 0.1;                  // follows your cursor, a beat late
+        r.x += Math.sin(time * 0.53 + 1) * 0.018 - mouth * 0.05;  // nods along with her voice
+        r.z += Math.sin(time * 0.37 + 2) * 0.018 + mouth * Math.sin(time * 5) * 0.02;
         r.z += (want.tilt ? 0.07 : 0);   // smug: head on one side
         r.x += (want.away ? 0.05 : 0);   // shy: chin down a touch
         r.x += g.head.x; r.y += g.head.y; r.z += g.head.z;   // gestures
       });
-      // arms carry both the idle sway and whatever gesture is running, in one write
+      // arms carry breath, the idle sway and whatever gesture is running, in one write
       pose(rig.leftArm, (r) => {
-        r.z += Math.sin(time * 0.8) * 0.012 + mouth * 0.03 + g.leftArm.z;
-        r.x += Math.sin(time * 0.61 + 1) * 0.02 + g.leftArm.x;
+        r.z += breathe * 0.012 + Math.sin(time * 0.61) * 0.01 + mouth * 0.03 + g.leftArm.z;
+        r.x += Math.sin(time * 0.61 + 1) * 0.018 + g.leftArm.x;
         r.y += g.leftArm.y;
       });
       pose(rig.rightArm, (r) => {
-        r.z -= Math.sin(time * 0.8 + 0.6) * 0.012 + mouth * 0.03 - g.rightArm.z;
-        r.x += Math.sin(time * 0.57) * 0.02 + g.rightArm.x;
+        r.z -= breathe * 0.012 + Math.sin(time * 0.61 + 0.9) * 0.01 + mouth * 0.03 - g.rightArm.z;
+        r.x += Math.sin(time * 0.57) * 0.018 + g.rightArm.x;
         r.y += g.rightArm.y;
       });
       for (const [name, node] of [['leftElbow', rig.leftElbow], ['rightElbow', rig.rightElbow],
@@ -840,7 +860,7 @@
         const d = g[name];
         pose(node, (r) => { r.x += d.x; r.y += d.y; r.z += d.z; });
       }
-      vrm.scene.position.y = breathe * 0.003;  // she rises a hair on each breath
+      vrm.scene.position.y = breathe * 0.0025;  // she rises a hair on each breath
 
       vrm.update(dt);
       controls.update();  // runs the glide
@@ -850,7 +870,7 @@
     // A backgrounded tab hands us one huge dt when it comes back; cap it so nothing lurches.
     renderer.setAnimationLoop(() => animate(Math.min(clock.getDelta(), 0.1)));
     window.__v = {
-      vrm, rig, camera, controls, animate, gesture, playing, offsets, GESTURES, renderer, scene,
+      vrm, rig, camera, controls, animate, gesture, playing, offsets, GESTURES, pointer, look, renderer, scene,
       setMotionScale(value) { motionScale = value ? 0.2 : 1; },
       setQuality(value) { renderer.setPixelRatio(Math.min(devicePixelRatio, value)); renderer.setSize(innerWidth, innerHeight); },
       dispose() { renderer.setAnimationLoop(null); controls.dispose(); renderer.dispose(); },

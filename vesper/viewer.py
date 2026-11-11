@@ -85,6 +85,8 @@ class _Handler(SimpleHTTPRequestHandler):
             except (OSError, ValueError):
                 return self._json({"messages": [], "total": 0, "error": "Conversation history could not be read."}, 500)
         if self.path == "/avatar.vrm":
+            if not _avatar or not _avatar.is_file():
+                return self._json({"error": "The avatar file is missing."}, 404)
             return self._send(_avatar.read_bytes(), "application/octet-stream")
         if self.path != "/next":
             return super().do_GET()  # the page and the voice clip, from client/

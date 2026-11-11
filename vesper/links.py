@@ -132,6 +132,12 @@ def _clean_text(raw, truncated):
     return text, truncated
 
 
+def _charset(body):
+    """The charset the page declares in its first 2 KB, if any."""
+    found = re.search(rb"charset\s*=\s*[\"']?([\w.:-]+)", body[:2048], re.I)
+    return found.group(1).decode("ascii", "ignore") if found else None
+
+
 def read(url):
     """One link -> {url, title, text} or {url, error}. Never raises."""
     try:
@@ -150,7 +156,11 @@ def read(url):
                     break
         finally:
             response.close()
-        encoding = response.encoding or "utf-8"
+        # requests defaults text/* to ISO-8859-1, which turns a UTF-8 page into
+        # mojibake. Trust the header only when it names a charset, otherwise read
+        # the page's own <meta charset>.
+        declared = "charset" in (response.headers.get("content-type") or "").lower()
+        encoding = (response.encoding if declared else None) or _charset(body) or "utf-8"
         try:
             html = body.decode(encoding, errors="replace")
         except LookupError:
