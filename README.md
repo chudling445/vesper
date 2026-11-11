@@ -240,6 +240,7 @@ Tested on Windows 11 and Ubuntu 22.04 (WSL2) with an RTX 3060 12 GB. Faster-Whis
 | | |
 |---|---|
 | 🗣️ **Subtitles** | Her spoken lines appear as subtitles on the avatar page, with each word lighting up as the audio reaches it. Stage directions are stripped, pipelined sentences keep the caption steady, and your own voice messages get a caption while she listens. |
+| 🔗 **Reads links** | Send her a URL and she opens the page, reads its text, and answers about it, or tells you plainly when it can't be read. Local and private addresses are refused. |
 | ⏱️ **Bounded replies** | Only the recent conversation is sent to the model and each reply is capped, so a long chat or a rambling model can't spiral into an endless answer. |
 | ⏸️ **Interrupt** | Press **Enter** while she talks to cut her off mid-sentence, then freely type a new message or press Enter again to talk hands-free. |
 | 👂 **Hands-free listening** | She listens continuously; a pause in your speech auto-stops recording, so you don't need to press Enter each time. |
@@ -260,6 +261,7 @@ Tested on Windows 11 and Ubuntu 22.04 (WSL2) with an RTX 3060 12 GB. Faster-Whis
 | `Avatar not found` | Check the `vrm_model` path in `character_config.yaml`. |
 | She replies in the terminal, but there's no sound | Click the avatar page once. Browsers block sound until you do. |
 | `no avatar page open, playing on speakers` | That's normal: with no page open she talks through your speakers. Open the page to see her. |
+| She says a link couldn't be read | Some sites need JavaScript, a login, or block automated readers. Try the article's reader/print view or paste the text instead. |
 | `(heard nothing, try again)` | Make sure your mic is the default recording device, and talk a little longer. |
 
 ## 🔧 Under the hood

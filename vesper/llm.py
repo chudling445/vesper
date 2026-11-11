@@ -13,11 +13,13 @@ import sys
 import requests
 from openai import OpenAI
 
+from vesper import links
 from vesper.config import ROOT, need_key
 
 MEMORY_FILE = ROOT / "memory.json"  # her name for you, and how long you two have talked
 HISTORY_WINDOW = 20   # messages sent with each turn; the file on disk keeps everything
-MAX_TOKENS = 220      # hard stop on a reply, so one rambling answer cannot run for thousands of tokens
+MAX_TOKENS = 320      # hard stop on a reply, so one rambling answer cannot run for thousands of tokens
+MIN_WORDS = 8         # spoken words below this mean she dodged the question; ask once more
 REQUEST_TIMEOUT = 300  # seconds; a cold Ollama load can take a minute on a slow disk
 
 
@@ -63,7 +65,15 @@ def _system(cfg, mem):
     """Her personality, plus the house rules that keep her in character."""
     lines = [
         cfg["system_prompt"].strip(),
-        "Answer in one or two short sentences. She says them out loud, so long replies are slow and tiring.",
+        "Answer in two or three complete sentences with real content: a concrete detail, opinion, "
+        "or suggestion, not just a mood. She says this out loud, so keep it tight but never empty.",
+        "Never reply with only a giggle, a sigh, senpai's name, or a stage direction.",
+        "At most one short *stage direction* per reply, and vary how each reply opens.",
+        "Earlier replies in the transcript may be short or repetitive; do not imitate them.",
+        "When senpai sends a link, the page text is included above their message: answer from it "
+        "directly (never say you are unsure when the text is right there), name the page, and say "
+        "plainly if it could not be read instead of guessing.",
+        "Never invent details or quotes that are not in the linked page.",
         "Stay in character at all times, and never refuse or deflect a harmless request.",
     ]
     if mem.get("name"):
@@ -73,22 +83,36 @@ def _system(cfg, mem):
     return "\n".join(lines)
 
 
-def reply(user_text, cfg):
+def reply(user_text, cfg, status=None):
     history_path = ROOT / cfg["history_file"]
     history = json.loads(history_path.read_text(encoding="utf-8")) if history_path.exists() else []
     history.append({"role": "user", "content": user_text})
     mem = _remember(user_text, _memory())
 
+    found = links.find(user_text)
+    pages = []
+    if found:
+        if status:
+            status("thinking", "Reading the link you sent…" if len(found) == 1
+                   else f"Reading the {len(found)} links you sent…")
+        pages = [links.read(url) for url in found]
+
     client = _client(cfg["ollama"]["url"]) if cfg["brain"] == "ollama" else OpenAI()
-    response = client.chat.completions.create(
-        model=cfg["model"],
-        # Only the recent part goes to the model: a long chat otherwise means a
-        # huge prompt and a reply that can take minutes on a local 3B model.
-        messages=[{"role": "system", "content": _system(cfg, mem)}, *history[-HISTORY_WINDOW:]],
-        max_tokens=MAX_TOKENS,
-        timeout=REQUEST_TIMEOUT,
-    )
-    answer = (response.choices[0].message.content or "").strip()
+    # Only the recent part goes to the model: a long chat otherwise means a
+    # huge prompt and a reply that can take minutes on a local 3B model. Old
+    # one-word or giggle-only replies are skipped too: a local model copies the
+    # shape of its own transcript, so leaving them in teaches her to stay terse.
+    recent = [m for m in history
+              if m["role"] == "user" or _spoken_words(m.get("content", "")) >= MIN_WORDS]
+    messages = [{"role": "system", "content": _system(cfg, mem)}, *recent[-HISTORY_WINDOW:]]
+    if pages:
+        messages[-1] = {"role": "user", "content": links.as_context(pages) + "\n\n" + user_text}
+    answer = _ask(client, cfg, messages)
+    if _spoken_words(answer) < MIN_WORDS:
+        # A local model sometimes answers with a giggle or one word. Ask again,
+        # with the nudge only in this request so it never lands in her history.
+        nudge = messages[-1]["content"] + "\n\n(Give a real answer: two or three complete sentences, at least 25 words, with one concrete detail. No giggle-only reply.)"
+        answer = _ask(client, cfg, [*messages[:-1], {"role": "user", "content": nudge}]) or answer
 
     history.append({"role": "assistant", "content": answer})
     history_path.write_text(json.dumps(history, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -115,6 +139,24 @@ def mood(answer):
         if any(p in low for p in phrases):
             return name
     return "happy"  # her resting face is a small smile, not a blank stare
+
+
+def _ask(client, cfg, messages):
+    response = client.chat.completions.create(
+        model=cfg["model"],
+        messages=messages,
+        max_tokens=MAX_TOKENS,
+        timeout=REQUEST_TIMEOUT,
+    )
+    return (response.choices[0].message.content or "").strip()
+
+
+_STAGE = re.compile(r"\*[^*]{0,80}\*|\([^)]{0,80}\)")  # *giggles*, (softly), etc.
+
+
+def _spoken_words(text):
+    """How many words she actually says, ignoring stage directions."""
+    return len(re.findall(r"[A-Za-z0-9']+", _STAGE.sub(" ", text)))
 
 
 def _client(url):

@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.1.1 — 2026-11-11
+
+Links, fuller replies, and a wave that faces you.
+
+### Links
+
+- Send her a link and she opens the page, reads its text, and answers from it. Pages she cannot read are reported honestly instead of guessed at.
+- Only public http(s) pages are fetched: loopback and private addresses are refused, redirects are checked one hop at a time, and each page is capped at 4,000 characters and 1.5 MB.
+
+### Conversation
+
+- She answers with real content instead of a giggle. The persona asks for two or three complete sentences, replies under eight spoken words are asked for once more, and one-line replies from the old transcript are left out of the prompt (the full history is still saved).
+- Stage directions are stripped before speech, so the voice never reads asterisks. A stray `*` (as in "5 * 3") no longer swallows the words up to the next asterisk.
+
+### Avatar
+
+- Her greeting wave lifts the arm forward now, with the hand in front of her face instead of out at the edge of the frame.
+- The “Pose” gesture actually puts both hands on her hips — the right arm was bending the wrong way, so it drifted to her chest while the left went to her shoulder. The bow now comes from her chest and waist instead of being a small nod.
+
+### Packaging
+
+- Project version bumped to 1.1.1.
+
 ## 1.1.0 — 2026-11-09
 
 Captions, and a chat that stays quick as the history grows.

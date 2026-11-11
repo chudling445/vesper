@@ -328,25 +328,32 @@
       // raise an arm and wave the hand, then bring it back down
       wave: { dur: 1.9, pose: (g, k) => {
         const up = Math.sin(Math.min(1, k * 2.2) * Math.PI / 2) * Math.min(1, (1 - k) * 4);
-        g.leftArm.z += up * 0.7;                        // upper arm out to the side
-        g.leftElbow.z += up * 1.75;                     // forearm up, hand beside her head
-        g.leftHand.z += Math.sin(k * 30) * 0.3 * up;    // the actual wave
+        // Raise the arm forward rather than out to the side, so the hand ends up
+        // in front of her, beside her face, instead of off at the edge of the frame.
+        g.leftArm.x -= up * 1.6;
+        g.leftArm.z += up * 0.2;
+        g.leftElbow.z -= up * 0.8;                      // forearm up in front of her
+        g.leftElbow.z += Math.sin(k * 30) * 0.45 * up;  // the actual wave, side to side
         g.head.z += up * 0.05;
       } },
       // "no": a few quick head turns
       shake: { dur: 1.1, pose: (g, k) => { g.head.y += Math.sin(k * 20) * 0.18 * Math.sin(k * Math.PI); } },
-      // hands on hips, small satisfied wiggle
+      // hands on hips, small satisfied wiggle. The right arm needs its own
+      // angles: the mirrored bones do not take the same signs as the left.
       hips: { dur: 2.6, pose: (g, k) => {
         const inOut = Math.sin(k * Math.PI);
-        g.leftArm.z += inOut * 0.5; g.rightArm.z += inOut * 0.5;      // elbows out
-        g.leftElbow.z += inOut * 1.5; g.rightElbow.z += inOut * 1.5;  // forearms in, hands at her waist
+        g.leftArm.z += inOut * 0.35; g.rightArm.z += inOut * 0.5;     // elbows out
+        g.leftArm.x -= inOut * 0.2;
+        g.leftElbow.z -= inOut * 0.6;                                // left forearm in, hand at her waist
+        g.rightElbow.z -= inOut * 1.2; g.rightElbow.x += inOut * 0.6; // right, mirrored
         g.hips.y += Math.sin(k * 8) * 0.05 * inOut;
         g.chest.x -= inOut * 0.04;
       } },
-      // a small bow
+      // a bow: bend from the waist and chest, not the hips, so her feet stay put
       bow: { dur: 1.7, pose: (g, k) => {
         const inOut = Math.sin(k * Math.PI);
-        g.chest.x += inOut * 0.22; g.head.x += inOut * 0.2;
+        g.spine.x += inOut * 0.15;
+        g.chest.x += inOut * 0.7; g.head.x += inOut * 0.45;
         g.leftArm.z += inOut * 0.15; g.rightArm.z += inOut * 0.15;
       } },
       // startled: shoulders up, a little recoil
@@ -496,7 +503,7 @@
         .replace(/__([^_\n]+)__/g, '$1')
         .replace(/~~([^~\n]+)~~/g, '$1')
         .replace(/`([^`\n]+)`/g, '$1')
-        .replace(/\*[^*\n]{1,80}\*/g, ' ')    // *smiles*, *sighs*: actions, not speech
+        .replace(/(?<![\w*])\*([^*\n]{1,80})\*(?![\w*])/g, ' ')  // *smiles*, *sighs*: actions, not speech
         .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
         .replace(/[*_~`#>]+/g, '')
         .replace(/\s+/g, ' ')

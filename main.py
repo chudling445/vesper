@@ -159,7 +159,7 @@ def main():
             viewer.update_status("thinking", "Preparing a reply…")
             talking.set()
             try:
-                answer = llm.reply(text, cfg)
+                answer = llm.reply(text, cfg, status=viewer.update_status)
                 if viewer.interrupted():
                     print("(response cancelled)")
                     viewer.update_status("ready", "Response stopped.")

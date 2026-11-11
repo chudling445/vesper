@@ -5,6 +5,7 @@ tts: fish   -> Fish Audio online
 """
 import io
 import os
+import re
 import sys
 from uuid import uuid4
 
@@ -37,7 +38,8 @@ def speak(text, cfg, slot=0):
     `slot` remains as a compatibility argument; each output uses a unique file
     so an interrupted turn cannot overwrite audio another response is using.
     """
-    audio = _fish(text, cfg["fish"]) if cfg["tts"] == "fish" else _sovits(text, cfg["sovits"])
+    spoken = _clean(text)
+    audio = _fish(spoken, cfg["fish"]) if cfg["tts"] == "fish" else _sovits(spoken, cfg["sovits"])
     # Re-save through soundfile: Fish's WAV header claims the clip is hours
     # long, and browsers believe it and never fire "ended". This fixes it.
     data, sample_rate = sf.read(io.BytesIO(audio))
@@ -46,6 +48,14 @@ def speak(text, cfg, slot=0):
     sf.write(target, data, sample_rate)
     print(f"[tts] {cfg['tts']}: {len(data) / sample_rate:.1f}s of audio")
     return target
+
+
+def _clean(text):
+    """Drop *stage directions* before speaking, so she never reads the asterisks."""
+    spoken = re.sub(r"\*\*([^*\n]+)\*\*", r"\1", text)        # **bold**: keep the words
+    spoken = re.sub(r"(?<![\w*])\*([^*\n]{1,90})\*(?![\w*])", " ", spoken)  # *waves*
+    spoken = " ".join(spoken.replace("*", " ").split())            # stray markers
+    return spoken or "..."  # a reply that was only an action still needs something to say
 
 
 def _sovits(text, s):
