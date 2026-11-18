@@ -279,6 +279,25 @@
     const dense = matchMedia('(pointer: coarse)').matches;
     const choseQuality = [1, 1.4, 2].includes(savedQuality) ? savedQuality : 1.4;
     renderer.setPixelRatio(Math.min(devicePixelRatio, choseQuality, dense ? 1.5 : 2));
+
+    // ── Adaptive resolution: measure the real frame time and, on a phone that cannot
+    //    keep up, give up a little sharpness rather than the frame rate. It only steps
+    //    down, at most twice, and never overrides a quality the person chose by hand. ──
+    let sampleFrames = 0, sampleTime = 0, autoSteps = 0;
+    function autoQuality(dt) {
+      if (localStorage.getItem('vesper.quality')) return;
+      sampleFrames += 1;
+      sampleTime += dt;
+      if (sampleTime < 3) return;
+      const fps = sampleFrames / sampleTime;
+      sampleFrames = 0;
+      sampleTime = 0;
+      if (fps < 38 && autoSteps < 2 && renderer.getPixelRatio() > 1) {
+        autoSteps += 1;
+        renderer.setPixelRatio(Math.max(1, renderer.getPixelRatio() - 0.25));
+        renderer.setSize(innerWidth, innerHeight);
+      }
+    }
     renderer.setSize(innerWidth, innerHeight);
     renderer.domElement.id = 'avatar-canvas';
     document.body.appendChild(renderer.domElement);
@@ -518,6 +537,9 @@
 
     // ── Her face: lip sync from the voice, plus blinking ──
     const voice = document.getElementById('voice');
+    voice.addEventListener('playing', () => keepAwake(true));
+    voice.addEventListener('ended', () => keepAwake(false));
+    voice.addEventListener('pause', () => { if (voice.ended) keepAwake(false); });
     const audioCtx = new AudioContext();
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 1024;
@@ -525,6 +547,36 @@
     analyser.connect(audioCtx.destination);
     const samples = new Float32Array(analyser.fftSize);
     const spectrum = new Uint8Array(analyser.frequencyBinCount);
+
+    // ── Phones dim and lock while you listen to someone, which kills a conversation.
+    //    Hold a wake lock only while she is actually speaking or you are recording, and
+    //    let go a few seconds later so the screen is not pinned on all evening. ──
+    let wakeLock = null, wakeTimer = 0, wantAwake = false;
+    async function keepAwake(on) {
+      wantAwake = on;
+      clearTimeout(wakeTimer);
+      if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+      try {
+        if (on && !wakeLock) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        } else if (!on && wakeLock) {
+          wakeTimer = setTimeout(async () => {
+            try { await wakeLock?.release(); } catch { /* already gone */ }
+            wakeLock = null;
+          }, 8000);
+        }
+      } catch { /* the browser said no; the screen just dims as usual */ }
+    }
+
+    // Coming back from a locked screen: the audio clock can be suspended and the clip
+    // stopped mid-sentence. Resume both instead of going silent until the next reply.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+      if (voice.src && voice.paused && !voice.ended && voice.currentTime > 0) voice.play().catch(() => {});
+      if (wantAwake) keepAwake(true);
+    });
 
     function loudness() {
       analyser.getFloatTimeDomainData(samples);
@@ -860,6 +912,7 @@
 
     function animate(dt) {
       time += dt * motionScale;
+      autoQuality(dt);
       const poked = time < pokeUntil;
       if (poked) want = MOODS.shy;   // she is flustered for a moment after a poke
 
