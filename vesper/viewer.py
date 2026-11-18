@@ -10,14 +10,20 @@ No page open? The clip plays on your speakers instead.
 stop() cuts her off mid-sentence, which is what Enter does while she talks.
 """
 import json
+import mimetypes
 import os
 import queue
+import shutil
+import socket
+import ssl
+import subprocess
 import sys
 import threading
 import time
 import webbrowser
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 
 import sounddevice as sd
 import soundfile as sf
@@ -25,6 +31,11 @@ import soundfile as sf
 from vesper.config import ROOT
 
 HOST, PORT = "127.0.0.1", 8080  # 127.0.0.1, not localhost: behaves the same on Windows and Linux
+HTTPS_PORT = 8443                # phones only give a page the microphone over https
+TLS_DIR = ROOT / ".tls"          # generated once, never served, never committed
+_lan = False                     # --mobile: serve the page to phones on the same Wi-Fi
+
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 _clips = queue.Queue()          # voice clips waiting for the page: {"audio", "mood"}
 _finished = threading.Event()   # set when the page says a clip ended
@@ -43,12 +54,88 @@ def update_status(phase, detail=""):
         _runtime_status.update(phase=phase, detail=detail, updated=time.time())
 
 
+def _origin_ok(client_ip, origin, host_header, site):
+    """Who may drive her: this machine always, and on --mobile only her own page.
+
+    Browsers label every request with Sec-Fetch-Site and send Origin on writes, so a
+    page on another site cannot drive her even though the port is open on the LAN.
+    Same-origin is compared against the Host the browser actually used, which keeps
+    both the http and the https copies working.
+    """
+    if site and site not in ("self", "same-origin", "none"):
+        return False
+    if client_ip not in ("127.0.0.1", "::1") and not _lan:
+        return False
+    if not origin:
+        return True
+    if not host_header:
+        return False
+    parts = urlsplit(origin)
+    return parts.scheme in ("http", "https") and parts.netloc == host_header
+
+
+def _lan_addresses():
+    """The addresses a phone on the same Wi-Fi can use, best effort."""
+    found = set()
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            found.add(info[4][0])
+    except OSError:
+        pass
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("10.255.255.255", 1))  # no packet is sent for UDP connect
+            found.add(probe.getsockname()[0])
+    except OSError:
+        pass
+    return sorted(ip for ip in found if ip and not ip.startswith(("127.", "169.254.")))
+
+
+def _openssl():
+    """openssl ships with Git for Windows and every Linux; look where it hides."""
+    for candidate in ("openssl", r"C:\Program Files\Git\usr\bin\openssl.exe", r"C:\Program Files\Git\bin\openssl.exe"):
+        if shutil.which(candidate) or (os.path.isabs(candidate) and os.path.isfile(candidate)):
+            return candidate
+    return None
+
+
+def _ensure_cert(addresses):
+    """A self-signed certificate for this computer's addresses, generated once.
+
+    It is not a real certificate authority, so the phone warns the first time;
+    after that the page counts as secure and the microphone is allowed.
+    """
+    wanted = ["127.0.0.1"] + list(addresses)
+    cert, key = TLS_DIR / "cert.pem", TLS_DIR / "key.pem"
+    note = TLS_DIR / "addresses.txt"
+    if cert.is_file() and key.is_file() and note.is_file() and note.read_text(encoding="utf-8").split() == wanted:
+        return True
+    openssl = _openssl()
+    if not openssl:
+        return False
+    TLS_DIR.mkdir(exist_ok=True)
+    san = ",".join(["DNS:localhost"] + [f"IP:{ip}" for ip in wanted])
+    try:
+        subprocess.run(
+            [openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256", "-days", "3650",
+             "-keyout", str(key), "-out", str(cert), "-subj", "/CN=Vesper",
+             "-addext", f"subjectAltName={san}"],
+            check=True, capture_output=True, timeout=40,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    note.write_text("\n".join(wanted), encoding="utf-8")
+    return True
+
+
 class _Handler(SimpleHTTPRequestHandler):
     def _local_origin(self):
-        if self.client_address[0] not in ("127.0.0.1", "::1"):
-            return False
-        origin = self.headers.get("Origin")
-        return not origin or origin in (f"http://{HOST}:{PORT}", f"http://localhost:{PORT}")
+        return _origin_ok(
+            self.client_address[0],
+            self.headers.get("Origin"),
+            self.headers.get("Host"),
+            self.headers.get("Sec-Fetch-Site"),
+        )
 
     def _json(self, value, status=200):
         self._send(json.dumps(value, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8", status)
@@ -197,19 +284,38 @@ class _Handler(SimpleHTTPRequestHandler):
         pass  # keep the terminal readable
 
 
-def start(cfg, inbox=None, open_browser=True):
-    global _avatar, _cfg, _inbox
-    _cfg, _inbox = cfg, inbox
+def start(cfg, inbox=None, open_browser=True, mobile=False):
+    global _avatar, _cfg, _inbox, _lan
+    _cfg, _inbox, _lan = cfg, inbox, mobile
     _avatar = ROOT / cfg["vrm_model"]
     if not _avatar.exists():
         sys.exit(f"[setup] Avatar not found: {_avatar}. Check vrm_model in character_config.yaml.")
     try:
-        server = ThreadingHTTPServer((HOST, PORT), partial(_Handler, directory=str(ROOT / "client")))
+        server = ThreadingHTTPServer(("0.0.0.0" if mobile else HOST, PORT), partial(_Handler, directory=str(ROOT / "client")))
     except OSError:
         sys.exit(f"[setup] Port {PORT} is busy (is Vesper already running?). Close it or change PORT in vesper/viewer.py.")
     threading.Thread(target=server.serve_forever, daemon=True).start()
     print(f"[viewer] avatar: {cfg['vrm_model']}")
     print(f"[viewer] avatar page: http://{HOST}:{PORT}  (open it, then click once)")
+    if mobile:
+        addresses = _lan_addresses()
+        print("[viewer] mobile mode: phones on this Wi-Fi can open the page. Stop Vesper to close it.")
+        for address in addresses:
+            print(f"[viewer] on your phone: http://{address}:{PORT}  (typing, her voice, her model)")
+        if addresses and _ensure_cert(addresses):
+            try:
+                secure = ThreadingHTTPServer(("0.0.0.0", HTTPS_PORT), partial(_Handler, directory=str(ROOT / "client")))
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                context.load_cert_chain(str(TLS_DIR / "cert.pem"), str(TLS_DIR / "key.pem"))
+                secure.socket = context.wrap_socket(secure.socket, server_side=True)
+                threading.Thread(target=secure.serve_forever, daemon=True).start()
+                for address in addresses:
+                    print(f"[viewer] with the microphone: https://{address}:{HTTPS_PORT}")
+                print("[viewer] the phone warns about the self-signed certificate once: Advanced -> proceed.")
+            except (OSError, ssl.SSLError):
+                print(f"[setup] https port {HTTPS_PORT} is unavailable; the microphone link is off.")
+        else:
+            print("[viewer] openssl was not found, so the https/microphone link is off. Typing still works.")
     update_status("ready", "Ready when you are.")
     if open_browser:
         webbrowser.open(f"http://{HOST}:{PORT}")

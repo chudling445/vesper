@@ -110,6 +110,7 @@ def main():
     parser.add_argument("--tts", choices=["sovits", "fish"], help="her voice (overrides the config)")
     parser.add_argument("--console", action="store_true", help="also accept messages in this terminal")
     parser.add_argument("--no-browser", action="store_true", help="start the local avatar page without opening a browser")
+    parser.add_argument("--mobile", action="store_true", help="also serve the page to your phone on the same Wi-Fi")
     args = parser.parse_args()
 
     cfg = load_config(args.character)
@@ -123,7 +124,7 @@ def main():
     asr.check(cfg)
     tts.check(cfg)
     inbox, talking, done = queue.Queue(maxsize=20), threading.Event(), threading.Event()
-    viewer.start(cfg, inbox, open_browser=not args.no_browser)
+    viewer.start(cfg, inbox, open_browser=not args.no_browser, mobile=args.mobile)
     if args.console:
         threading.Thread(target=listen, args=(inbox, talking, done), daemon=True).start()
         print("[chat] ENTER listens until you pause | type to send text | ENTER while she talks cuts her off")

@@ -141,6 +141,20 @@ The first launch takes a minute while it downloads the speech recognition model.
 > [!NOTE]
 > Her brain defaults to a local model: install [Ollama](https://ollama.com), run `ollama pull llama3.2` once, and leave the Ollama app running. No OpenAI key needed. Switch to `brain: openai` in `character_config.yaml` (plus `OPENAI_API_KEY` in `.env`) to use OpenAI instead.
 
+## Use it from your phone
+
+Start Vesper with mobile mode on:
+
+```bash
+uv run main.py --mobile
+```
+
+The terminal prints an address such as `http://192.168.1.24:8080`. Open it on a phone on the same Wi-Fi, and you get the same page: her model, her voice, the captions and the chat box. Nothing is installed on the phone and there is no account involved.
+
+Mobile mode opens the port to your local network while Vesper runs; stop Vesper and it is closed again. The server only answers requests that come from its own page, so another website cannot drive her.
+
+Typing, her voice and her model all work over that plain local address. To send her your voice from a phone, open the `https://…:8443` address that mobile mode also prints. That certificate is generated on your PC and self-signed, so the phone warns once: choose **Advanced → proceed**. After that the microphone works, and the browser can add her page to your home screen so it opens without the address bar.
+
 ## Make her yours
 
 Everything about her lives in `character_config.yaml`. Put her files (avatar, voice clip) in `character_files/`.

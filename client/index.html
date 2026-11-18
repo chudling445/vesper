@@ -2,9 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#191321">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Vesper</title>
   <link rel="icon" href="data:,">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icon-192.png">
   <style>
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; --violet: #c09aff; --pink: #f78cb6; --line: rgba(211, 188, 245, .16); --glass: rgba(23, 17, 34, .78); --caption-size: 18px; --caption-opacity: .96; --chat-size: 11px; }
     * { box-sizing: border-box; }
@@ -149,6 +154,34 @@
     }
     @media (max-width: 390px) { #runtime-state { display: none; } #stage-controls .tool-button { padding-inline: 7px; font-size: 8px; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+    /* ── Phone pass: full-height canvas, thumb-sized controls, chat takes the screen ── */
+    html, body { height: 100dvh; }
+    #topbar { top: calc(10px + env(safe-area-inset-top, 0px)); }
+    #stage-controls { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+    #chat-toggle-float { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+    @media (pointer: coarse) {
+      .tool-button { min-height: 42px; padding-inline: 13px; font-size: 12px; }
+      .icon-button { width: 42px; height: 42px; font-size: 17px; }
+      .mic-button { width: 54px; height: 42px; font-size: 12px; }
+      .stop-button { width: 42px; height: 42px; }
+      .send-button { min-height: 42px; font-size: 12px; }
+      #gestures button { padding: 9px 12px; font-size: 10px; }
+      #message-input, #history-search { font-size: 16px; }   /* stops iOS zooming when you tap to type */
+      .settings-row button, .settings-row select { min-height: 38px; }
+    }
+    @media (pointer: coarse) and (max-width: 430px) {
+      #fullscreen { display: none; }   /* a phone page is already full screen; the toolbar needs the room */
+      .tool-button { padding-inline: 9px; }
+    }
+    @media (max-width: 700px) {
+      #chat-panel { top: calc(66px + env(safe-area-inset-top, 0px)); right: 8px; left: 8px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); width: auto; }
+      #chat-panel.hidden { transform: translateY(10px); }
+      #subtitle { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+      body.captions-top #subtitle { top: calc(66px + env(safe-area-inset-top, 0px)); }
+      #toast { top: calc(66px + env(safe-area-inset-top, 0px)); }
+      .status-detail { top: calc(64px + env(safe-area-inset-top, 0px)); }
+      #gestures { bottom: calc(46px + env(safe-area-inset-bottom, 0px)); }
+    }
   </style>
   <script type="importmap">
     {
@@ -224,6 +257,14 @@
   <p id="subtitle-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
   <audio id="voice"></audio>
 
+  <script>
+    // Install support. Only secure pages may register a service worker, so the plain
+    // local http address simply skips it and still works.
+    if ('serviceWorker' in navigator && window.isSecureContext) {
+      addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+    }
+  </script>
+
   <script type="module">
     import * as THREE from 'three';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -233,15 +274,20 @@
     // ── Scene ──
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
     const savedQuality = Number(localStorage.getItem('vesper.quality') || 1.4);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, [1, 1.4, 2].includes(savedQuality) ? savedQuality : 1.4));
+    // A phone screen is small and dense: rendering every physical pixel drains the battery
+    // and heats the phone for nothing you can see, so the frame buffer is capped tighter.
+    const dense = matchMedia('(pointer: coarse)').matches;
+    const choseQuality = [1, 1.4, 2].includes(savedQuality) ? savedQuality : 1.4;
+    renderer.setPixelRatio(Math.min(devicePixelRatio, choseQuality, dense ? 1.5 : 2));
     renderer.setSize(innerWidth, innerHeight);
     renderer.domElement.id = 'avatar-canvas';
     document.body.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
     scene.background = null;
-    const starPositions = new Float32Array(960 * 3);
-    for (let i = 0; i < 960; i++) {
+    const starCount = innerWidth < 720 ? 380 : 960;   // fewer points to draw on a phone
+    const starPositions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
       const angle = Math.random() * Math.PI * 2;
       const height = Math.random() * 2 - 1;
       const radius = 6 + Math.random() * 10;
@@ -305,6 +351,26 @@
     controls.minPolarAngle = 0.2;
     controls.maxPolarAngle = Math.PI * 0.78;
 
+    // ── A portrait window is narrow, so the close desktop framing cuts her legs off.
+    //    Fit the whole model once per portrait size; desktop keeps the near view. ──
+    let phoneFrame = '';
+    function frameForPhone() {
+      if (innerWidth / innerHeight >= 0.85) { phoneFrame = ''; return; }
+      const key = `${innerWidth}x${innerHeight}`;
+      if (phoneFrame === key) return;
+      phoneFrame = key;
+      const bounds = new THREE.Box3().setFromObject(vrm.scene);
+      const height = Math.max(1.2, bounds.max.y - bounds.min.y);
+      const distance = (height * 1.18) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+      controls.target.set(0, height * 0.53, 0);
+      camera.position.set(0, height * 0.58, distance);
+      camera.updateProjectionMatrix();
+      controls.update();
+    }
+    frameForPhone();
+    addEventListener('resize', frameForPhone);
+    addEventListener('orientationchange', () => setTimeout(frameForPhone, 250));
+
     // ── Her body: the bones the idle animation moves. Anything a model lacks is just skipped. ──
     const bone = (name) => vrm.humanoid.getNormalizedBoneNode(name);
     const rig = {
@@ -316,6 +382,26 @@
     };
     // The pose she loaded in (arms down, set above). Every frame starts from it, then adds offsets.
     const rest = new Map(Object.values(rig).filter(Boolean).map((node) => [node, node.rotation.clone()]));
+
+    // ── Relaxed hands: a stock VRM holds every finger dead straight, and that is what
+    //    makes a still pose read as stiff. A light curl, tapering down each joint,
+    //    costs nothing and lets the hands sit like hands. The axis was measured on this
+    //    rig: local z, mirrored between the two sides. ──
+    (function relaxHands() {
+      const curl = 0.22;
+      for (const [side, sign] of [['left', -1], ['right', 1]]) {
+        for (const finger of ['Index', 'Middle', 'Ring', 'Little']) {
+          ['Proximal', 'Intermediate', 'Distal'].forEach((joint, i) => {
+            const bone = vrm.humanoid.getNormalizedBoneNode(`${side}${finger}${joint}`);
+            if (bone) bone.rotation.z += sign * curl * [1, 0.85, 0.55][i];
+          });
+        }
+        ['Proximal', 'Intermediate', 'Distal'].forEach((joint, i) => {
+          const bone = vrm.humanoid.getNormalizedBoneNode(`${side}Thumb${joint}`);
+          if (bone) bone.rotation.z += sign * curl * [0.55, 0.45, 0.35][i];
+        });
+      }
+    })();
     function pose(node, ...offsets) {
       if (!node || !rest.has(node)) return;
       node.rotation.copy(rest.get(node));
@@ -327,17 +413,16 @@
     const BONES = ['hips', 'spine', 'chest', 'neck', 'head', 'leftArm', 'rightArm',
                    'leftElbow', 'rightElbow', 'leftHand', 'rightHand'];
     const GESTURES = {
-      // raise an arm and wave the hand, then bring it back down
-      wave: { dur: 1.9, pose: (g, k) => {
-        const up = Math.sin(Math.min(1, k * 2.2) * Math.PI / 2) * Math.min(1, (1 - k) * 4);
-        // Raise the arm forward rather than out to the side, so the hand ends up
-        // in front of her, beside her face, instead of off at the edge of the frame.
-        g.leftArm.x -= up * 1.6;
-        g.leftArm.z += up * 0.2;
-        g.leftElbow.z -= up * 0.8;                      // forearm up in front of her
-        g.leftElbow.z += Math.sin(k * 30) * 0.45 * up;  // the actual wave, side to side
-        g.head.z += up * 0.05;
-      } },
+      // a real wave: elbow out, forearm up beside her face, palm square to you,
+      // the hand tipping side to side at the wrist, then everything settles again
+      wave: { dur: 1.9,
+        pose: (g, k) => { g.head.z += upOf(k) * 0.05; },
+        after: (k) => {
+          const up = upOf(k);
+          aimBone(rig.leftArm, rig.leftElbow, 0.55, 0.08, 0.83, up);   // elbow out at shoulder height
+          aimBone(rig.leftElbow, rig.leftHand, 0, 1, 0.12, up);
+          aimHand(up, Math.sin(k * 26) * 0.34 * up);
+        } },
       // "no": a few quick head turns
       shake: { dur: 1.1, pose: (g, k) => { g.head.y += Math.sin(k * 20) * 0.18 * Math.sin(k * Math.PI); } },
       // hands on hips, small satisfied wiggle. The right arm needs its own
@@ -366,6 +451,53 @@
         g.leftElbow.z += bump * 1.0; g.rightElbow.z -= bump * 1.0;
       } },
     };
+    // ── Aiming: a wave is a world-space pose, not three guessed Euler angles.
+    //    aimBone turns a bone toward a direction; aimHand squares the palm to you. ──
+    const IDENTITY = new THREE.Quaternion();
+    const AXIS_Z = new THREE.Vector3(0, 0, 1);
+    const upOf = (k) => Math.sin(Math.min(1, k * 2.2) * Math.PI / 2) * Math.min(1, (1 - k) * 4);
+    function aimBone(node, child, x, y, z, weight) {
+      if (!node || !child || weight <= 0.001) return;
+      node.updateWorldMatrix(true, true);
+      const from = child.getWorldPosition(new THREE.Vector3()).sub(node.getWorldPosition(new THREE.Vector3()));
+      if (from.lengthSq() < 1e-8) return;
+      const delta = new THREE.Quaternion().setFromUnitVectors(from.normalize(), new THREE.Vector3(x, y, z).normalize());
+      const scaled = new THREE.Quaternion().slerpQuaternions(IDENTITY, delta, Math.min(1, weight));
+      const parent = node.parent.getWorldQuaternion(new THREE.Quaternion());
+      node.quaternion.premultiply(parent.clone().invert().multiply(scaled).multiply(parent)).normalize();
+    }
+    let handLocal = null;  // where the fingers and the palm point inside the hand bone
+    function aimHand(weight, rock) {
+      const hand = rig.leftHand;
+      if (!hand || weight <= 0.001) return;
+      if (!handLocal) {
+        // normalized bones only: raw finger bones live in a different frame than
+        // the normalized hand we are rotating, so mixing them tilts the whole aim.
+        const node = (name) => vrm.humanoid.getNormalizedBoneNode(name);
+        const mid = node('leftMiddleProximal'), index = node('leftIndexProximal'), little = node('leftLittleProximal');
+        if (!mid || !index || !little) return;
+        const wrist = hand.getWorldPosition(new THREE.Vector3());
+        const inv = hand.getWorldQuaternion(new THREE.Quaternion()).invert();
+        const fingers = mid.getWorldPosition(new THREE.Vector3()).sub(wrist).normalize().applyQuaternion(inv);
+        const across = little.getWorldPosition(new THREE.Vector3())
+          .sub(index.getWorldPosition(new THREE.Vector3())).normalize().applyQuaternion(inv);
+        handLocal = { fingers, palm: new THREE.Vector3().crossVectors(across, fingers).normalize() };
+      }
+      hand.updateWorldMatrix(true, false);
+      const current = hand.getWorldQuaternion(new THREE.Quaternion());
+      const fingers = handLocal.fingers.clone().applyQuaternion(current).normalize();
+      const palm = handLocal.palm.clone().applyQuaternion(current).normalize();
+      // fingers up, tipping side to side around the view axis; palm square to the camera
+      const up = new THREE.Vector3(0, 1, 0.18).normalize().applyAxisAngle(AXIS_Z, rock);
+      const front = new THREE.Vector3(0, 0, 1).addScaledVector(up, -up.z).normalize();
+      const turnFingers = new THREE.Quaternion().setFromUnitVectors(fingers, up);
+      const turnPalm = new THREE.Quaternion().setFromUnitVectors(palm.clone().applyQuaternion(turnFingers), front);
+      const target = turnPalm.multiply(turnFingers).multiply(current);
+      const blended = current.slerp(target, Math.min(1, weight));
+      const parent = hand.parent.getWorldQuaternion(new THREE.Quaternion());
+      hand.quaternion.copy(parent.invert().multiply(blended)).normalize();
+    }
+
     const playing = [];  // gestures in flight
     function gesture(name) {
       if (GESTURES[name] && playing.length < 2) playing.push({ name, t: 0 });
@@ -739,6 +871,7 @@
         run.t += dt;
         const k = Math.min(1, run.t / spec.dur);
         spec.pose(g, k);
+        run.k = k;
         if (k >= 1) playing.splice(i, 1);
       }
 
@@ -863,6 +996,12 @@
         pose(node, (r) => { r.x += d.x; r.y += d.y; r.z += d.z; });
       }
       vrm.scene.position.y = breathe * 0.0025;  // she rises a hair on each breath
+
+      // gestures that need world-space aiming run after the frame's rotations are in
+      for (const run of playing) {
+        const spec = GESTURES[run.name];
+        if (spec.after) spec.after(run.k);
+      }
 
       vrm.update(dt);
       controls.update();  // runs the glide
@@ -1193,7 +1332,11 @@
     });
     $('mic').addEventListener('click', async () => {
       if (recorder?.state === 'recording') { recorder.stop(); return; }
-      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast('Voice recording is not supported by this browser');
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+        return toast(window.isSecureContext
+          ? 'Voice recording is not supported by this browser'
+          : 'Your phone only shares the microphone over https. Typing and her voice work fine here.');
+      }
       try {
         recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find(type => MediaRecorder.isTypeSupported(type));
