@@ -60,38 +60,23 @@ def update_status(phase, detail=""):
         _runtime_status.update(phase=phase, detail=detail, updated=time.time())
 
 
-def _origin_ok(client_ip, origin, host_header, site):
-    """Who may drive her: this machine always, and on --mobile only her own page.
+LOOPBACK = ("127.0.0.1", "::1")
+
+
+def _same_origin(client_ip, origin, host_header, site, write=False):
+    """Only her own page may drive her.
 
     Browsers label every request with Sec-Fetch-Site and send Origin on writes, so a
-    page on another site cannot drive her even though the port is open on the LAN.
-    Same-origin is compared against the Host the browser actually used, which keeps
-    both the http and the https copies working.
+    page from another site cannot drive her through the port the phone can reach.
+    Same-origin is compared against the Host the browser actually used, which keeps both
+    the http and the https copies working. A request with no Origin is a local tool when
+    it comes from this machine; over the Wi-Fi a write must carry one, because being on
+    the same network is otherwise enough to post a message or clear the conversation.
     """
-    if site and site not in ("self", "same-origin", "none"):
-        return False
-    if client_ip not in ("127.0.0.1", "::1") and not _lan:
+    if site and site not in (("self", "same-origin") if write else ("self", "same-origin", "none")):
         return False
     if not origin:
-        return True
-    if not host_header:
-        return False
-    parts = urlsplit(origin)
-    return parts.scheme in ("http", "https") and parts.netloc == host_header
-
-
-def _write_origin_ok(client_ip, origin, host_header, site):
-    """A write has to prove it came from her page.
-
-    Being on the same Wi-Fi is not enough: without this, a script on another device
-    could post a message or clear the conversation. Browsers send Origin on POST, so
-    the page always passes; a request with no Origin is only trusted from this machine,
-    where it is a local tool of the person running Vesper.
-    """
-    if site and site not in ("self", "same-origin"):
-        return False
-    if not origin:
-        return client_ip in ("127.0.0.1", "::1")
+        return not write or client_ip in LOOPBACK
     parts = urlsplit(origin)
     return (bool(host_header) and parts.scheme in ("http", "https")
             and parts.netloc == host_header)
@@ -225,7 +210,7 @@ class _Handler(SimpleHTTPRequestHandler):
         Being on the same Wi-Fi is not permission to drive her: without this, anyone
         who opens the port could read the chat, clear it, or have her talk.
         """
-        if not _lan or self.client_address[0] in ("127.0.0.1", "::1"):
+        if not _lan or self.client_address[0] in LOOPBACK:
             return True
         if not _pairing:
             return True
@@ -236,12 +221,13 @@ class _Handler(SimpleHTTPRequestHandler):
             return True
         return secrets.compare_digest(self._key_given(), _pairing)
 
-    def _local_origin(self):
-        return _origin_ok(
+    def _same_origin_ok(self, write=False):
+        return _same_origin(
             self.client_address[0],
             self.headers.get("Origin"),
             self.headers.get("Host"),
             self.headers.get("Sec-Fetch-Site"),
+            write,
         )
 
     def _json(self, value, status=200):
@@ -249,7 +235,7 @@ class _Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         global _page_last_seen
-        if _lan and _pairing and self.client_address[0] not in ("127.0.0.1", "::1"):
+        if _lan and _pairing and self.client_address[0] not in LOOPBACK:
             key = (parse_qs(urlsplit(self.path).query).get("k") or [""])[0]
             if key and secrets.compare_digest(key, _pairing):
                 self.send_response(303)
@@ -260,7 +246,7 @@ class _Handler(SimpleHTTPRequestHandler):
                 return
         if not self._paired():
             return self._unpaired()
-        if self.path.startswith("/api/") and not self._local_origin():
+        if self.path.startswith("/api/") and not self._same_origin_ok():
             return self._json({"error": "This local endpoint only accepts requests from Vesper."}, 403)
         if self.path == "/api/status":
             with _status_lock:
@@ -308,15 +294,8 @@ class _Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if not self._paired():
             return self._unpaired()
-        if not _write_origin_ok(
-            self.client_address[0],
-            self.headers.get("Origin"),
-            self.headers.get("Host"),
-            self.headers.get("Sec-Fetch-Site"),
-        ):
+        if not self._same_origin_ok(write=True):
             return self._json({"error": "Messages and changes have to come from the Vesper page."}, 403)
-        if not self._local_origin():
-            return self._json({"error": "This local endpoint only accepts requests from Vesper."}, 403)
         if self.path == "/api/chat":
             try:
                 try:
