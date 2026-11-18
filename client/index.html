@@ -392,10 +392,14 @@
 
     // ── A portrait window is narrow, so the close desktop framing cuts her legs off.
     //    Fit the whole model once per portrait size; desktop keeps the near view. ──
+    // Refit only when the shape of the screen really changes. A phone keyboard resizes
+    // the viewport but only takes height, so keying on height made her jump every time
+    // the chat was opened. The key watches orientation and width instead.
+    const portraitScreen = matchMedia('(orientation: portrait)');
     let phoneFrame = '';
     function frameForPhone() {
-      if (innerWidth / innerHeight >= 0.85) { phoneFrame = ''; return; }
-      const key = `${innerWidth}x${innerHeight}`;
+      if (!portraitScreen.matches) { phoneFrame = ''; return; }
+      const key = `p${Math.round(innerWidth / 10)}`;
       if (phoneFrame === key) return;
       phoneFrame = key;
       const bounds = new THREE.Box3().setFromObject(vrm.scene);
