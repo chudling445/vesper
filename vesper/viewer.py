@@ -212,6 +212,11 @@ class _Handler(SimpleHTTPRequestHandler):
             return True
         if not _pairing:
             return True
+        # The manifest, icons and service worker are what the browser needs to offer
+        # "Add to Home Screen", and some browsers fetch them without credentials.
+        plain = self.path.split("?", 1)[0]
+        if plain in ("/manifest.webmanifest", "/sw.js") or plain.startswith("/icon-"):
+            return True
         return secrets.compare_digest(self._key_given(), _pairing)
 
     def _local_origin(self):
