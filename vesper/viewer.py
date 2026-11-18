@@ -37,6 +37,9 @@ HTTPS_PORT = 8443                # phones only give a page the microphone over h
 TLS_DIR = ROOT / ".tls"          # generated once, never served, never committed
 _lan = False                     # --mobile: serve the page to phones on the same Wi-Fi
 _pairing = ""                    # the key the printed phone link carries
+_owner = ""                      # the page that currently gets her voice
+_owner_seen = 0.0                # when that page last asked for a clip
+_owner_lock = threading.Lock()
 
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
@@ -94,6 +97,31 @@ def _lan_addresses():
     return sorted(ip for ip in found if ip and not ip.startswith(("127.", "169.254.")))
 
 
+def _claim(client, now=None):
+    """Which page should hear her now.
+
+    Two windows polling at once used to race for each clip, so her voice could come
+    out of the PC while you were holding the phone. The page that most recently asked
+    keeps it; if that page goes quiet for five seconds, the next one asking takes over.
+    """
+    global _owner, _owner_seen
+    moment = time.monotonic() if now is None else now
+    with _owner_lock:
+        if not _owner or moment - _owner_seen > 5:
+            _owner, _owner_seen = client, moment
+        if client == _owner:
+            _owner_seen = moment
+            return True
+        return False
+
+
+def _take_voice(client):
+    """Speaking from a page hands it the audio for this turn."""
+    global _owner, _owner_seen
+    with _owner_lock:
+        _owner, _owner_seen = client, time.monotonic()
+
+
 def _pairing_key():
     """One key per installation, reused across restarts so a phone only pairs once."""
     note = TLS_DIR / "pairing.txt"
@@ -145,6 +173,9 @@ def _ensure_cert(addresses):
 
 
 class _Handler(SimpleHTTPRequestHandler):
+    def _client(self):
+        return self.headers.get("X-Vesper-Client", "") or f"anon:{self.client_address[0]}"
+
     def _key_given(self):
         key = self.headers.get("X-Vesper-Key", "")
         if not key:
@@ -244,11 +275,13 @@ class _Handler(SimpleHTTPRequestHandler):
         if _stop.is_set():
             _stop.clear()
             return self._send(json.dumps({"stop": True}).encode(), "application/json")
+        if not _claim(self._client()):
+            return self._send(json.dumps({"audio": None, "mood": None, "text": None, "owner": False}).encode(), "application/json")
         try:
             clip = _clips.get_nowait()
         except queue.Empty:
             clip = {"audio": None, "mood": None, "text": None}
-        self._send(json.dumps(clip).encode(), "application/json")
+        self._send(json.dumps({**clip, "owner": True}).encode(), "application/json")
 
     def do_POST(self):
         if not self._paired():
@@ -271,6 +304,7 @@ class _Handler(SimpleHTTPRequestHandler):
                 if _inbox is None:
                     return self._json({"error": "Vesper is still starting."}, 503)
                 _inbox.put_nowait(message)
+                _take_voice(self._client())
                 update_status("queued", "Your message is in line.")
                 return self._json({"accepted": True}, 202)
             except queue.Full:
@@ -302,6 +336,7 @@ class _Handler(SimpleHTTPRequestHandler):
                 if _inbox is None:
                     return self._json({"error": "Vesper is still starting."}, 503)
                 _inbox.put_nowait(transcript)
+                _take_voice(self._client())
                 update_status("queued", "Your voice message is in line.")
                 return self._json({"transcript": transcript, "accepted": True}, 202)
             except queue.Full:

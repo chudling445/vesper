@@ -271,6 +271,17 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 
+    // One window at a time gets her voice. The tag tells the server which page is
+    // speaking, so a second tab or the phone does not steal the audio mid-sentence.
+    const clientId = sessionStorage.getItem('vesper.client') || (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
+    sessionStorage.setItem('vesper.client', clientId);
+    const plainFetch = window.fetch.bind(window);
+    window.fetch = (input, init = {}) => {
+      const url = typeof input === 'string' ? input : (input && input.url) || '';
+      if (url.startsWith('/')) init = { ...init, headers: { ...(init.headers || {}), 'X-Vesper-Client': clientId } };
+      return plainFetch(input, init);
+    };
+
     // ── Scene ──
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
     const savedQuality = Number(localStorage.getItem('vesper.quality') || 1.4);
