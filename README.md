@@ -151,7 +151,7 @@ uv run main.py --mobile
 
 The terminal prints an address such as `http://192.168.1.24:8080`. Open it on a phone on the same Wi-Fi, and you get the same page: her model, her voice, the captions and the chat box. Nothing is installed on the phone and there is no account involved.
 
-Mobile mode opens the port to your local network while Vesper runs; stop Vesper and it is closed again. The server only answers requests that come from its own page, so another website cannot drive her.
+Mobile mode opens the port to your local network while Vesper runs; stop Vesper and it is closed again. The printed link carries a pairing key, so another device on the Wi-Fi cannot open her page or drive her just by finding the port; only the key from your terminal does. The page remembers it once and the key leaves the address bar.
 
 Typing, her voice and her model all work over that plain local address. To send her your voice from a phone, open the `https://…:8443` address that mobile mode also prints. That certificate is generated on your PC and self-signed, so the phone warns once: choose **Advanced → proceed**. After that the microphone works, and the browser can add her page to your home screen so it opens without the address bar.
 

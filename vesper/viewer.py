@@ -14,6 +14,7 @@ import json
 import mimetypes
 import os
 import queue
+import secrets
 import shutil
 import socket
 import ssl
@@ -24,7 +25,7 @@ import time
 import webbrowser
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import sounddevice as sd
 import soundfile as sf
@@ -35,6 +36,7 @@ HOST, PORT = "127.0.0.1", 8080  # 127.0.0.1, not localhost: behaves the same on 
 HTTPS_PORT = 8443                # phones only give a page the microphone over https
 TLS_DIR = ROOT / ".tls"          # generated once, never served, never committed
 _lan = False                     # --mobile: serve the page to phones on the same Wi-Fi
+_pairing = ""                    # the key the printed phone link carries
 
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
@@ -92,6 +94,19 @@ def _lan_addresses():
     return sorted(ip for ip in found if ip and not ip.startswith(("127.", "169.254.")))
 
 
+def _pairing_key():
+    """One key per installation, reused across restarts so a phone only pairs once."""
+    note = TLS_DIR / "pairing.txt"
+    if note.is_file():
+        existing = note.read_text(encoding="utf-8").strip()
+        if existing:
+            return existing
+    key = secrets.token_urlsafe(12)
+    TLS_DIR.mkdir(exist_ok=True)
+    note.write_text(key, encoding="utf-8")
+    return key
+
+
 def _openssl():
     """openssl ships with Git for Windows and every Linux; look where it hides."""
     for candidate in ("openssl", r"C:\Program Files\Git\usr\bin\openssl.exe", r"C:\Program Files\Git\bin\openssl.exe"):
@@ -130,6 +145,44 @@ def _ensure_cert(addresses):
 
 
 class _Handler(SimpleHTTPRequestHandler):
+    def _key_given(self):
+        key = self.headers.get("X-Vesper-Key", "")
+        if not key:
+            key = (parse_qs(urlsplit(self.path).query).get("k") or [""])[0]
+        if not key:
+            for part in self.headers.get("Cookie", "").split(";"):
+                name, _, value = part.strip().partition("=")
+                if name == "vesper_key":
+                    key = value
+                    break
+        return key
+
+    def _unpaired(self):
+        """A phone that found the port without the printed link gets a sentence, not JSON."""
+        if self.path.startswith("/api/") or "text/html" not in self.headers.get("Accept", ""):
+            return self._json({"error": "Use the Vesper link printed in its terminal to open this page."}, 401)
+        page = (
+            "<!doctype html><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+            "<title>Vesper</title><body style=\"margin:0;display:grid;place-items:center;min-height:100vh;"
+            "background:#191321;color:#f5effb;font:16px/1.6 system-ui,sans-serif;text-align:center;padding:24px\">"
+            "<div><h1 style=\"font-weight:400\">Vesper is private</h1>"
+            "<p style=\"color:#c4b5d1\">Open the link printed in the Vesper terminal on the PC that runs her."
+            "<br>It carries this installation's pairing key.</p></div></body>"
+        )
+        return self._send(page.encode("utf-8"), "text/html; charset=utf-8", 401)
+
+    def _paired(self):
+        """Loopback is always trusted; a phone needs the key printed in the terminal.
+
+        Being on the same Wi-Fi is not permission to drive her: without this, anyone
+        who opens the port could read the chat, clear it, or have her talk.
+        """
+        if not _lan or self.client_address[0] in ("127.0.0.1", "::1"):
+            return True
+        if not _pairing:
+            return True
+        return secrets.compare_digest(self._key_given(), _pairing)
+
     def _local_origin(self):
         return _origin_ok(
             self.client_address[0],
@@ -143,6 +196,17 @@ class _Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         global _page_last_seen
+        if _lan and _pairing and self.client_address[0] not in ("127.0.0.1", "::1"):
+            key = (parse_qs(urlsplit(self.path).query).get("k") or [""])[0]
+            if key and secrets.compare_digest(key, _pairing):
+                self.send_response(303)
+                self.send_header("Location", "/")
+                self.send_header("Set-Cookie", f"vesper_key={key}; Path=/; Max-Age=31536000; SameSite=Lax")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+        if not self._paired():
+            return self._unpaired()
         if self.path.startswith("/api/") and not self._local_origin():
             return self._json({"error": "This local endpoint only accepts requests from Vesper."}, 403)
         if self.path == "/api/status":
@@ -187,6 +251,8 @@ class _Handler(SimpleHTTPRequestHandler):
         self._send(json.dumps(clip).encode(), "application/json")
 
     def do_POST(self):
+        if not self._paired():
+            return self._unpaired()
         if not self._local_origin():
             return self._json({"error": "This local endpoint only accepts requests from Vesper."}, 403)
         if self.path == "/api/chat":
@@ -221,8 +287,8 @@ class _Handler(SimpleHTTPRequestHandler):
                     length = int(self.headers.get("Content-Length", "0"))
                 except ValueError:
                     return self._json({"error": "The voice clip size is invalid."}, 400)
-                if length <= 0 or length > 25_000_000:
-                    return self._json({"error": "Voice clips must be under 25 MB."}, 413)
+                if length <= 0 or length > 8_000_000:
+                    return self._json({"error": "Voice clips must be under 8 MB."}, 413)
                 audio = self.rfile.read(length)
                 from vesper import asr
                 stop()  # voice input starts a new turn; stop any reply the user is speaking over
@@ -275,6 +341,13 @@ class _Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def do_HEAD(self):
+        if self.path == "/avatar.vrm":
+            if not self._paired():
+                return self._unpaired()
+            return self._avatar_response()
+        return super().do_HEAD()
+
     def _avatar_response(self):
         """Her model is ~19 MB. Let the browser keep it and revalidate with one small
         request, stream it in chunks, and accept Range so a dropped phone download can
@@ -291,7 +364,8 @@ class _Handler(SimpleHTTPRequestHandler):
             return
         start, end, status = 0, info.st_size - 1, 200
         requested = self.headers.get("Range", "")
-        if requested.startswith("bytes="):
+        if_range = self.headers.get("If-Range")
+        if requested.startswith("bytes=") and (if_range is None or if_range == etag):
             part = requested[6:].split(",", 1)[0].strip()
             try:
                 first, _, last = part.partition("-")
@@ -321,6 +395,8 @@ class _Handler(SimpleHTTPRequestHandler):
         if status == 206:
             self.send_header("Content-Range", f"bytes {start}-{end}/{info.st_size}")
         self.end_headers()
+        if self.command == "HEAD":
+            return
         remaining = length
         try:
             with _avatar.open("rb") as handle:
@@ -351,8 +427,9 @@ class _Handler(SimpleHTTPRequestHandler):
 
 
 def start(cfg, inbox=None, open_browser=True, mobile=False):
-    global _avatar, _cfg, _inbox, _lan
+    global _avatar, _cfg, _inbox, _lan, _pairing
     _cfg, _inbox, _lan = cfg, inbox, mobile
+    _pairing = _pairing_key() if mobile else ""
     _avatar = ROOT / cfg["vrm_model"]
     if not _avatar.exists():
         sys.exit(f"[setup] Avatar not found: {_avatar}. Check vrm_model in character_config.yaml.")
@@ -367,7 +444,7 @@ def start(cfg, inbox=None, open_browser=True, mobile=False):
         addresses = _lan_addresses()
         print("[viewer] mobile mode: phones on this Wi-Fi can open the page. Stop Vesper to close it.")
         for address in addresses:
-            print(f"[viewer] on your phone: http://{address}:{PORT}  (typing, her voice, her model)")
+            print(f"[viewer] on your phone: http://{address}:{PORT}/?k={_pairing}  (typing, her voice, her model)")
         if addresses and _ensure_cert(addresses):
             try:
                 secure = ThreadingHTTPServer(("0.0.0.0", HTTPS_PORT), partial(_Handler, directory=str(ROOT / "client")))
@@ -376,7 +453,7 @@ def start(cfg, inbox=None, open_browser=True, mobile=False):
                 secure.socket = context.wrap_socket(secure.socket, server_side=True)
                 threading.Thread(target=secure.serve_forever, daemon=True).start()
                 for address in addresses:
-                    print(f"[viewer] with the microphone: https://{address}:{HTTPS_PORT}")
+                    print(f"[viewer] with the microphone: https://{address}:{HTTPS_PORT}/?k={_pairing}")
                 print("[viewer] the phone warns about the self-signed certificate once: Advanced -> proceed.")
             except (OSError, ssl.SSLError):
                 print(f"[setup] https port {HTTPS_PORT} is unavailable; the microphone link is off.")
