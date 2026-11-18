@@ -347,7 +347,16 @@
     // ── Load her ──
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
-    const vrm = (await loader.loadAsync('avatar.vrm')).userData.vrm;  // set vrm_model in character_config.yaml
+    // 19 MB over Wi-Fi is a wait: show how far it got instead of a label that never moves.
+    const startDetail = document.getElementById('start-detail');
+    const vrm = await new Promise((resolve, reject) => {
+      loader.load('avatar.vrm', (gltf) => resolve(gltf.userData.vrm), (event) => {
+        if (!startDetail || !event.total) return;
+        const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+        startDetail.textContent = percent < 100 ? `Loading her model… ${percent}%` : 'Almost there…';
+      }, reject);
+    });  // set vrm_model in character_config.yaml
+    if (startDetail) startDetail.textContent = 'Click once to enter · browser audio starts after this click';
     VRMUtils.rotateVRM0(vrm);  // older VRM 0.x models face away without this
     scene.add(vrm.scene);
 

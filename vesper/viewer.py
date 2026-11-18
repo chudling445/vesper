@@ -9,6 +9,7 @@ No page open? The clip plays on your speakers instead.
 
 stop() cuts her off mid-sentence, which is what Enter does while she talks.
 """
+import gzip
 import json
 import mimetypes
 import os
@@ -172,9 +173,7 @@ class _Handler(SimpleHTTPRequestHandler):
             except (OSError, ValueError):
                 return self._json({"messages": [], "total": 0, "error": "Conversation history could not be read."}, 500)
         if self.path == "/avatar.vrm":
-            if not _avatar or not _avatar.is_file():
-                return self._json({"error": "The avatar file is missing."}, 404)
-            return self._send(_avatar.read_bytes(), "application/octet-stream")
+            return self._avatar_response()
         if self.path != "/next":
             return super().do_GET()  # the page and the voice clip, from client/
         _page_last_seen = time.monotonic()
@@ -261,12 +260,79 @@ class _Handler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def _send(self, body, content_type, status=200):
+        encoding = None
+        if (len(body) >= 1024 and "gzip" in self.headers.get("Accept-Encoding", "")
+                and any(kind in content_type for kind in ("json", "text", "javascript", "svg"))):
+            body = gzip.compress(body, 6)
+            encoding = "gzip"
         self.send_response(status)
         self.send_header("Content-Type", content_type)
+        if encoding:
+            self.send_header("Content-Encoding", encoding)
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def _avatar_response(self):
+        """Her model is ~19 MB. Let the browser keep it and revalidate with one small
+        request, stream it in chunks, and accept Range so a dropped phone download can
+        resume instead of starting over."""
+        if not _avatar or not _avatar.is_file():
+            return self._json({"error": "The avatar file is missing."}, 404)
+        info = _avatar.stat()
+        etag = f'"{info.st_mtime_ns:x}-{info.st_size:x}"'
+        if self.headers.get("If-None-Match") == etag:
+            self.send_response(304)
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "public, max-age=86400, must-revalidate")
+            self.end_headers()
+            return
+        start, end, status = 0, info.st_size - 1, 200
+        requested = self.headers.get("Range", "")
+        if requested.startswith("bytes="):
+            part = requested[6:].split(",", 1)[0].strip()
+            try:
+                first, _, last = part.partition("-")
+                if first:
+                    start = max(0, int(first))
+                    end = min(info.st_size - 1, int(last)) if last else info.st_size - 1
+                elif last:
+                    start = max(0, info.st_size - int(last))
+                else:
+                    raise ValueError
+                if start > end or start >= info.st_size:
+                    raise ValueError
+                status = 206
+            except ValueError:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{info.st_size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+        length = end - start + 1
+        self.send_response(status)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Length", str(length))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("ETag", etag)
+        self.send_header("Cache-Control", "public, max-age=86400, must-revalidate")
+        if status == 206:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{info.st_size}")
+        self.end_headers()
+        remaining = length
+        try:
+            with _avatar.open("rb") as handle:
+                handle.seek(start)
+                while remaining > 0:
+                    chunk = handle.read(min(262_144, remaining))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+        except (BrokenPipeError, ConnectionResetError):
+            return  # the phone walked away; nothing to clean up
 
     def _clear(self):
         """Empty the saved conversation, so the next turn starts fresh."""
