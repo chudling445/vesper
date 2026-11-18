@@ -80,6 +80,23 @@ def _origin_ok(client_ip, origin, host_header, site):
     return parts.scheme in ("http", "https") and parts.netloc == host_header
 
 
+def _write_origin_ok(client_ip, origin, host_header, site):
+    """A write has to prove it came from her page.
+
+    Being on the same Wi-Fi is not enough: without this, a script on another device
+    could post a message or clear the conversation. Browsers send Origin on POST, so
+    the page always passes; a request with no Origin is only trusted from this machine,
+    where it is a local tool of the person running Vesper.
+    """
+    if site and site not in ("self", "same-origin"):
+        return False
+    if not origin:
+        return client_ip in ("127.0.0.1", "::1")
+    parts = urlsplit(origin)
+    return (bool(host_header) and parts.scheme in ("http", "https")
+            and parts.netloc == host_header)
+
+
 def _lan_addresses():
     """The addresses a phone on the same Wi-Fi can use, best effort."""
     found = set()
@@ -291,6 +308,13 @@ class _Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if not self._paired():
             return self._unpaired()
+        if not _write_origin_ok(
+            self.client_address[0],
+            self.headers.get("Origin"),
+            self.headers.get("Host"),
+            self.headers.get("Sec-Fetch-Site"),
+        ):
+            return self._json({"error": "Messages and changes have to come from the Vesper page."}, 403)
         if not self._local_origin():
             return self._json({"error": "This local endpoint only accepts requests from Vesper."}, 403)
         if self.path == "/api/chat":
